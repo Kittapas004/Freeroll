@@ -1,4 +1,6 @@
-import { LoginForm } from "@/components/login-form"
+import { LoginForm } from "@/components/login-form";
+
+import '@/app/globals.css';
 
 export default function LoginPage() {
   
