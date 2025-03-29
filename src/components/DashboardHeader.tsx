@@ -33,10 +33,6 @@ export default function DashboardHeader() {
           T-Batch-001
         </span>
 
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <CalendarDays className="w-4 h-4 text-gray-500" />
-          Sunday, 14 Nov 2023
-        </div>
       </div>
     </div>
   );

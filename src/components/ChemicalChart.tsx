@@ -25,7 +25,7 @@ import {
   
   export default function ChemicalChart() {
     return (
-      <div className="bg-white rounded-2xl p-4 shadow-sm">
+      <div className="bg-white rounded-2xl p-4 shadow-sm h-full">
         <div className="flex items-center justify-between mb-2">
           <div className="text-sm font-semibold text-gray-700 flex items-center gap-2">
             <span role="img" aria-label="lab">⚗️</span> Curcumin %
@@ -33,7 +33,7 @@ import {
           <div className="text-xs text-gray-400">June 10, 2021</div>
         </div>
   
-        <ResponsiveContainer width="100%" height={220}>
+        <ResponsiveContainer width="100%" height="100%" maxHeight={300}>
           <LineChart data={data} margin={{ left: -20 }}>
             <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
             <YAxis domain={[40, 85]} fontSize={12} tickLine={false} axisLine={false} />

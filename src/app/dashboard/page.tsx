@@ -49,7 +49,7 @@ export default function DashboardPage() {
           <div className="hidden lg:block w-1/4 p-4 border-l">
             <Card>
               <div className="p-4 flex flex-col items-center gap-4">
-                <div>
+                <div className="flex flex-col items-center">
                   <p className="text-2xs">{new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}</p>
                   <h2 className="text-2xl font-bold">Weather Average</h2>
                 </div>

@@ -34,9 +34,9 @@ interface StatCardProps {
   
     return (
       <div className="bg-white border rounded-2xl shadow-sm p-4">
-        <div className="text-sm text-gray-500 flex items-center gap-2">
-          <span className="text-lg">{data.icon}</span>
+        <div className="text-sm text-gray-500 flex items-center justify-between gap-2">
           {data.title}
+          <span className="text-lg">{data.icon}</span>
         </div>
         <div className="text-xl font-bold text-gray-800 mt-1">{data.value}</div>
         <div className="text-xs text-gray-400 mt-0.5">{data.sub}</div>
