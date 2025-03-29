@@ -28,7 +28,7 @@ const iconMap = {
 export default function NotificationPanel({ className }: { className?: string }) {
   return (
     <div className={clsx("bg-white rounded-2xl p-4 shadow-sm", className)}>
-      <div className="text-sm font-semibold text-gray-700 mb-2">Notification</div>
+      <div className="text-sm font-bold text-gray-700 mb-2">Notification</div>
 
       <div className="space-y-3 text-sm">
         {notifications.map((n, i) => (

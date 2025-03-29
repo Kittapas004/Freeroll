@@ -41,7 +41,7 @@ interface ActivityItem {
     return (
       <div className={`bg-white rounded-2xl shadow-sm p-4 ${className}`}>
         <div className="flex items-center justify-between mb-2">
-          <div className="text-sm font-semibold text-green-700">Recent Activity</div>
+          <div className="text-sm font-bold text-green-700">Recent Activity</div>
           <button className="text-xs text-green-600 hover:underline">See All</button>
         </div>
   

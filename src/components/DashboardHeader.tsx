@@ -1,9 +1,21 @@
 import { CalendarDays, Search } from "lucide-react";
+import { useState } from "react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 export default function DashboardHeader() {
+
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const toggleSidebar = () => {
+    setIsSidebarOpen((prev) => {
+      localStorage.setItem('sidebarOpen', String(!prev));
+      return !prev;
+    });
+  };
+
   return (
     <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
       <div className="text-2xl font-semibold text-gray-800">
+        <SidebarTrigger onClick={toggleSidebar} />
         Welcome Kittapas!
       </div>
 

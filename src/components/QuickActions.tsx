@@ -10,7 +10,7 @@ const actions = [
 export default function QuickActions() {
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm h-fit">
-      <div className="text-sm font-semibold text-gray-700 mb-2">Quick Action</div>
+      <div className="text-sm font-bold text-green-700 mb-2">Quick Action</div>
       <div className="grid grid-cols-2 gap-3">
         {actions.map((action, i) => (
           <button
