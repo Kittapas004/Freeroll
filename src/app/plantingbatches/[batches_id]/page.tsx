@@ -5,7 +5,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { useState } from "react";
 import { notFound } from "next/navigation";
 import { use } from "react";
-import { MapPin, Calendar, Sprout, Leaf, Plus, Wrench, FlaskConical, Notebook, Check, ChartSpline, Star, SquarePen, Trash } from "lucide-react";
+import { MapPin, Calendar, Sprout, Leaf, Plus, Wrench, FlaskConical, Notebook, Check, ChartSpline, Star, SquarePen, Trash, Circle, ChevronDown, ChevronUp } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import React from "react";
 
 
 
@@ -21,7 +22,7 @@ type PlantingBatches = {
     planting_date: string;
     plant_variety: string;
     cultivation_method: string;
-    status: number;
+    status: string;
     location: string;
     image: string;
     recent_fertilizer_record: {
@@ -64,7 +65,7 @@ const plantingbatches: PlantingBatches[] = [
         planting_date: '2023-01-01',
         plant_variety: 'Turmeric',
         cultivation_method: 'Organic',
-        status: 1,
+        status: 'completed_successfully',
         location: 'Mae Fah Luang',
         recent_fertilizer_record: [
             { date: '2023-02-01', fertilizer_type: 'NPK', amount: 100, size: 50, note: 'First application', method: 'Spray' },
@@ -107,7 +108,7 @@ const plantingbatches: PlantingBatches[] = [
         planting_date: '2023-02-01',
         plant_variety: 'Turmeric',
         cultivation_method: 'Conventional',
-        status: 2,
+        status: 'pending_actions',
         location: 'Mae Fah Luang',
         recent_fertilizer_record: [
             { date: '2023-03-01', fertilizer_type: 'NPK', amount: 150, size: 75, note: 'Second application', method: 'Spray' },
@@ -150,7 +151,7 @@ const plantingbatches: PlantingBatches[] = [
         planting_date: '2023-03-01',
         plant_variety: 'Turmeric',
         cultivation_method: 'Organic',
-        status: 3,
+        status: 'issues_detected',
         location: 'Mae Fah Luang',
         recent_fertilizer_record: [
             { date: '2023-04-01', fertilizer_type: 'NPK', amount: 200, size: 100, note: 'Third application', method: 'Spray' },
@@ -194,6 +195,10 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
     const batch = plantingbatches.find(b => b.batches_id === batches_id);
     if (!batch) return notFound();
     const [activeTab, setActiveTab] = useState("fertilizer");
+    const [expandedRow, setExpandedRow] = useState<string | number | null>(null);
+    const toggleRow = (id: string | number) => {
+        setExpandedRow(expandedRow === id ? null : id);
+    };
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const toggleSidebar = () => {
@@ -226,7 +231,17 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                     <div className="flex items-center gap-2">
                         <SidebarTrigger onClick={toggleSidebar} />
                         <h1 className="text-2xl font-semibold">{batch.batches_id}</h1>
-                        <span className="text-yellow-400">🟡</span>
+                        <Circle
+                            className={
+                                batch.status === "completed_successfully"
+                                    ? "text-green-600 fill-green-600"
+                                    : batch.status === "pending_actions"
+                                        ? "text-yellow-600 fill-yellow-600"
+                                        : batch.status === "issues_detected"
+                                            ? "text-red-600 fill-red-600"
+                                            : "text-gray-600 fill-gray-600"
+                            }
+                        />
                         <div className="flex items-center text-sm gap-1 bg-gray-500 rounded-lg text-white p-1">
                             <MapPin size={16} /> {batch.location}
                         </div>
@@ -526,17 +541,44 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                                     </TableHeader>
                                     <TableBody>
                                         {batch.recent_harvest_record.map((harvest_record) => (
-                                            <TableRow key={harvest_record.id}>
-                                                <TableCell>{harvest_record.date}</TableCell>
-                                                <TableCell>{harvest_record.yleld}</TableCell>
-                                                <TableCell>{harvest_record.quality_grade}</TableCell>
-                                                <TableCell>{harvest_record.method}</TableCell>
-                                                <TableCell>{harvest_record.curcumin_quality}</TableCell>
-                                                <TableCell className="flex gap-2">
-                                                    <Button className="bg-blue-600 hover:bg-blue-700"><SquarePen size={16} /></Button>
-                                                    <Button className="bg-red-600 hover:bg-red-700"><Trash size={16} /></Button>
-                                                </TableCell>
-                                            </TableRow>
+                                            <React.Fragment key={harvest_record.id}>
+                                                <TableRow key={harvest_record.id}>
+                                                    <TableCell>{harvest_record.date}</TableCell>
+                                                    <TableCell>{harvest_record.yleld}</TableCell>
+                                                    <TableCell>{harvest_record.quality_grade}</TableCell>
+                                                    <TableCell>{harvest_record.method}</TableCell>
+                                                    <TableCell>{harvest_record.curcumin_quality}</TableCell>
+                                                    <TableCell className="flex gap-2">
+                                                        <Button className="bg-blue-600 hover:bg-blue-700"><SquarePen size={16} /></Button>
+                                                        <Button className="bg-red-600 hover:bg-red-700"><Trash size={16} /></Button>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <Button variant="ghost" onClick={() => toggleRow(harvest_record.id)}>
+                                                            {expandedRow === harvest_record.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+
+                                                {expandedRow === harvest_record.id && (
+                                                    <TableRow className="bg-gray-100">
+                                                        <TableCell colSpan={7}>
+                                                            <div className="p-4">
+                                                                <h1 className="text-green-600 text-xl font-semibold">Information</h1>
+                                                                <div className="flex flex-row gap-4 mt-2">
+                                                                    <div>
+                                                                        <p className="text-gray-500">Result Type:</p>
+                                                                        <h1>{harvest_record.result_type || "N/A"}</h1>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-gray-500">Notes:</p>
+                                                                        <h1>{harvest_record.note || "-"}</h1>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </React.Fragment>
                                         ))}
                                     </TableBody>
                                 </Table>
@@ -545,6 +587,6 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                     </div>
                 )}
             </SidebarInset>
-        </SidebarProvider>
+        </SidebarProvider >
     );
 }

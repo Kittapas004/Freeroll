@@ -3,7 +3,7 @@
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
     Dialog,
     DialogContent,
@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Circle } from "lucide-react";
 
 export default function PlantingBatchesPage() {
 
@@ -33,7 +34,7 @@ export default function PlantingBatchesPage() {
         planting_date: string;
         plant_variety: string;
         cultivation_method: string;
-        status: number;
+        status: string;
         location: string;
         image: string;
         recent_fertilizer_record: {
@@ -63,9 +64,9 @@ export default function PlantingBatchesPage() {
     };
 
     const plantingbatches: PlantingBatches[] = [
-        { batches_id: 'T-Batch-001', image: "/TurmeRic-logo.png", planting_date: '2023-01-01', plant_variety: 'Turmeric', cultivation_method: 'Organic', status: 1, location: 'Mae Fah Luang', recent_fertilizer_record: { date: '2023-02-01', fertilizer_type: 'NPK', amount: 100, size: 50, note: 'First application', method: 'Spray' }, recent_harvest_record: { date: '2023-06-01', yleld: 200, quality_grade: 'A', method: 'Manual', note: 'Good quality', result_type: 'Fresh', curcumin_quality: '40', amount_report: 150 }, lab_submission_record: { date: '2023-07-01', lab_name: 'Lab A', quality_grade: 'A+', status: 'Completed' } },
-        { batches_id: 'T-Batch-002', image: "/TurmeRic-logo.png", planting_date: '2023-02-01', plant_variety: 'Turmeric', cultivation_method: 'Conventional', status: 2, location: 'Mae Fah Luang', recent_fertilizer_record: { date: '2023-03-01', fertilizer_type: 'NPK', amount: 150, size: 75, note: 'Second application', method: 'Spray' }, recent_harvest_record: { date: '2023-07-01', yleld: 250, quality_grade: 'B', method: 'Manual', note: 'Average quality', result_type: 'Dried', curcumin_quality: '50', amount_report: 200 }, lab_submission_record: { date: '2023-08-01', lab_name: 'Lab B', quality_grade: 'B+', status: 'In Progress' } },
-        { batches_id: 'T-Batch-003', image: "/AIS.jpg", planting_date: '2023-03-01', plant_variety: 'Turmeric', cultivation_method: 'Organic', status: 3, location: 'Mae Fah Luang', recent_fertilizer_record: { date: '2023-04-01', fertilizer_type: 'NPK', amount: 200, size: 100, note: 'Third application', method: 'Spray' }, recent_harvest_record: { date: '2023-08-01', yleld: 300, quality_grade: 'A+', method: 'Manual', note: 'Excellent quality', result_type: 'Fresh', curcumin_quality: '80', amount_report: 250 }, lab_submission_record: { date: '2023-09-01', lab_name: 'Lab C', quality_grade: 'A++', status: 'Completed' } },
+        { batches_id: 'T-Batch-001', image: "/TurmeRic-logo.png", planting_date: '2023-01-01', plant_variety: 'Turmeric', cultivation_method: 'Organic', status: 'completed_successfully', location: 'Mae Fah Luang', recent_fertilizer_record: { date: '2023-02-01', fertilizer_type: 'NPK', amount: 100, size: 50, note: 'First application', method: 'Spray' }, recent_harvest_record: { date: '2023-06-01', yleld: 200, quality_grade: 'A', method: 'Manual', note: 'Good quality', result_type: 'Fresh', curcumin_quality: '40', amount_report: 150 }, lab_submission_record: { date: '2023-07-01', lab_name: 'Lab A', quality_grade: 'A+', status: 'Completed' } },
+        { batches_id: 'T-Batch-002', image: "/TurmeRic-logo.png", planting_date: '2023-02-01', plant_variety: 'Turmeric', cultivation_method: 'Conventional', status: 'pending_actions', location: 'Mae Fah Luang', recent_fertilizer_record: { date: '2023-03-01', fertilizer_type: 'NPK', amount: 150, size: 75, note: 'Second application', method: 'Spray' }, recent_harvest_record: { date: '2023-07-01', yleld: 250, quality_grade: 'B', method: 'Manual', note: 'Average quality', result_type: 'Dried', curcumin_quality: '50', amount_report: 200 }, lab_submission_record: { date: '2023-08-01', lab_name: 'Lab B', quality_grade: 'B+', status: 'In Progress' } },
+        { batches_id: 'T-Batch-003', image: "/AIS.jpg", planting_date: '2023-03-01', plant_variety: 'Turmeric', cultivation_method: 'Organic', status: 'issues_detected', location: 'Mae Fah Luang', recent_fertilizer_record: { date: '2023-04-01', fertilizer_type: 'NPK', amount: 200, size: 100, note: 'Third application', method: 'Spray' }, recent_harvest_record: { date: '2023-08-01', yleld: 300, quality_grade: 'A+', method: 'Manual', note: 'Excellent quality', result_type: 'Fresh', curcumin_quality: '80', amount_report: 250 }, lab_submission_record: { date: '2023-09-01', lab_name: 'Lab C', quality_grade: 'A++', status: 'Completed' } },
     ];
 
     return (
@@ -171,41 +172,59 @@ export default function PlantingBatchesPage() {
                         </Dialog>
                         {plantingbatches.map((batch) => (
                             <Link href={`/plantingbatches/${batch.batches_id}`} key={batch.batches_id}>
-                            <Card
-                                className="p-4 flex flex-col items-start justify-start hover:bg-accent relative w-full cursor-pointer"
-                                key={batch.batches_id}
-                            >
-                                <div className="absolute inset-0 flex items-center justify-center text-white text-5xl font-semibold opacity-0 hover:opacity-100 bg-black/40 transition-opacity rounded-lg">
-                                    More Detail
-                                </div>
-                                <CardContent className="flex flex-col items-start w-full">
+                                <Card className="flex flex-col items-start justify-start hover:bg-accent relative w-full cursor-pointer overflow-hidden py-0 pb-6">
+                                    <div className="absolute z-10 inset-0 flex items-center justify-center text-white text-5xl font-semibold opacity-0 hover:opacity-100 bg-black/40 transition-opacity rounded-lg">
+                                        More Detail
+                                    </div>
                                     <img
                                         src={batch.image}
                                         alt="Batch Image"
-                                        className="w-full max-h-[120px] object-cover rounded-2xl border-accent-foreground p-1 mb-4 text-green-700 bg-green-200"
+                                        className="w-full h-37.5 object-cover"
                                     />
-                                    <div className="flex flex-col gap-2">
-                                        <h1 className="text-lg font-semibold">{batch.batches_id}</h1>
-                                        <p className="text-sm text-gray-500">{batch.planting_date}</p>
-                                    </div>
-                                    <div className="flex flex-col lg:flex-row gap-2">
-                                        <p className="text-sm text-gray-500">Plant Variety:</p>
-                                        <h1 className="text-sm font-semibold">{batch.plant_variety}</h1>
-                                    </div>
-                                    <div className="flex flex-col lg:flex-row gap-2">
-                                        <p className="text-sm text-gray-500">Cultivation Method:</p>
-                                        <h1 className="text-sm font-semibold">{batch.cultivation_method}</h1>
-                                    </div>
-                                    <div className="flex flex-col lg:flex-row gap-2">
-                                        <p className="text-sm text-gray-500">Status:</p>
-                                        <h1 className="text-sm font-semibold">{batch.status}</h1>
-                                    </div>
-                                    <div className="flex flex-col lg:flex-row gap-2">
-                                        <p className="text-sm text-gray-500">Location:</p>
-                                        <h1 className="text-sm font-semibold">{batch.location}</h1>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                                    <Circle
+                                        className={`absolute top-2 right-2 w-6 h-6 ${
+                                            batch.status === "completed_successfully"
+                                                ? "text-green-600 fill-green-600"
+                                                : batch.status === "pending_actions"
+                                                    ? "text-yellow-600 fill-yellow-600"
+                                                    : batch.status === "issues_detected"
+                                                        ? "text-red-600 fill-red-600"
+                                                        : "text-gray-600 fill-gray-600"
+                                        }`}
+                                    />
+                                    <CardContent className="flex flex-col items-start w-full">
+                                        <div className="flex flex-col gap-2">
+                                            <h1 className="text-lg font-semibold">{batch.batches_id}</h1>
+                                            <p className="text-sm text-gray-500">{batch.planting_date}</p>
+                                        </div>
+                                        <div className="flex flex-col lg:flex-row gap-2">
+                                            <p className="text-sm text-gray-500">Plant Variety:</p>
+                                            <h1 className="text-sm font-semibold">{batch.plant_variety}</h1>
+                                        </div>
+                                        <div className="flex flex-col lg:flex-row gap-2">
+                                            <p className="text-sm text-gray-500">Cultivation Method:</p>
+                                            <h1 className="text-sm font-semibold">{batch.cultivation_method}</h1>
+                                        </div>
+                                        <div className="flex flex-col lg:flex-row gap-2">
+                                            <p className="text-sm text-gray-500">Status:</p>
+                                            <h1 className="text-sm font-semibold">
+                                                {batch.status === 'completed_successfully'
+                                                    ? 'Completed Successfully'
+                                                    : batch.status === 'pending_actions'
+                                                        ? 'Pending Actions'
+                                                        : batch.status === 'issues_detected'
+                                                            ? 'Issues Detected'
+                                                            : batch.status === 'completed_past_date'
+                                                                ? 'Completed Past Date'
+                                                                : 'Unknown'}
+                                            </h1>
+                                        </div>
+                                        <div className="flex flex-col lg:flex-row gap-2">
+                                            <p className="text-sm text-gray-500">Location:</p>
+                                            <h1 className="text-sm font-semibold">{batch.location}</h1>
+                                        </div>
+                                    </CardContent>
+                                </Card>
                             </Link>
                         ))}
                     </div>
