@@ -61,7 +61,7 @@ const tabs = [
 const plantingbatches: PlantingBatches[] = [
     {
         batches_id: 'T-Batch-001',
-        image: "/TurmeRic-logo.png",
+        image: "/batch1.png",
         planting_date: '2023-01-01',
         plant_variety: 'Turmeric',
         cultivation_method: 'Organic',
@@ -104,7 +104,7 @@ const plantingbatches: PlantingBatches[] = [
     },
     {
         batches_id: 'T-Batch-002',
-        image: "/TurmeRic-logo.png",
+        image: "/batch1.png",
         planting_date: '2023-02-01',
         plant_variety: 'Turmeric',
         cultivation_method: 'Conventional',
@@ -147,7 +147,7 @@ const plantingbatches: PlantingBatches[] = [
     },
     {
         batches_id: 'T-Batch-003',
-        image: "/AIS.jpg",
+        image: "/batch1.png",
         planting_date: '2023-03-01',
         plant_variety: 'Turmeric',
         cultivation_method: 'Organic',
