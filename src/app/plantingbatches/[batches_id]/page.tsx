@@ -231,17 +231,30 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                     <div className="flex items-center gap-2">
                         <SidebarTrigger onClick={toggleSidebar} />
                         <h1 className="text-2xl font-semibold">{batch.batches_id}</h1>
-                        <Circle
-                            className={
-                                batch.status === "completed_successfully"
-                                    ? "text-green-600 fill-green-600"
-                                    : batch.status === "pending_actions"
-                                        ? "text-yellow-600 fill-yellow-600"
-                                        : batch.status === "issues_detected"
-                                            ? "text-red-600 fill-red-600"
-                                            : "text-gray-600 fill-gray-600"
-                            }
-                        />
+                        <div className="relative flex flex-row items-center">
+                            <div className="relative group">
+                                <Circle
+                                    className={
+                                        "cursor-pointer " +
+                                        (batch.status === "completed_successfully"
+                                            ? "text-green-600 fill-green-600"
+                                            : batch.status === "pending_actions"
+                                                ? "text-yellow-600 fill-yellow-600"
+                                                : batch.status === "issues_detected"
+                                                    ? "text-red-600 fill-red-600"
+                                                    : "text-gray-600 fill-gray-600")
+                                    }
+                                />
+                                <div className="absolute left-8 top-1/2 z-10 opacity-0 group-hover:opacity-100 group-hover:block bg-white text-black text-sm p-2 rounded shadow-lg whitespace-nowrap transition-opacity duration-200 pointer-events-none">
+                                    <p className="text-sm font-semibold">Color-Coded indicators</p>
+                                    <p className="text-green-600 flex flex-row gap-2"><Circle className="text-green-600 fill-green-600"/> Completed Successfully</p>
+                                    <p className="text-yellow-600 flex flex-row gap-2"><Circle className="text-yellow-600 fill-yellow-600"/> Pending Actions</p>
+                                    <p className="text-red-600 flex flex-row gap-2"><Circle className="text-red-600 fill-red-600"/> Issues Detected</p>
+                                    <p className="text-gray-600 flex flex-row gap-2"><Circle className="text-gray-600 fill-gray-600"/> Completed Past Data</p>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="flex items-center text-sm gap-1 bg-gray-500 rounded-lg text-white p-1">
                             <MapPin size={16} /> {batch.location}
                         </div>
@@ -289,22 +302,15 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                             <button
                                 key={tab.key}
                                 className={`flex items-center gap-2 text-sm font-medium px-2 pb-2 transition-all
-                        ${activeTab === tab.key ? "text-green-600 font-semibold" : "text-gray-400"}
+                        ${activeTab === tab.key ? "text-green-600 font-semibold border-b-[1px] z-10 border-green-600" : "text-gray-400"}
                         `}
                                 onClick={() => { setActiveTab(tab.key), setIsAdding(false) }}
                             >
                                 {tab.icon} {tab.name}
                             </button>
                         ))}
-                        <div
-                            className="absolute -bottom-1 h-[2px] bg-green-600 transition-all"
-                            style={{
-                                width: `${2.2 * tabs.length}%`,
-                                left: `${tabs.findIndex((t) => t.key === activeTab) * (2.5 * tabs.length)}%`
-                            }}
-                        />
+                    <Separator orientation="horizontal" className="absolute -bottom-0 h-[2px] transition-all bg-gray-300 mt-1" />
                     </div>
-                    <Separator orientation="horizontal" className="h-[2px] bg-gray-300 mt-1" />
                 </div>
 
                 {activeTab === "fertilizer" && (
@@ -334,8 +340,14 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                                             </select>
                                         </div>
                                         <div className="flex flex-col gap-1">
-                                            <Label>Quantity Applied (Kg)</Label>
-                                            <Input type="number" name="amount" placeholder="Enter Quantity Applied here ..." value={formData.amount} onChange={handleChange} />
+                                            <Label>Quantity Applied</Label>
+                                            <div className="flex flex-row gap-2 items-center">
+                                                <Input type="number" name="amount" placeholder="Enter Quantity Applied here ..." min={0} value={formData.amount} onChange={handleChange} />
+                                                <select name="unit" id="unit" defaultValue={"kg"} className="border rounded-lg h-9 py-1 px-3">
+                                                    <option value="kg">kg</option>
+                                                    <option value="g">g</option>
+                                                </select>
+                                            </div>
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Label>How to Apply</Label>
@@ -346,7 +358,7 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Label>Acres</Label>
-                                            <Input type="number" name="size" placeholder="Acres" value={formData.size} onChange={handleChange} />
+                                            <Input type="number" name="size" placeholder="Acres" min={0} value={formData.size} onChange={handleChange} />
                                         </div>
                                         <div className="flex flex-col gap-1 col-span-2">
                                             <Label>Notes (Optional)</Label>
@@ -411,29 +423,32 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Label>Harvest Method</Label>
-                                            <select name="harvest_method" onChange={handleChange} className="border rounded p-2">
-                                                <option value="Machine">Machine</option>
-                                                <option value="Manual">Manual</option>
+                                            <select name="harvest_method" onChange={handleChange} className="border rounded p-2" defaultValue={""}>
+                                                <option value="">Select Method</option>
+                                                <option value="Machine">Machine Harvesting</option>
+                                                <option value="Manual">Manual Harvesting</option>
                                             </select>
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Label>Yield Amount</Label>
-                                            <Input type="number" name="yield" placeholder="Enter Yield Amount here ..." onChange={handleChange} />
+                                            <Input type="number" name="yield" min={0} placeholder="Enter Yield Amount here ..." onChange={handleChange} />
                                         </div>
                                         <div className="flex flex-col gap-1">
-                                            <Label>Curcumin Quatity</Label>
+                                            <Label>Curcumin Quatity (%)</Label>
                                             <Input type="number" name="curcumin" placeholder="Enter Curcumin Amount here ..." onChange={handleChange} />
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Label>Quality Grade</Label>
-                                            <select name="grade" onChange={handleChange} className="border rounded p-2">
+                                            <select name="grade" onChange={handleChange} className="border rounded p-2" defaultValue={""}>
+                                                <option value="">Select Grade</option>
+                                                <option value="A+">Grade A+</option>
                                                 <option value="A">Grade A</option>
                                                 <option value="B">Grade B</option>
                                             </select>
                                         </div>
                                         <div className="flex flex-col gap-1 row-span-2">
                                             <Label>Notes (Optional)</Label>
-                                            <Textarea name="note" placeholder="Enter Notes here ... (Optional)" onChange={handleChange} />
+                                            <Textarea className="h-full" name="note" placeholder="Enter Notes here ... (Optional)" onChange={handleChange} />
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Label>Result Type</Label>
@@ -584,6 +599,32 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                                 </Table>
                             </div>
                         )}
+                    </div>
+                )}
+                {activeTab === "lab" && (
+                    <div className="px-4 py-4 space-y-4">
+                        <h2 className="text-lg font-semibold">Laboratory Report</h2>
+                        <p>Total Yield: {batch.recent_harvest_record.reduce((total, record) => total + record.yleld, 0)}</p>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead>Lab Name</TableHead>
+                                    <TableHead>Quality Grade</TableHead>
+                                    <TableHead>Status</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {batch.lab_submission_record.map((lab_record, i) => (
+                                    <TableRow key={i}>
+                                        <TableCell>{lab_record.date}</TableCell>
+                                        <TableCell>{lab_record.lab_name}</TableCell>
+                                        <TableCell>{lab_record.quality_grade}</TableCell>
+                                        <TableCell>{lab_record.status}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
                     </div>
                 )}
             </SidebarInset>

@@ -3,6 +3,7 @@
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useState } from "react";
+import { useRef } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
     Dialog,
@@ -17,9 +18,33 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Circle } from "lucide-react";
+import { Circle, Plus } from "lucide-react";
 
 export default function PlantingBatchesPage() {
+
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
+    const handleFile = (file: File) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const file = e.dataTransfer.files?.[0];
+        if (file) {
+            handleFile(file);
+        }
+    };
+
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const toggleSidebar = () => {
@@ -85,7 +110,8 @@ export default function PlantingBatchesPage() {
                         <Dialog>
                             <DialogTrigger>
                                 <Card className="h-full items-center justify-center hover:bg-accent cursor-pointer">
-                                    <div className="flex flex-col gap-4 p-4">
+                                    <div className="flex flex-col gap-4 p-4 justify-center items-center">
+                                        <Plus className="h-[96px] w-[96px] text-gray-500" />
                                         <h2 className="text-lg font-semibold">Add New Batch</h2>
                                         <p className="text-sm text-gray-500">Click to add a new batch of turmeric planting.</p>
                                     </div>
@@ -123,7 +149,8 @@ export default function PlantingBatchesPage() {
                                             <Label htmlFor="cultivation-method" className="text-sm font-medium">
                                                 Cultivation Method
                                             </Label>
-                                            <select id="cultivation-method" className="border rounded p-2 bg-gray-100 w-full">
+                                            <select id="cultivation-method" className="border rounded p-2 bg-gray-100 w-full" defaultValue="">
+                                                <option value="" disabled>Select Method</option>
                                                 <option value="littleFarm">Organic</option>
                                                 <option value="littleFarm2">Conventional</option>
                                             </select>
@@ -133,7 +160,8 @@ export default function PlantingBatchesPage() {
                                             <Label htmlFor="location" className="text-sm font-medium">
                                                 Location
                                             </Label>
-                                            <select id="location" className="border rounded p-2 bg-gray-100 w-full">
+                                            <select id="location" className="border rounded p-2 bg-gray-100 w-full" defaultValue="">
+                                                <option value="" disabled>Select Farm</option>
                                                 <option value="littleFarm">Little Farm</option>
                                                 <option value="littleFarm2">Little Farm 2</option>
                                             </select>
@@ -143,24 +171,61 @@ export default function PlantingBatchesPage() {
                                             <Label htmlFor="status" className="text-sm font-medium">
                                                 Status
                                             </Label>
-                                            <select id="status" disabled className="border rounded p-2 cursor-not-allowed bg-gray-100 w-full">
+                                            <select id="status" disabled className="border rounded p-2 cursor-not-allowed bg-gray-100 w-full" defaultValue="planted">
+                                                <option value="" disabled>Select Status</option>
                                                 <option value="planted">Planted</option>
                                                 <option value="fertilized2">Fertilized</option>
                                                 <option value="havested">Havested</option>
                                                 <option value="labSubmissed">Lab Submissed</option>
                                             </select>
                                         </div>
-                                        <div>
-                                            <Label htmlFor="image" className="text-sm font-medium">
-                                                Image URL
-                                            </Label>
-                                            <Input id="image" placeholder="https://example.com/image.jpg" />
+                                        <div className="col-span-2">
+                                            <Label className="text-sm font-medium mb-2 block">Image</Label>
+                                            <div
+                                                className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-blue-500 transition cursor-pointer bg-gray-50 relative"
+                                                onClick={() => imageInputRef.current?.click()}
+                                                onDrop={handleDrop}
+                                                onDragOver={handleDragOver}
+                                            >
+                                                {imagePreview ? (
+                                                    <img
+                                                        src={imagePreview}
+                                                        alt="Preview"
+                                                        className="absolute inset-0 object-cover w-full h-full rounded-lg"
+                                                    />
+                                                ) : (
+                                                    <div className="flex flex-col items-center gap-2 z-10">
+                                                        <p className="text-sm">Drag & drop an image here</p>
+                                                        <p className="text-xs text-gray-400">or click to browse</p>
+                                                    </div>
+                                                )}
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    ref={imageInputRef}
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            handleFile(file);
+                                                        }
+                                                    }}
+                                                    className="hidden"
+                                                />
+                                            </div>
                                         </div>
+
                                     </div>
                                 </div>
                                 <DialogFooter className="flex justify-end">
-                                    <Button variant="outline" className="bg-red-600 text-white" onClick={() => console.log('Close dialog')}>
-                                        Cancle
+                                    <Button variant="outline" className="bg-red-600 text-white" onClick={() => {
+                                        setImagePreview(null);
+                                        if (imageInputRef.current) {
+                                            imageInputRef.current.value = '';
+                                        }
+                                        const inputs = document.querySelectorAll('#planting-date, #plant-variety, #cultivation-method, #location');
+                                        inputs.forEach(input => (input as HTMLInputElement).value = '');
+                                    }}>
+                                        Clear
                                     </Button>
                                     <Button type="submit" className="bg-green-600 dark:text-white" onClick={(e) => {
                                         // function for Save Batch
@@ -182,15 +247,14 @@ export default function PlantingBatchesPage() {
                                         className="w-full h-37.5 object-cover"
                                     />
                                     <Circle
-                                        className={`absolute top-2 right-2 w-6 h-6 ${
-                                            batch.status === "completed_successfully"
-                                                ? "text-green-600 fill-green-600"
-                                                : batch.status === "pending_actions"
-                                                    ? "text-yellow-600 fill-yellow-600"
-                                                    : batch.status === "issues_detected"
-                                                        ? "text-red-600 fill-red-600"
-                                                        : "text-gray-600 fill-gray-600"
-                                        }`}
+                                        className={`absolute top-2 right-2 w-6 h-6 ${batch.status === "completed_successfully"
+                                            ? "text-green-600 fill-green-600"
+                                            : batch.status === "pending_actions"
+                                                ? "text-yellow-600 fill-yellow-600"
+                                                : batch.status === "issues_detected"
+                                                    ? "text-red-600 fill-red-600"
+                                                    : "text-gray-600 fill-gray-600"
+                                            }`}
                                     />
                                     <CardContent className="flex flex-col items-start w-full">
                                         <div className="flex flex-col gap-2">
