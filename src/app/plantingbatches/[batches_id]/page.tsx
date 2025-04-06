@@ -79,7 +79,7 @@ const plantingbatches: PlantingBatches[] = [
                 quality_grade: 'A',
                 method: 'Manual',
                 note: 'Good quality',
-                result_type: 'Fresh',
+                result_type: 'Uv Spectroscopy',
                 curcumin_quality: '70',
                 amount_report: 150
             },
@@ -90,7 +90,7 @@ const plantingbatches: PlantingBatches[] = [
                 quality_grade: 'A+',
                 method: 'Machine',
                 note: 'Excellent yield',
-                result_type: 'Dried',
+                result_type: 'Uv Spectroscopy',
                 curcumin_quality: '75',
                 amount_report: 180
             }
@@ -122,7 +122,7 @@ const plantingbatches: PlantingBatches[] = [
                 quality_grade: 'B',
                 method: 'Manual',
                 note: 'Average quality',
-                result_type: 'Dried',
+                result_type: 'Uv Spectroscopy',
                 curcumin_quality: '50',
                 amount_report: 200
             },
@@ -133,7 +133,7 @@ const plantingbatches: PlantingBatches[] = [
                 quality_grade: 'B+',
                 method: 'Machine',
                 note: 'Improved quality',
-                result_type: 'Fresh',
+                result_type: 'Uv Spectroscopy',
                 curcumin_quality: '55',
                 amount_report: 220
             }
@@ -165,7 +165,7 @@ const plantingbatches: PlantingBatches[] = [
                 quality_grade: 'A+',
                 method: 'Manual',
                 note: 'Excellent quality',
-                result_type: 'Fresh',
+                result_type: 'Uv Spectroscopy',
                 curcumin_quality: '80',
                 amount_report: 250
             },
@@ -176,7 +176,7 @@ const plantingbatches: PlantingBatches[] = [
                 quality_grade: 'A++',
                 method: 'Machine',
                 note: 'Outstanding yield',
-                result_type: 'Dried',
+                result_type: 'Uv Spectroscopy',
                 curcumin_quality: '85',
                 amount_report: 280
             }

@@ -26,8 +26,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const data = {
     user: {
-      name: "Mr. Kittapas",
-      email: "Kittapas@turmeric.com",
+      name: "Mr. Kittapas Viriyapappaibool",
+      email: "patpatkiittapas@gmail.com",
       avatar: "/kittapas.jpg",
     },
     navMain: [

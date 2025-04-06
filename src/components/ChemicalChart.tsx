@@ -14,12 +14,12 @@ import {
 
   
   const data = [
-    { name: "Apr", standard: 50, current: 44 },
-    { name: "May", standard: 55, current: 48 },
-    { name: "Jun", standard: 60, current: 52 },
-    { name: "Jul", standard: 65, current: 58 },
-    { name: "Aug", standard: 70, current: 63 },
-    { name: "Sep", standard: 75, current: 68 },
+    { name: "Apr", standard: 80, current: 44 },
+    { name: "May", standard: 80, current: 48 },
+    { name: "Jun", standard: 80, current: 52 },
+    { name: "Jul", standard: 80, current: 58 },
+    { name: "Aug", standard: 80, current: 63 },
+    { name: "Sep", standard: 80, current: 68 },
     { name: "Oct", standard: 80, current: 72 },
   ];
   
@@ -30,7 +30,7 @@ import {
           <div className="text-sm font-semibold text-gray-700 flex items-center gap-2">
             <span role="img" aria-label="lab">⚗️</span> Curcumin %
           </div>
-          <div className="text-xs text-gray-400">June 10, 2021</div>
+          <div className="text-xs text-gray-400">April 6, 2025</div>
         </div>
   
         <ResponsiveContainer width="100%" height="100%" maxHeight={300}>
@@ -40,7 +40,7 @@ import {
             <Tooltip />
             <Legend />
             <Line type="monotone" dataKey="standard" stroke="#ef4444" strokeWidth={2} dot={false} name="Standard Value" />
-            <Line type="monotone" dataKey="current" stroke="#10b981" strokeWidth={2} dot />
+            <Line type="monotone" dataKey="current" stroke="#10b981" strokeWidth={2} dot={false} name="Current Value" />
           </LineChart>
         </ResponsiveContainer>
       </div>
