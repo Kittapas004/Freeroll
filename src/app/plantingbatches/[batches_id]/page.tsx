@@ -247,10 +247,10 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                                 />
                                 <div className="absolute left-8 top-1/2 z-10 opacity-0 group-hover:opacity-100 group-hover:block bg-white text-black text-sm p-2 rounded shadow-lg whitespace-nowrap transition-opacity duration-200 pointer-events-none">
                                     <p className="text-sm font-semibold">Color-Coded indicators</p>
-                                    <p className="text-green-600 flex flex-row gap-2"><Circle className="text-green-600 fill-green-600"/> Completed Successfully</p>
-                                    <p className="text-yellow-600 flex flex-row gap-2"><Circle className="text-yellow-600 fill-yellow-600"/> Pending Actions</p>
-                                    <p className="text-red-600 flex flex-row gap-2"><Circle className="text-red-600 fill-red-600"/> Issues Detected</p>
-                                    <p className="text-gray-600 flex flex-row gap-2"><Circle className="text-gray-600 fill-gray-600"/> Completed Past Data</p>
+                                    <p className="text-green-600 flex flex-row gap-2"><Circle className="text-green-600 fill-green-600" /> Completed Successfully</p>
+                                    <p className="text-yellow-600 flex flex-row gap-2"><Circle className="text-yellow-600 fill-yellow-600" /> Pending Actions</p>
+                                    <p className="text-red-600 flex flex-row gap-2"><Circle className="text-red-600 fill-red-600" /> Issues Detected</p>
+                                    <p className="text-gray-600 flex flex-row gap-2"><Circle className="text-gray-600 fill-gray-600" /> Completed Past Data</p>
                                 </div>
                             </div>
                         </div>
@@ -309,7 +309,7 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                                 {tab.icon} {tab.name}
                             </button>
                         ))}
-                    <Separator orientation="horizontal" className="absolute -bottom-0 h-[2px] transition-all bg-gray-300 mt-1" />
+                        <Separator orientation="horizontal" className="absolute -bottom-0 h-[2px] transition-all bg-gray-300 mt-1" />
                     </div>
                 </div>
 
@@ -431,7 +431,13 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Label>Yield Amount</Label>
-                                            <Input type="number" name="yield" min={0} placeholder="Enter Yield Amount here ..." onChange={handleChange} />
+                                            <div className="flex flex-row gap-2 items-center">
+                                                <Input type="number" name="yield" min={0} placeholder="Enter Yield Amount here ..." onChange={handleChange} />
+                                                <select name="unit" id="unit" defaultValue={"kg"} className="border rounded-lg h-9 py-1 px-3">
+                                                    <option value="kg">kg</option>
+                                                    <option value="g">g</option>
+                                                </select>
+                                            </div>
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Label>Curcumin Quatity (%)</Label>
