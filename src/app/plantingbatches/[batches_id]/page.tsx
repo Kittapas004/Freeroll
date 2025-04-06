@@ -435,7 +435,7 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Label>Curcumin Quatity (%)</Label>
-                                            <Input type="number" name="curcumin" placeholder="Enter Curcumin Amount here ..." onChange={handleChange} />
+                                            <Input type="number" name="curcumin" placeholder="Enter Curcumin Amount here ..." onChange={handleChange} min={0} />
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Label>Quality Grade</Label>
@@ -452,7 +452,7 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Label>Result Type</Label>
-                                            <Input type="number" name="result" placeholder="Enter Result Type Amount here ..." onChange={handleChange} />
+                                            <Input type="result" name="result" disabled placeholder="Enter Result Type Amount here ..." defaultValue={"UV Spectroscopy"} onChange={handleChange} />
                                         </div>
                                     </div>
                                     <div className="flex justify-end gap-2">

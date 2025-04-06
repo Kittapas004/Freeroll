@@ -58,7 +58,7 @@ export default function FarmInformationPage() {
                                 <div className="flex flex-col gap-2">
                                     <Label htmlFor="farm-size" className="text-sm font-medium">Farm Size</Label>
                                     <div className="flex flex-row gap-2">
-                                        <Input type="number" id="farm-size" className="border rounded p-2" placeholder="Enter farm size"></Input>
+                                        <Input type="number" id="farm-size" className="border rounded p-2" placeholder="Enter farm size" min={0}></Input>
                                         <select id="farm-size" className="border rounded">
                                             <option value="acres">Acres</option>
                                             <option value="rai">Rai</option>
@@ -69,7 +69,7 @@ export default function FarmInformationPage() {
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <label htmlFor="crop-type" className="text-sm font-medium">Crop Type</label>
-                                    <select id="crop-type" className="border rounded p-2">
+                                    <select id="crop-type" className="border rounded px-2 h-9 items-center justify-center">
                                         <option value="">Select Crop type</option>
                                         <option value="turmeric">Turmeric</option>
                                         <option value="specialTurmeric">Special turmeric</option>
@@ -77,7 +77,7 @@ export default function FarmInformationPage() {
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <label htmlFor="cultivation-method" className="text-sm font-medium">Cultivation Method</label>
-                                    <select id="cultivation-method" className="border rounded p-2">
+                                    <select id="cultivation-method" className="border rounded px-2 h-9 items-center justify-center">
                                         <option value="">Select Cultivation Method</option>
                                         <option value="organic">Organic</option>
                                         <option value="conventional">Conventional</option>
