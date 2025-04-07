@@ -18,6 +18,36 @@ export default function FactorySubmissionPage() {
     const router = useRouter();
     const batchId = "T-Batch-001"; // หรือให้ dynamic จาก map ก็ได้
 
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 1; // ต่อหน้าแสดงกี่รายการ (ลองใส่น้อย ๆ จะเห็นเปลี่ยนหน้าได้ชัดเจน)
+
+    const feedbackData = [
+        {
+            id: "T-Batch-001",
+            farm: "Little Farm",
+            output: "Capsules: 1200 packs",
+            remain: "50 Kg",
+            status: "Completed",
+            note: "All turmeric used efficiently.",
+        },
+        {
+            id: "T-Batch-021",
+            farm: "Little Farm 2",
+            output: "Capsules: 1200 packs",
+            remain: "50 Kg",
+            status: "In process",
+            note: "Awaiting final packaging",
+        },
+        // เพิ่มได้ตามต้องการ
+    ];
+
+    const totalPages = Math.ceil(feedbackData.length / itemsPerPage);
+    const currentItems = feedbackData.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
+
     const toggleSidebar = () => {
         setIsSidebarOpen((prev) => {
             localStorage.setItem("sidebarOpen", String(!prev));
@@ -181,84 +211,77 @@ export default function FactorySubmissionPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr className="border-b">
-                                    <td className="py-2 px-2">T-Batch-001</td>
-                                    <td className="py-2 px-2">Little Farm</td>
-                                    <td className="py-2 px-2">Capsules: 1200 packs</td>
-                                    <td className="py-2 px-2">50 Kg</td>
-                                    <td className="py-2 px-2">
-                                        <span className="bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full">
-                                            Completed
-                                        </span>
-                                    </td>
-                                    <td className="py-2 px-2">All turmeric used efficiently.</td>
-                                    <td className="py-2 px-2 text-center">
-                                        <button
-                                            onClick={() => router.push(`/factorysubmission/${batchId}`)}
-                                            className="text-blue-600 hover:underline flex items-center gap-1"
-                                        >
-                                            <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                className="h-4 w-4"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                            >
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
-                                            </svg>
-                                            View
-                                        </button>
-
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td className="py-2 px-2">T-Batch-021</td>
-                                    <td className="py-2 px-2">Little Farm 2</td>
-                                    <td className="py-2 px-2">Capsules: 1200 packs</td>
-                                    <td className="py-2 px-2">50 Kg</td>
-                                    <td className="py-2 px-2">
-                                        <span className="bg-yellow-100 text-yellow-800 text-xs px-3 py-1 rounded-full">
-                                            In process
-                                        </span>
-                                    </td>
-                                    <td className="py-2 px-2">Awaiting final packaging</td>
-                                    <td className="py-2 px-2 text-center">
-                                        <button className="text-blue-600 hover:underline flex items-center gap-1">
-                                            {/* <svg
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                className="h-4 w-4"
-                                                fill="none"
-                                                viewBox="0 0 24 24"
-                                                stroke="currentColor"
-                                            >
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
-                                            </svg>
-                                            View */}
-                                        </button>
-                                    </td>
-                                </tr>
+                                {currentItems.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={7} className="text-center py-4 text-gray-500">
+                                            No data on this page.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    currentItems.map((item) => (
+                                        <tr key={item.id} className="border-b">
+                                            <td className="py-2 px-2">{item.id}</td>
+                                            <td className="py-2 px-2">{item.farm}</td>
+                                            <td className="py-2 px-2">{item.output}</td>
+                                            <td className="py-2 px-2">{item.remain}</td>
+                                            <td className="py-2 px-2">
+                                                <span
+                                                    className={`text-xs px-3 py-1 rounded-full ${item.status === "Completed"
+                                                            ? "bg-green-100 text-green-700"
+                                                            : "bg-yellow-100 text-yellow-800"
+                                                        }`}
+                                                >
+                                                    {item.status}
+                                                </span>
+                                            </td>
+                                            <td className="py-2 px-2">{item.note}</td>
+                                            <td className="py-2 px-2 text-center">
+                                                <button
+                                                    onClick={() => router.push(`/factorysubmission/${item.id}`)}
+                                                    className="text-blue-600 hover:underline flex items-center gap-1"
+                                                >
+                                                    View
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
+
+
                         </table>
 
                         <div className="flex justify-start mt-4 gap-2">
-                            <button className="w-8 h-8 rounded-full border flex items-center justify-center transition-colors hover:bg-gray-100">
+                            <button
+                                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                                disabled={currentPage === 1}
+                                className="w-8 h-8 rounded-full border flex items-center justify-center transition hover:bg-gray-100 disabled:opacity-50"
+                            >
                                 <ChevronLeft className="w-4 h-4" />
                             </button>
-                            <button className="w-8 h-8 rounded-full border bg-green-600 text-white transition-colors hover:bg-green-700">
-                                1
-                            </button>
-                            <button className="w-8 h-8 rounded-full border transition-colors hover:bg-gray-100">
-                                2
-                            </button>
-                            <button className="w-8 h-8 rounded-full border transition-colors hover:bg-gray-100">
-                                3
-                            </button>
-                            <button className="w-8 h-8 rounded-full border flex items-center justify-center transition-colors hover:bg-gray-100">
+
+                            {[...Array(totalPages)].map((_, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => setCurrentPage(i + 1)}
+                                    className={`w-8 h-8 rounded-full border transition ${currentPage === i + 1
+                                        ? "bg-green-600 text-white"
+                                        : "hover:bg-gray-100"
+                                        }`}
+                                >
+                                    {i + 1}
+                                </button>
+                            ))}
+
+                            <button
+                                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                                disabled={currentPage === totalPages}
+                                className="w-8 h-8 rounded-full border flex items-center justify-center transition hover:bg-gray-100 disabled:opacity-50"
+                            >
                                 <ChevronRight className="w-4 h-4" />
                             </button>
                         </div>
+
                     </div>
 
                 </main>
