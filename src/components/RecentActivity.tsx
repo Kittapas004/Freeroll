@@ -27,12 +27,12 @@ interface ActivityItem {
     },
     {
       icon: "📄",
-      title: "Farm Detail",
+      title: "Farm Information",
       content: [
-        "Farm Location :",
-        "Crop Type :",
-        "Farm Site :",
-        "Cultivation Method :",
+        "Farm Location : 123 Farm Road , Mae Fah Luang",
+        "Crop Type : Turmeric",
+        "Farm Site : 150 Acres",
+        "Cultivation Method : Organic",
       ],
     },
   ];
@@ -42,7 +42,7 @@ interface ActivityItem {
       <div className={`bg-white rounded-2xl shadow-sm p-4 ${className}`}>
         <div className="flex items-center justify-between mb-2">
           <div className="text-sm font-bold text-green-700">Recent Activity</div>
-          <button className="text-xs text-green-600 hover:underline">See All</button>
+          {/* <button className="text-xs text-green-600 hover:underline">See All</button> */}
         </div>
   
         <div className="space-y-4">
