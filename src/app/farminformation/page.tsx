@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Save, MapPin, Pencil, Trash } from "lucide-react";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 export default function FarmInformationPage() {
 
@@ -59,29 +60,54 @@ export default function FarmInformationPage() {
                                     <Label htmlFor="farm-size" className="text-sm font-medium">Farm Size</Label>
                                     <div className="flex flex-row gap-2">
                                         <Input type="number" id="farm-size" className="border rounded p-2" placeholder="Enter farm size" min={0}></Input>
-                                        <select id="farm-size" className="border rounded">
-                                            <option value="acres">Acres</option>
-                                            <option value="rai">Rai</option>
-                                        </select>
+                                        <Select  defaultValue="Acres" >
+                                        <SelectTrigger>
+                                            <SelectValue/>
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Acres">
+                                            Acres
+                                            </SelectItem>
+                                            <SelectItem value="Rai">
+                                            Rai
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                     </div>
 
 
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <label htmlFor="crop-type" className="text-sm font-medium">Crop Type</label>
-                                    <select id="crop-type" className="border rounded px-2 h-9 items-center justify-center">
-                                        <option value="">Select Crop type</option>
-                                        <option value="turmeric">Turmeric</option>
-                                        <option value="specialTurmeric">Special turmeric</option>
-                                    </select>
+                                    <Select>
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Select Crop Type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Turmeric">
+                                                Turmeric
+                                            </SelectItem>
+                                            <SelectItem value="Special-Turmeric">
+                                                Special Turmeric
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <label htmlFor="cultivation-method" className="text-sm font-medium">Cultivation Method</label>
-                                    <select id="cultivation-method" className="border rounded px-2 h-9 items-center justify-center">
-                                        <option value="">Select Cultivation Method</option>
-                                        <option value="organic">Organic</option>
-                                        <option value="conventional">Conventional</option>
-                                    </select>
+                                    <Select>
+                                        <SelectTrigger className="w-full">
+                                            <SelectValue placeholder="Select Cultivation Method" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Organic">
+                                            Organic
+                                            </SelectItem>
+                                            <SelectItem value="Conventional">
+                                            Conventional
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </div>
                             <div className="flex justify-start mt-4">

@@ -5,7 +5,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { useState } from "react";
 import { notFound } from "next/navigation";
 import { use } from "react";
-import { MapPin, Calendar, Sprout, Leaf, Plus, Wrench, FlaskConical, Notebook, Check, ChartSpline, Star, SquarePen, Trash, Circle, ChevronDown, ChevronUp } from "lucide-react";
+import { MapPin, Calendar, Sprout, Leaf, Plus, Wrench, FlaskConical, Notebook, Check, ChartSpline, Star, SquarePen, Trash, Circle, ChevronDown, ChevronUp, Pencil } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -14,6 +14,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import React from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 
 
@@ -45,10 +47,12 @@ type PlantingBatches = {
         amount_report: number;
     }[];
     lab_submission_record: {
+        id: string;
         date: string;
         lab_name: string;
         quality_grade: string;
         status: string;
+        report: File | null;
     }[];
 };
 
@@ -96,10 +100,12 @@ const plantingbatches: PlantingBatches[] = [
             }
         ],
         lab_submission_record: [{
+            id: '1',
             date: '2023-07-01',
             lab_name: 'Lab A',
             quality_grade: 'A+',
-            status: 'Completed'
+            status: 'Completed',
+            report: null
         }]
     },
     {
@@ -139,10 +145,12 @@ const plantingbatches: PlantingBatches[] = [
             }
         ],
         lab_submission_record: [{
+            id: '2',
             date: '2023-08-01',
             lab_name: 'Lab B',
             quality_grade: 'B+',
-            status: 'In Progress'
+            status: 'In Progress',
+            report: null
         }]
     },
     {
@@ -179,13 +187,45 @@ const plantingbatches: PlantingBatches[] = [
                 result_type: 'Dried',
                 curcumin_quality: '85',
                 amount_report: 280
+            },
+        {
+                id: '7',
+                date: '2023-10-01',
+                yleld: 350,
+                quality_grade: 'A++',
+                method: 'Machine',
+                note: 'Outstanding yield',
+                result_type: 'Dried',
+                curcumin_quality: '85',
+                amount_report: 280
+            },
+            {
+                id: '8',
+                date: '2023-10-15',
+                yleld: 370,
+                quality_grade: 'A++',
+                method: 'Machine',
+                note: 'Outstanding yield',
+                result_type: 'Dried',
+                curcumin_quality: '85',
+                amount_report: 280
             }
         ],
         lab_submission_record: [{
+            id: '3',
             date: '2023-09-01',
             lab_name: 'Lab C',
             quality_grade: 'A++',
-            status: 'Completed'
+            status: 'Completed',
+            report: null
+        },
+        {
+            id: '4',
+            date: '2023-09-15',
+            lab_name: 'Lab D',
+            quality_grade: 'A++',
+            status: 'In Progress',
+            report: null
         }]
     }
 ];
@@ -260,8 +300,8 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                         </div>
                     </div>
                 </header>
-
-                <div className="h-1/4 w-full bg-cover bg-center relative" style={{ backgroundImage: `url(${batch.image})` }} />
+                <main>
+                <div className="h-full max-h-[240px] w-full bg-cover bg-center relative" style={{ backgroundImage: `url(${batch.image})` }} />
 
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-10 px-4 -mt-10 relative z-10 w-full max-w-5xl mx-auto">
@@ -334,27 +374,54 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Label>Fertilizer Type</Label>
-                                            <select name="fertilizer_type" value={formData.fertilizer_type} onChange={handleChange} className="border rounded p-2">
-                                                <option value="Spray">Organic</option>
-                                                <option value="Broadcast">Conventional</option>
-                                            </select>
+                                            <Select>
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="Select Fertilizer Type" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Organic">
+                                                        Organic
+                                                    </SelectItem>
+                                                    <SelectItem value="Conventional">
+                                                        Conventional
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Label>Quantity Applied</Label>
                                             <div className="flex flex-row gap-2 items-center">
                                                 <Input type="number" name="amount" placeholder="Enter Quantity Applied here ..." min={0} value={formData.amount} onChange={handleChange} />
-                                                <select name="unit" id="unit" defaultValue={"kg"} className="border rounded-lg h-9 py-1 px-3">
-                                                    <option value="kg">kg</option>
-                                                    <option value="g">g</option>
-                                                </select>
+                                                <Select defaultValue="kg">
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="kg">
+                                                            kg
+                                                        </SelectItem>
+                                                        <SelectItem value="g">
+                                                            g
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Label>How to Apply</Label>
-                                            <select name="method" value={formData.method} onChange={handleChange} className="border rounded p-2">
-                                                <option value="Spray">Spray</option>
-                                                <option value="Broadcast">Broadcast</option>
-                                            </select>
+                                            <Select>
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="Select How to Apply" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Spray">
+                                                        Spray
+                                                    </SelectItem>
+                                                    <SelectItem value="Broadcast">
+                                                        Broadcast
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Label>Acres</Label>
@@ -423,20 +490,37 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Label>Harvest Method</Label>
-                                            <select name="harvest_method" onChange={handleChange} className="border rounded p-2" defaultValue={""}>
-                                                <option value="">Select Method</option>
-                                                <option value="Machine">Machine Harvesting</option>
-                                                <option value="Manual">Manual Harvesting</option>
-                                            </select>
+                                            <Select>
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="Select Harvest Method" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Machine">
+                                                        Machine Harvesting
+                                                    </SelectItem>
+                                                    <SelectItem value="Manual">
+                                                        Manual Harvesting
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Label>Yield Amount</Label>
                                             <div className="flex flex-row gap-2 items-center">
                                                 <Input type="number" name="yield" min={0} placeholder="Enter Yield Amount here ..." onChange={handleChange} />
-                                                <select name="unit" id="unit" defaultValue={"kg"} className="border rounded-lg h-9 py-1 px-3">
-                                                    <option value="kg">kg</option>
-                                                    <option value="g">g</option>
-                                                </select>
+                                                <Select defaultValue="kg">
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="kg">
+                                                            kg
+                                                        </SelectItem>
+                                                        <SelectItem value="g">
+                                                            g
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
                                         </div>
                                         <div className="flex flex-col gap-1">
@@ -445,12 +529,19 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                                         </div>
                                         <div className="flex flex-col gap-1">
                                             <Label>Quality Grade</Label>
-                                            <select name="grade" onChange={handleChange} className="border rounded p-2" defaultValue={""}>
-                                                <option value="">Select Grade</option>
-                                                <option value="A+">Grade A+</option>
-                                                <option value="A">Grade A</option>
-                                                <option value="B">Grade B</option>
-                                            </select>
+                                            <Select>
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="Select Grade" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="A+">
+                                                        Grade A+
+                                                    </SelectItem>
+                                                    <SelectItem value="A">
+                                                        Grade A
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                         <div className="flex flex-col gap-1 row-span-2">
                                             <Label>Notes (Optional)</Label>
@@ -530,7 +621,7 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                                                 <FlaskConical className="bg-blue-400 text-blue-900 p-1 rounded-sm" />
                                             </div>
                                             <h1 className="text-2xl font-bold">{batch.lab_submission_record.length}</h1>
-                                            <p>Updated {(() => {
+                                            <p className="text-sm text-muted-foreground">Updated {(() => {
                                                 if (batch.lab_submission_record.length > 0) {
                                                     const latestSubmission = batch.lab_submission_record.sort(
                                                         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -610,29 +701,84 @@ export default function PlantingBatchDetail({ params }: { params: Promise<{ batc
                 {activeTab === "lab" && (
                     <div className="px-4 py-4 space-y-4">
                         <h2 className="text-lg font-semibold">Laboratory Report</h2>
-                        <p>Total Yield: {batch.recent_harvest_record.reduce((total, record) => total + record.yleld, 0)}</p>
+                        <div className="flex flex-row gap-4 items-center">
+                            <div className="flex flex-row gap-2 items-center"><Sprout className="text-green-600" />
+                                <p className="text-sm text-muted-foreground">Total Yield:</p>
+                                <h1 className="font-semibold">{batch.recent_harvest_record.reduce((total, record) => total + record.yleld, 0)}</h1>
+                            </div>
+                            <div className="flex flex-row gap-2 items-center"><Calendar className="text-green-600" />
+                                <p className="text-sm text-muted-foreground">Harvest Date:</p>
+                                <h1 className="font-semibold">{batch.recent_harvest_record.length > 0 ? new Date(batch.recent_harvest_record.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "No records available"}</h1>
+                            </div>
+                        </div>
+                        <div className="flex flex-col">
+                        <Label className="text-lg">
+                            Lab Name
+                        </Label>
+                        <Select>
+                            <SelectTrigger className="w-fit">
+                                <SelectValue placeholder="Select Lab Name" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="LabMFU">
+                                MFU Lab
+                                </SelectItem>
+                                <SelectItem value="LabVRI">
+                                VRI Lab
+                                </SelectItem>
+                            </SelectContent>
+                        </Select>
+                        </div>
+                        <div className="flex flex-col">
+                            <Label>Select Samples for Testing</Label>
+                            {batch.recent_harvest_record.map((rec_harvest) => (
+                                <Card className="p-4 flex flex-row gap-4 mt-4 items-center justify-between hover:bg-accent" key={rec_harvest.id}>
+                                    <div className="flex flex-row gap-6 items-center">
+                                        <Checkbox id={rec_harvest.id} className="h-4 w-4 border-muted-foreground"/>
+                                        <div className="flex flex-col gap-2 pr-4">
+                                            <p className="text-sm">Sample from {new Date(rec_harvest.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                                            <h1 className="text-lg font-semibold">{rec_harvest.yleld} kg - Grade {rec_harvest.quality_grade}</h1>
+                                        </div>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+                        <div className="flex justify-end mt-4 gap-4">
+                            <Button className="bg-red-600 hover:bg-red-700 ml-2">Cancel</Button>
+                            <Button className="bg-green-600 hover:bg-green-700">Submit to Lab</Button>
+                        </div>
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Date</TableHead>
                                     <TableHead>Lab Name</TableHead>
-                                    <TableHead>Quality Grade</TableHead>
+                                    <TableHead>Test Date</TableHead>
+                                    <TableHead>Quality</TableHead>
                                     <TableHead>Status</TableHead>
+                                    <TableHead>Report</TableHead>
+                                    <TableHead>Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {batch.lab_submission_record.map((lab_record, i) => (
-                                    <TableRow key={i}>
-                                        <TableCell>{lab_record.date}</TableCell>
-                                        <TableCell>{lab_record.lab_name}</TableCell>
-                                        <TableCell>{lab_record.quality_grade}</TableCell>
-                                        <TableCell>{lab_record.status}</TableCell>
-                                    </TableRow>
+                                {batch.lab_submission_record.map((lab_rec) => (
+                                    <React.Fragment key={lab_rec.id}>
+                                        <TableRow key={lab_rec.id}>
+                                            <TableCell>{lab_rec.lab_name}</TableCell>
+                                            <TableCell>{lab_rec.date}</TableCell>
+                                            <TableCell>{lab_rec.quality_grade}</TableCell>
+                                            <TableCell>{lab_rec.status}</TableCell>
+                                            <TableCell>{lab_rec.report ? (typeof lab_rec.report === "string" ? lab_rec.report : lab_rec.report.name) : "-"}</TableCell>
+                                            <TableCell className="flex gap-2">
+                                                <Button className="bg-blue-600 hover:bg-blue-700"><Pencil size={16} /></Button>
+                                                <Button className="bg-red-600 hover:bg-red-700"><Trash size={16} /></Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    </React.Fragment>
                                 ))}
                             </TableBody>
                         </Table>
                     </div>
                 )}
+                </main>
             </SidebarInset>
         </SidebarProvider >
     );

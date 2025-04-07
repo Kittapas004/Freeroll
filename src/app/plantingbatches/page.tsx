@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Circle, Plus } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function PlantingBatchesPage() {
 
@@ -53,6 +54,10 @@ export default function PlantingBatchesPage() {
             return !prev;
         });
     };
+
+    const [cultivationMethod, setCultivationMethod] = useState<string | undefined>();
+    const [location, setLocation] = useState<string | undefined>();
+
 
     type PlantingBatches = {
         batches_id: string;
@@ -149,35 +154,63 @@ export default function PlantingBatchesPage() {
                                             <Label htmlFor="cultivation-method" className="text-sm font-medium">
                                                 Cultivation Method
                                             </Label>
-                                            <select id="cultivation-method" className="border rounded p-2 bg-gray-100 w-full" defaultValue="">
-                                                <option value="" disabled>Select Method</option>
-                                                <option value="littleFarm">Organic</option>
-                                                <option value="littleFarm2">Conventional</option>
-                                            </select>
+                                            <Select value={cultivationMethod} onValueChange={setCultivationMethod}>
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="Select Method" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Organic">
+                                                        Organic
+                                                    </SelectItem>
+                                                    <SelectItem value="Conventional">
+                                                        Conventional
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
 
                                         </div>
                                         <div>
                                             <Label htmlFor="location" className="text-sm font-medium">
                                                 Location
                                             </Label>
-                                            <select id="location" className="border rounded p-2 bg-gray-100 w-full" defaultValue="">
-                                                <option value="" disabled>Select Farm</option>
-                                                <option value="littleFarm">Little Farm</option>
-                                                <option value="littleFarm2">Little Farm 2</option>
-                                            </select>
+                                            <Select value={location} onValueChange={setLocation}>
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="Select Farm" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="littleFarm">
+                                                        Little Farm
+                                                    </SelectItem>
+                                                    <SelectItem value="littleFarm2">
+                                                        Little Farm 2
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
 
                                         </div>
                                         <div>
                                             <Label htmlFor="status" className="text-sm font-medium">
                                                 Status
                                             </Label>
-                                            <select id="status" disabled className="border rounded p-2 cursor-not-allowed bg-gray-100 w-full" defaultValue="planted">
-                                                <option value="" disabled>Select Status</option>
-                                                <option value="planted">Planted</option>
-                                                <option value="fertilized2">Fertilized</option>
-                                                <option value="havested">Havested</option>
-                                                <option value="labSubmissed">Lab Submissed</option>
-                                            </select>
+                                            <Select disabled defaultValue="Planted">
+                                                <SelectTrigger className="w-full">
+                                                    <SelectValue placeholder="Select Status" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Planted">
+                                                        Planted
+                                                    </SelectItem>
+                                                    <SelectItem value="Fertilized">
+                                                        Fertilized
+                                                    </SelectItem>
+                                                    <SelectItem value="Harvested">
+                                                        Harvested
+                                                    </SelectItem>
+                                                    <SelectItem value="Lab Submitted">
+                                                        Lab Submitted
+                                                    </SelectItem>
+                                                </SelectContent>
+                                            </Select>
                                         </div>
                                         <div className="col-span-2">
                                             <Label className="text-sm font-medium mb-2 block">Image</Label>
@@ -222,8 +255,11 @@ export default function PlantingBatchesPage() {
                                         if (imageInputRef.current) {
                                             imageInputRef.current.value = '';
                                         }
-                                        const inputs = document.querySelectorAll('#planting-date, #plant-variety, #cultivation-method, #location');
+                                        setCultivationMethod("");
+                                        setLocation("");
+                                        const inputs = document.querySelectorAll('#planting-date, #plant-variety');
                                         inputs.forEach(input => (input as HTMLInputElement).value = '');
+
                                     }}>
                                         Clear
                                     </Button>
