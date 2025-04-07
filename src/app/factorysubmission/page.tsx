@@ -8,12 +8,15 @@ import {
 import { AppSidebar } from "@/components/app-sidebar";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 
 export default function FactorySubmissionPage() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [selectAll, setSelectAll] = useState(false);
     const [selectedRows, setSelectedRows] = useState<string[]>([]);
+    const router = useRouter();
+    const batchId = "T-Batch-001"; // หรือให้ dynamic จาก map ก็ได้
 
     const toggleSidebar = () => {
         setIsSidebarOpen((prev) => {
@@ -98,8 +101,12 @@ export default function FactorySubmissionPage() {
                             </select>
                         </div>
                         <div className="col-span-full flex justify-end gap-2">
-                            <button className="px-4 py-2 border rounded">Reset</button>
-                            <button className="px-4 py-2 rounded bg-green-600 text-white">Search</button>
+                            <button className="px-4 py-2 border rounded transition-colors hover:bg-gray-100">
+                                Reset
+                            </button>
+                            <button className="px-4 py-2 rounded bg-green-600 text-white transition-colors hover:bg-green-700">
+                                Search
+                            </button>
                         </div>
                     </div>
 
@@ -152,7 +159,9 @@ export default function FactorySubmissionPage() {
                                 </tbody>
                             </table>
                             <div className="mt-4 text-right">
-                                <button className="bg-green-600 text-white px-4 py-2 rounded">Submit to Factory</button>
+                                <button className="bg-green-600 text-white px-4 py-2 rounded transition-colors hover:bg-green-700">
+                                    Submit to Factory
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -184,7 +193,10 @@ export default function FactorySubmissionPage() {
                                     </td>
                                     <td className="py-2 px-2">All turmeric used efficiently.</td>
                                     <td className="py-2 px-2 text-center">
-                                        <button className="text-blue-600 hover:underline flex items-center gap-1">
+                                        <button
+                                            onClick={() => router.push(`/factorysubmission/${batchId}`)}
+                                            className="text-blue-600 hover:underline flex items-center gap-1"
+                                        >
                                             <svg
                                                 xmlns="http://www.w3.org/2000/svg"
                                                 className="h-4 w-4"
@@ -197,6 +209,7 @@ export default function FactorySubmissionPage() {
                                             </svg>
                                             View
                                         </button>
+
                                     </td>
                                 </tr>
                                 <tr>
@@ -212,7 +225,7 @@ export default function FactorySubmissionPage() {
                                     <td className="py-2 px-2">Awaiting final packaging</td>
                                     <td className="py-2 px-2 text-center">
                                         <button className="text-blue-600 hover:underline flex items-center gap-1">
-                                            <svg
+                                            {/* <svg
                                                 xmlns="http://www.w3.org/2000/svg"
                                                 className="h-4 w-4"
                                                 fill="none"
@@ -222,19 +235,29 @@ export default function FactorySubmissionPage() {
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5s8.268 2.943 9.542 7c-1.274 4.057-5.065 7-9.542 7s-8.268-2.943-9.542-7z" />
                                             </svg>
-                                            View
+                                            View */}
                                         </button>
                                     </td>
                                 </tr>
                             </tbody>
                         </table>
 
-                        <div className="flex justify-stared mt-4 gap-2">
-                            <button className="w-8 h-8 rounded-full border flex items-center justify-center"> <ChevronLeft className="w-4 h-4" />  </button>
-                            <button className="w-8 h-8 rounded-full border bg-green-600 text-white">1</button>
-                            <button className="w-8 h-8 rounded-full border">2</button>
-                            <button className="w-8 h-8 rounded-full border">3</button>
-                            <button className="w-8 h-8 rounded-full border flex items-center justify-center"> <ChevronRight className="w-4 h-4" /> </button>
+                        <div className="flex justify-start mt-4 gap-2">
+                            <button className="w-8 h-8 rounded-full border flex items-center justify-center transition-colors hover:bg-gray-100">
+                                <ChevronLeft className="w-4 h-4" />
+                            </button>
+                            <button className="w-8 h-8 rounded-full border bg-green-600 text-white transition-colors hover:bg-green-700">
+                                1
+                            </button>
+                            <button className="w-8 h-8 rounded-full border transition-colors hover:bg-gray-100">
+                                2
+                            </button>
+                            <button className="w-8 h-8 rounded-full border transition-colors hover:bg-gray-100">
+                                3
+                            </button>
+                            <button className="w-8 h-8 rounded-full border flex items-center justify-center transition-colors hover:bg-gray-100">
+                                <ChevronRight className="w-4 h-4" />
+                            </button>
                         </div>
                     </div>
 
