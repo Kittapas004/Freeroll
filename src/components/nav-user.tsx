@@ -43,11 +43,13 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
-  const router = useRouter() // ✅ ใช้งาน router
+  const router = useRouter()
 
   const handleLogout = () => {
-    // TODO: ล้าง session/token ถ้ามี
-    router.push("/") // ✅ นำผู้ใช้กลับไปหน้า Home
+    localStorage.removeItem("jwt")
+    console.log({jwt: localStorage.getItem("jwt")})
+    console.log("Logout successful")
+    router.push("/")
   }
 
   return (
