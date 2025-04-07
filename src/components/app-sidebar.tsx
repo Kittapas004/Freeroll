@@ -2,7 +2,7 @@
 
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   FileText,
   Settings2,
@@ -24,10 +24,16 @@ import { NavUser } from "./nav-user";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
+  const router = useRouter() // ✅ เพิ่ม router
+
+  const handleLogoClick = () => {
+    router.push("/dashboard") // ✅ นำทางไปหน้า dashboard
+  }
+
   const data = {
     user: {
-      name: "Mr. Kittapas",
-      email: "Kittapas@turmeric.com",
+      name: "Mr. Kittapas Viriyapappaibool",
+      email: "patpatkiittapas@gmail.com",
       avatar: "/kittapas.jpg",
     },
     navMain: [
@@ -67,7 +73,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader className="flex flex-row items-center justify-center h-16 pt-4 mt-1">
-          <img src="/TurmeRic-logo.png" className=""/>
+      <button onClick={handleLogoClick}>
+          <img src="/TurmeRic-logo.png" alt="TurmeRic Logo" className=""/>
+          </button>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={updatedNavMain} />
