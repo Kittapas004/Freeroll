@@ -8,8 +8,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Save, MapPin, Pencil, Trash } from "lucide-react";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export default function FarmInformationPage() {
+    const router = useRouter();
+    const [role, setRole] = React.useState<string | "loading">("loading");
+    const [farmdata, setFarmdata] = useState<Farm[]>([]);
+
+    React.useEffect(() => {
+        const userRole = localStorage.getItem("userRole");
+        setRole(userRole || "");
+    }, []);
+
+    React.useEffect(() => {
+        if (role === "loading") return;
+
+        if (role !== "Farmer") {
+            router.push("/unauthorized");
+        }
+    }, [role, router]);
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const toggleSidebar = () => {
@@ -19,18 +39,44 @@ export default function FarmInformationPage() {
         });
     };
 
-    type YourFarm = {
-        name: string;
-        address: string;
-        type: string;
-        size: number;
-        method: string;
+    type Farm = {
+        id: number;
+        documentId: string;
+        Crop_Type: string;
+        Cultivation_Method: string;
+        Farm_Size_Unit: string;
+        Farm_Size: number;
+        Farm_Address: string;
+        Farm_Name: string;
     };
 
-    const yourfarms: YourFarm[] = [
-        { name: 'Little Farm', address: '123 Farm Road , Mae Fah Luang', type: 'Turmeric', size: 150, method: 'Organic' },
-        { name: 'Little Farm 2', address: '456 Creek Rord , Mae Fah Luang', type: 'Turmeric', size: 200, method: 'Conventional' },
-    ];
+    const fetchFarms = async () => {
+        try {
+            const response = await fetch("http://localhost:1337/api/farms", {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch farms');
+            }
+            const data = await response.json();
+            setFarmdata(data.data);
+            return data;
+        } catch (error) {
+            console.error('Error fetching farms:', error);
+            return [];
+        }
+    };
+
+    React.useEffect(() => {
+        fetchFarms();
+    }, []);
+
+    const [farmSizeUnit, setFarmSizeUnit] = useState('Acres');
+    const [cropType, setCropType] = useState('');
+    const [cultivationMethod, setCultivationMethod] = useState('');
+
 
     return (
         <SidebarProvider open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
@@ -60,26 +106,26 @@ export default function FarmInformationPage() {
                                     <Label htmlFor="farm-size" className="text-sm font-medium">Farm Size</Label>
                                     <div className="flex flex-row gap-2">
                                         <Input type="number" id="farm-size" className="border rounded p-2" placeholder="Enter farm size" min={0}></Input>
-                                        <Select  defaultValue="Acres" >
-                                        <SelectTrigger>
-                                            <SelectValue/>
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Acres">
-                                            Acres
-                                            </SelectItem>
-                                            <SelectItem value="Rai">
-                                            Rai
-                                            </SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                        <Select defaultValue="Acres" onValueChange={(setFarmSizeUnit)}>
+                                            <SelectTrigger>
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Acres">
+                                                    Acres
+                                                </SelectItem>
+                                                <SelectItem value="Rai">
+                                                    Rai
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
                                     </div>
 
 
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <label htmlFor="crop-type" className="text-sm font-medium">Crop Type</label>
-                                    <Select>
+                                    <Select onValueChange={(setCropType)}>
                                         <SelectTrigger className="w-full">
                                             <SelectValue placeholder="Select Crop Type" />
                                         </SelectTrigger>
@@ -87,7 +133,7 @@ export default function FarmInformationPage() {
                                             <SelectItem value="Turmeric">
                                                 Turmeric
                                             </SelectItem>
-                                            <SelectItem value="Special-Turmeric">
+                                            <SelectItem value="Special Turmeric">
                                                 Special Turmeric
                                             </SelectItem>
                                         </SelectContent>
@@ -95,51 +141,233 @@ export default function FarmInformationPage() {
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <label htmlFor="cultivation-method" className="text-sm font-medium">Cultivation Method</label>
-                                    <Select>
+                                    <Select onValueChange={(setCultivationMethod)}>
                                         <SelectTrigger className="w-full">
                                             <SelectValue placeholder="Select Cultivation Method" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             <SelectItem value="Organic">
-                                            Organic
+                                                Organic
                                             </SelectItem>
                                             <SelectItem value="Conventional">
-                                            Conventional
+                                                Conventional
                                             </SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
                             </div>
                             <div className="flex justify-start mt-4">
-                                <button className="flex flex-row bg-green-500 shadow-2xl text-white px-4 py-2 rounded gap-2 hover:bg-green-800"><Save></Save>Save Details</button>
+                                <button className="flex flex-row bg-green-500 shadow-2xl text-white px-4 py-2 rounded gap-2 hover:bg-green-800"
+                                    onClick={
+                                        async () => {
+                                            const farmName = (document.getElementById("farm-name") as HTMLInputElement).value;
+                                            const farmLocation = (document.getElementById("farm-location") as HTMLInputElement).value;
+                                            const farmSize = parseFloat((document.getElementById("farm-size") as HTMLInputElement).value);
+
+                                            try {
+                                                const response = await fetch("http://localhost:1337/api/farms", {
+                                                    method: 'POST',
+                                                    headers: {
+                                                        'Content-Type': 'application/json',
+                                                        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                                                    },
+                                                    body: JSON.stringify({
+                                                        data: {
+                                                            Farm_Name: farmName,
+                                                            Farm_Address: farmLocation,
+                                                            Farm_Size: farmSize,
+                                                            Farm_Size_Unit: farmSizeUnit,
+                                                            Crop_Type: cropType,
+                                                            Cultivation_Method: cultivationMethod,
+                                                        }
+                                                    }),
+                                                });
+                                                if (!response.ok) {
+                                                    throw new Error('Failed to create farm');
+                                                }
+                                                alert('Farm created successfully');
+                                                fetchFarms();
+                                            } catch (error) {
+                                                console.error('Error creating farm:', error);
+                                            }
+                                        }
+                                    }>
+                                    <Save />Add Farm
+                                </button>
                             </div>
                         </Card>
                         <div className="mt-6">
                             <h1 className="text-lg font-semibold">Your Farms</h1>
-                            {yourfarms.map((yourfarm) => (
-                                <Card className="p-4 flex flex-row gap-4 mt-4 items-center justify-between hover:bg-accent" key={yourfarm.name}>
-                                    <div className="flex flex-row gap-6 items-center">
+                            {farmdata.map((yourfarm) => (
+                                <Card className="p-4 flex flex-row gap-4 mt-4 items-center justify-between hover:bg-accent" key={yourfarm.id}>
+                                    <div className="flex flex-row gap-6 items-center w-full">
                                         <MapPin className="rounded-2xl border-accent-foreground p-1 text-green-700 bg-green-200 w-10 h-10"></MapPin>
-                                        <div className="flex flex-col gap-2 pr-4">
-                                            <h1 className="text-lg font-semibold">{yourfarm.name}</h1>
-                                            <p className="text-sm text-gray-500">{yourfarm.address}</p>
-                                        </div>
-                                        <div className="flex flex-col gap-2 pr-4">
-                                            <p className="text-sm text-gray-500">Crop Type</p>
-                                            <h1 className="text-sm font-semibold">{yourfarm.type}</h1>
-                                        </div>
-                                        <div className="flex flex-col gap-2 pr-4">
-                                            <p className="text-sm text-gray-500">Size</p>
-                                            <h1 className="text-sm font-semibold">{yourfarm.size} Acres</h1>
-                                        </div>
-                                        <div className="flex flex-col gap-2 pr-4">
-                                            <p className="text-sm text-gray-500">Method</p>
-                                            <h1 className="text-sm font-semibold">{yourfarm.method}</h1>
+                                        <div className="grid grid-cols-5 w-full gap-4 mt-4">
+                                            <div className="flex flex-col gap-2">
+                                                <h1 className="text-lg font-semibold">{yourfarm.Farm_Name}</h1>
+                                                <p className="text-sm text-gray-500">{yourfarm.Farm_Address}</p>
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <p className="text-sm text-gray-500">Crop Type</p>
+                                                <h1 className="text-sm font-semibold">{yourfarm.Crop_Type}</h1>
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <p className="text-sm text-gray-500">Size</p>
+                                                <h1 className="text-sm font-semibold">{yourfarm.Farm_Size} {yourfarm.Farm_Size_Unit}</h1>
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <p className="text-sm text-gray-500">Method</p>
+                                                <h1 className="text-sm font-semibold">{yourfarm.Cultivation_Method}</h1>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="flex justify-end gap-4">
-                                        <button className="text-blue-600"><Pencil className="hover:bg-blue-400 hover:text-white rounded-lg p-1 h-8 w-8"></Pencil></button>
-                                        <button className="text-red-600"><Trash className="hover:bg-red-400 hover:text-white rounded-lg p-1 h-8 w-8"></Trash></button>
+                                    <div className="flex gap-4">
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <Button className="text-blue-600 bg-accent hover:bg-blue-400 hover:text-white"><Pencil /></Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent side="left" className="w-full">
+                                                <div className="p-4">
+                                                    <h1 className="text-lg font-semibold mb-4">Edit Farm</h1>
+                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                        <div className="flex flex-col gap-2">
+                                                            <Label htmlFor="edit-farm-name" className="text-sm font-medium">Farm Name</Label>
+                                                            <Input
+                                                                type="text"
+                                                                id="edit-farm-name"
+                                                                className="border rounded p-2"
+                                                                defaultValue={yourfarm.Farm_Name}
+                                                                onChange={(e) => (yourfarm.Farm_Name = e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="flex flex-col gap-2">
+                                                            <Label htmlFor="edit-farm-location" className="text-sm font-medium">Farm Address</Label>
+                                                            <Input
+                                                                type="text"
+                                                                id="edit-farm-location"
+                                                                className="border rounded p-2"
+                                                                defaultValue={yourfarm.Farm_Address}
+                                                                onChange={(e) => (yourfarm.Farm_Address = e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="flex flex-col gap-2">
+                                                            <Label htmlFor="edit-farm-size" className="text-sm font-medium">Farm Size</Label>
+                                                            <div className="flex flex-row gap-2">
+                                                                <Input
+                                                                    type="number"
+                                                                    id="edit-farm-size"
+                                                                    className="border rounded p-2"
+                                                                    defaultValue={yourfarm.Farm_Size}
+                                                                    onChange={(e) => (yourfarm.Farm_Size = parseFloat(e.target.value))}
+                                                                />
+                                                                <Select
+                                                                    defaultValue={yourfarm.Farm_Size_Unit}
+                                                                    onValueChange={(value) => (yourfarm.Farm_Size_Unit = value)}
+                                                                >
+                                                                    <SelectTrigger>
+                                                                        <SelectValue />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="Acres">Acres</SelectItem>
+                                                                        <SelectItem value="Rai">Rai</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex flex-col gap-2">
+                                                            <Label htmlFor="edit-crop-type" className="text-sm font-medium">Crop Type</Label>
+                                                            <Select
+                                                                defaultValue={yourfarm.Crop_Type}
+                                                                onValueChange={(value) => (yourfarm.Crop_Type = value)}
+                                                            >
+                                                                <SelectTrigger className="w-full">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="Turmeric">Turmeric</SelectItem>
+                                                                    <SelectItem value="Special Turmeric">Special Turmeric</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                        <div className="flex flex-col gap-2">
+                                                            <Label htmlFor="edit-cultivation-method" className="text-sm font-medium">Cultivation Method</Label>
+                                                            <Select
+                                                                defaultValue={yourfarm.Cultivation_Method}
+                                                                onValueChange={(value) => (yourfarm.Cultivation_Method = value)}
+                                                            >
+                                                                <SelectTrigger className="w-full">
+                                                                    <SelectValue />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="Organic">Organic</SelectItem>
+                                                                    <SelectItem value="Conventional">Conventional</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex justify-end mt-4">
+                                                        <Button
+                                                            className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-800"
+                                                            onClick={async () => {
+                                                                try {
+                                                                    const response = await fetch(`http://localhost:1337/api/farms/${yourfarm.documentId}`, {
+                                                                        method: 'PUT',
+                                                                        headers: {
+                                                                            'Content-Type': 'application/json',
+                                                                            Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                                                                        },
+                                                                        body: JSON.stringify({
+                                                                            data: {
+                                                                                Farm_Name: yourfarm.Farm_Name,
+                                                                                Farm_Address: yourfarm.Farm_Address,
+                                                                                Farm_Size: yourfarm.Farm_Size,
+                                                                                Farm_Size_Unit: yourfarm.Farm_Size_Unit,
+                                                                                Crop_Type: yourfarm.Crop_Type,
+                                                                                Cultivation_Method: yourfarm.Cultivation_Method,
+                                                                            }
+                                                                        }),
+                                                                    });
+                                                                    if (!response.ok) {
+                                                                        throw new Error('Failed to update farm');
+                                                                    }
+                                                                    alert('Farm updated successfully');
+                                                                    fetchFarms();
+                                                                } catch (error) {
+                                                                    console.error('Error updating farm:', error);
+                                                                }
+                                                            }}
+                                                        >
+                                                            Save Changes
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
+                                        <Button
+                                            className="text-red-600 bg-accent hover:bg-red-400 hover:text-white"
+                                            onClick={() => {
+                                                if (window.confirm("Are you sure you want to delete this farm? This action cannot be undone.")) {
+                                                    (async () => {
+                                                        try {
+                                                            const response = await fetch(`http://localhost:1337/api/farms/${yourfarm.documentId}`, {
+                                                                method: 'DELETE',
+                                                                headers: {
+                                                                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                                                                },
+                                                            });
+                                                            if (!response.ok) {
+                                                                throw new Error('Failed to delete farm');
+                                                            }
+                                                            setFarmdata(farmdata.filter(farm => farm.documentId !== yourfarm.documentId));
+                                                        } catch (error) {
+                                                            console.error('Error deleting farm:', error);
+                                                        }
+                                                    })();
+                                                }
+                                            }}
+                                        >
+                                            <Trash />
+                                        </Button>
                                     </div>
                                 </Card>
                             ))}

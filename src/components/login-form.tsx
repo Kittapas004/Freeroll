@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
+import * as React from "react";
 
 export function LoginForm({
   className,
@@ -48,12 +49,35 @@ export function LoginForm({
 
       localStorage.setItem("jwt", data.jwt)
 
+      await fetchUserData();
+
       router.push("/dashboard")
     } catch (error) {
       console.error("Login error:", error)
       setError("Something went wrong. Please try again.")
     }
   }
+
+  const fetchUserData = async () => {
+    try {
+      const response = await fetch("http://localhost:1337/api/users/me", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch user data");
+      }
+
+      const userData = await response.json();
+      localStorage.setItem("userRole", userData.user_role || "")
+      console.log("User data fetched successfully:", localStorage.getItem("userRole"));
+
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+    }
+  };
 
 
 
