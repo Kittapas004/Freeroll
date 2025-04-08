@@ -45,7 +45,7 @@ export default function DashboardPage() {
           : "",
         role: userData.user_role || "",
       });
-      console.log("User data fetched successfully:", userData);
+      // console.log("User data fetched successfully:", userData);
     } catch (error) {
       console.error("Error fetching user data:", error);
     }
@@ -56,7 +56,7 @@ export default function DashboardPage() {
   }, []);
 
   const dashboardByRole: Record<string, any[]> = {
-    "Farmer": [
+    Farmer: [
       <main key="farmer-dashboard" className="flex flex-row h-full">
         <div className="flex-1 p-4 overflow-auto">
           <DashboardHeader />

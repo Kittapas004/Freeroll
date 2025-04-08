@@ -58,7 +58,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           : "",
         role: userData.user_role || "",
       });
-      console.log("User data fetched successfully:", userData);
+      // console.log("User data fetched successfully:", userData);
     } catch (error) {
       console.error("Error fetching user data:", error);
     }
@@ -82,7 +82,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       { title: "System Settings", url: "/admin/settings", icon: Settings2 },
     ],
   };
-  console.log("User role:", user.role);
+  // console.log("User role:", user.role);
   const navItems = navMain[user.role] || [];
   const updatedNavMain = navItems.map((item) => ({
     ...item,
