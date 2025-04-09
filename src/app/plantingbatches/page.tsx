@@ -20,8 +20,27 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Circle, Plus } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import * as React from "react";
+import { useRouter } from "next/navigation";
 
 export default function PlantingBatchesPage() {
+
+    const router = useRouter();
+    const [role, setRole] = React.useState<string | "loading">("loading");
+    const [farmdata, setFarmdata] = useState<Farm[]>([]);
+
+    React.useEffect(() => {
+        const userRole = localStorage.getItem("userRole");
+        setRole(userRole || "");
+    }, []);
+
+    React.useEffect(() => {
+        if (role === "loading") return;
+
+        if (role !== "Farmer") {
+            router.push("/unauthorized");
+        }
+    }, [role, router]);
 
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
@@ -55,49 +74,90 @@ export default function PlantingBatchesPage() {
         });
     };
 
+    type Farm = {
+        id: number;
+        documentId: string;
+        Crop_Type: string;
+        Cultivation_Method: string;
+        Farm_Size_Unit: string;
+        Farm_Size: number;
+        Farm_Address: string;
+        Farm_Name: string;
+    };
+
+    type PlantingBatch = {
+        Batch_id: string;
+        documentId: string;
+        Date_of_Planting: string;
+        Plant_Variety: string;
+        Farm_documentId: string;
+        Farm_Name: string;
+        Farm_Cultivation_Method: string;
+        Batch_Status: string;
+        Batch_image: string;
+    };
+
     const [cultivationMethod, setCultivationMethod] = useState<string | undefined>();
     const [location, setLocation] = useState<string | undefined>();
 
-
-    type PlantingBatches = {
-        batches_id: string;
-        planting_date: string;
-        plant_variety: string;
-        cultivation_method: string;
-        status: string;
-        location: string;
-        image: string;
-        recent_fertilizer_record: {
-            date: string;
-            fertilizer_type: string;
-            amount: number;
-            size: number;
-            note: string;
-            method: string;
-        };
-        recent_harvest_record: {
-            date: string;
-            yleld: number;
-            quality_grade: string;
-            method: string;
-            note: string;
-            result_type: string;
-            curcumin_quality: string;
-            amount_report: number;
-        };
-        lab_submission_record: {
-            date: string;
-            lab_name: string;
-            quality_grade: string;
-            status: string;
-        };
+    const fetchFarms = async () => {
+        try {
+            const response = await fetch("http://localhost:1337/api/farms", {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch farms');
+            }
+            const data = await response.json();
+            setFarmdata(data.data);
+            return data;
+        } catch (error) {
+            console.error('Error fetching farms:', error);
+            return [];
+        }
     };
 
-    const plantingbatches: PlantingBatches[] = [
-        { batches_id: 'T-Batch-001', image: "/batch1.png", planting_date: '2023-01-01', plant_variety: 'Turmeric', cultivation_method: 'Organic', status: 'completed_successfully', location: 'Mae Fah Luang', recent_fertilizer_record: { date: '2023-02-01', fertilizer_type: 'NPK', amount: 100, size: 50, note: 'First application', method: 'Spray' }, recent_harvest_record: { date: '2023-06-01', yleld: 200, quality_grade: 'A', method: 'Manual', note: 'Good quality', result_type: 'Fresh', curcumin_quality: '40', amount_report: 150 }, lab_submission_record: { date: '2023-07-01', lab_name: 'Lab A', quality_grade: 'A+', status: 'Completed' } },
-        { batches_id: 'T-Batch-002', image: "/batch1.png", planting_date: '2023-02-01', plant_variety: 'Turmeric', cultivation_method: 'Conventional', status: 'pending_actions', location: 'Mae Fah Luang', recent_fertilizer_record: { date: '2023-03-01', fertilizer_type: 'NPK', amount: 150, size: 75, note: 'Second application', method: 'Spray' }, recent_harvest_record: { date: '2023-07-01', yleld: 250, quality_grade: 'B', method: 'Manual', note: 'Average quality', result_type: 'Dried', curcumin_quality: '50', amount_report: 200 }, lab_submission_record: { date: '2023-08-01', lab_name: 'Lab B', quality_grade: 'B+', status: 'In Progress' } },
-        { batches_id: 'T-Batch-003', image: "/batch1.png", planting_date: '2023-03-01', plant_variety: 'Turmeric', cultivation_method: 'Organic', status: 'issues_detected', location: 'Mae Fah Luang', recent_fertilizer_record: { date: '2023-04-01', fertilizer_type: 'NPK', amount: 200, size: 100, note: 'Third application', method: 'Spray' }, recent_harvest_record: { date: '2023-08-01', yleld: 300, quality_grade: 'A+', method: 'Manual', note: 'Excellent quality', result_type: 'Fresh', curcumin_quality: '80', amount_report: 250 }, lab_submission_record: { date: '2023-09-01', lab_name: 'Lab C', quality_grade: 'A++', status: 'Completed' } },
-    ];
+
+    const [plantingbatches, setPlantingBatches] = useState<PlantingBatch[]>([]);
+    const fetchPlantingBatches = async () => {
+        try {
+            const response = await fetch(`http://localhost:1337/api/batches?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch planting batches');
+            }
+            const data = await response.json();
+            setPlantingBatches(
+                data.data.map((batch: any) => ({
+                    Batch_id: batch.Batch_id,
+                    documentId: batch.documentId,
+                    Date_of_Planting: batch.Date_of_Planting,
+                    Plant_Variety: batch.Plant_Variety,
+                    Farm_documentId: batch.Farm.documentId,
+                    Farm_Name: batch.Farm.Farm_Name,
+                    Farm_Cultivation_Method: batch.Farm.Cultivation_Method,
+                    Batch_Status: batch.Batch_Status,
+                    Batch_image: batch.Batch_image?.url
+                        ? `http://localhost:1337${batch.Batch_image.url}`
+                        : "",
+                }))
+            );
+            return data;
+        } catch (error) {
+            console.error('Error fetching planting batches:', error);
+            return [];
+        }
+    }
+
+    React.useEffect(() => {
+        fetchFarms();
+        fetchPlantingBatches();
+    }, []);
 
     return (
         <SidebarProvider open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
@@ -110,7 +170,6 @@ export default function PlantingBatchesPage() {
                     </div>
                 </header>
                 <main>
-                    {/* // make card to use add new batche */}
                     <div className="grid grid-cols-4 gap-4 p-4">
                         <Dialog>
                             <DialogTrigger>
@@ -178,10 +237,10 @@ export default function PlantingBatchesPage() {
                                                     <SelectValue placeholder="Select Farm" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="littleFarm">
+                                                    <SelectItem value="Little Farm">
                                                         Little Farm
                                                     </SelectItem>
-                                                    <SelectItem value="littleFarm2">
+                                                    <SelectItem value="Little Farm 2">
                                                         Little Farm 2
                                                     </SelectItem>
                                                 </SelectContent>
@@ -272,56 +331,48 @@ export default function PlantingBatchesPage() {
                             </DialogContent>
                         </Dialog>
                         {plantingbatches.map((batch) => (
-                            <Link href={`/plantingbatches/${batch.batches_id}`} key={batch.batches_id}>
+                            <Link href={`/plantingbatches/${batch.documentId}`} key={batch.documentId}>
                                 <Card className="flex flex-col items-start justify-start hover:bg-accent relative w-full cursor-pointer overflow-hidden py-0 pb-6">
                                     <div className="absolute z-10 inset-0 flex items-center justify-center text-white text-5xl font-semibold opacity-0 hover:opacity-100 bg-black/40 transition-opacity rounded-lg">
                                         More Detail
                                     </div>
                                     <img
-                                        src={batch.image}
+                                        src={batch.Batch_image}
                                         alt="Batch Image"
                                         className="w-full h-37.5 object-cover"
                                     />
                                     <Circle
-                                        className={`absolute top-2 right-2 w-6 h-6 ${batch.status === "completed_successfully"
+                                        className={`absolute top-2 right-2 w-6 h-6 ${batch.Batch_Status === "Completed Successfully"
                                             ? "text-green-600 fill-green-600"
-                                            : batch.status === "pending_actions"
+                                            : batch.Batch_Status === "Pending Actions"
                                                 ? "text-yellow-600 fill-yellow-600"
-                                                : batch.status === "issues_detected"
-                                                    ? "text-red-600 fill-red-600"
-                                                    : "text-gray-600 fill-gray-600"
+                                                : batch.Batch_Status === "Completed Past Data"
+                                                    ? "text-gray-600 fill-gray-600"
+                                                    : "text-red-600 fill-red-600"
                                             }`}
                                     />
                                     <CardContent className="flex flex-col items-start w-full">
                                         <div className="flex flex-col gap-2">
-                                            <h1 className="text-lg font-semibold">{batch.batches_id}</h1>
-                                            <p className="text-sm text-gray-500">{batch.planting_date}</p>
+                                            <h1 className="text-lg font-semibold">{batch.Batch_id}</h1>
+                                            <p className="text-sm text-gray-500">Planted: {batch.Date_of_Planting}</p>
                                         </div>
                                         <div className="flex flex-col lg:flex-row gap-2">
                                             <p className="text-sm text-gray-500">Plant Variety:</p>
-                                            <h1 className="text-sm font-semibold">{batch.plant_variety}</h1>
+                                            <h1 className="text-sm font-semibold">{batch.Plant_Variety}</h1>
                                         </div>
                                         <div className="flex flex-col lg:flex-row gap-2">
                                             <p className="text-sm text-gray-500">Cultivation Method:</p>
-                                            <h1 className="text-sm font-semibold">{batch.cultivation_method}</h1>
+                                            <h1 className="text-sm font-semibold">{batch.Farm_Cultivation_Method}</h1>
                                         </div>
                                         <div className="flex flex-col lg:flex-row gap-2">
                                             <p className="text-sm text-gray-500">Status:</p>
                                             <h1 className="text-sm font-semibold">
-                                                {batch.status === 'completed_successfully'
-                                                    ? 'Completed Successfully'
-                                                    : batch.status === 'pending_actions'
-                                                        ? 'Pending Actions'
-                                                        : batch.status === 'issues_detected'
-                                                            ? 'Issues Detected'
-                                                            : batch.status === 'completed_past_date'
-                                                                ? 'Completed Past Date'
-                                                                : 'Unknown'}
+                                                {batch.Batch_Status}
                                             </h1>
                                         </div>
                                         <div className="flex flex-col lg:flex-row gap-2">
                                             <p className="text-sm text-gray-500">Location:</p>
-                                            <h1 className="text-sm font-semibold">{batch.location}</h1>
+                                            <h1 className="text-sm font-semibold">{batch.Farm_Name}</h1>
                                         </div>
                                     </CardContent>
                                 </Card>

@@ -48,11 +48,12 @@ export default function FarmInformationPage() {
         Farm_Size: number;
         Farm_Address: string;
         Farm_Name: string;
+        publishedAt: string;
     };
 
     const fetchFarms = async () => {
         try {
-            const response = await fetch("http://localhost:1337/api/farms", {
+            const response = await fetch(`http://localhost:1337/api/farms?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -61,14 +62,14 @@ export default function FarmInformationPage() {
                 throw new Error('Failed to fetch farms');
             }
             const data = await response.json();
-            setFarmdata(data.data);
+            setFarmdata(data.data.filter((farm: Farm) => farm.publishedAt !== null));
             return data;
         } catch (error) {
             console.error('Error fetching farms:', error);
             return [];
         }
     };
-
+    
     React.useEffect(() => {
         fetchFarms();
     }, []);
@@ -179,6 +180,7 @@ export default function FarmInformationPage() {
                                                             Farm_Size_Unit: farmSizeUnit,
                                                             Crop_Type: cropType,
                                                             Cultivation_Method: cultivationMethod,
+                                                            user_documentId: localStorage.getItem("userId"),
                                                         }
                                                     }),
                                                 });

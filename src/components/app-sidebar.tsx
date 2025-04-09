@@ -58,7 +58,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           : "",
         role: userData.user_role || "",
       });
-      // console.log("User data fetched successfully:", userData);
     } catch (error) {
       console.error("Error fetching user data:", error);
     }

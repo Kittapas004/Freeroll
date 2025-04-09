@@ -48,6 +48,7 @@ export function LoginForm({
       }
 
       localStorage.setItem("jwt", data.jwt)
+      localStorage.setItem("userId", data.user.documentId)
 
       await fetchUserData();
 
