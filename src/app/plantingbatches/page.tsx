@@ -28,6 +28,16 @@ export default function PlantingBatchesPage() {
     const router = useRouter();
     const [role, setRole] = React.useState<string | "loading">("loading");
     const [farmdata, setFarmdata] = useState<Farm[]>([]);
+    const [plantVariety, setPlantVariety] = useState("");
+    const [plantingDate, setPlantingDate] = useState("");
+    const [cultivationMethod, setCultivationMethod] = useState<string | undefined>();
+    const [location, setLocation] = useState<string | undefined>();
+    const [plantingbatches, setPlantingBatches] = useState<PlantingBatch[]>([]);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
+    const [status] = useState("Pending Actions");
+    const [selectedFarm, setSelectedFarm] = useState<Farm | undefined>();
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     React.useEffect(() => {
         const userRole = localStorage.getItem("userRole");
@@ -42,8 +52,6 @@ export default function PlantingBatchesPage() {
         }
     }, [role, router]);
 
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
-    const imageInputRef = useRef<HTMLInputElement>(null);
     const handleFile = (file: File) => {
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -97,12 +105,9 @@ export default function PlantingBatchesPage() {
         Batch_image: string;
     };
 
-    const [cultivationMethod, setCultivationMethod] = useState<string | undefined>();
-    const [location, setLocation] = useState<string | undefined>();
-
     const fetchFarms = async () => {
         try {
-            const response = await fetch("http://localhost:1337/api/farms", {
+            const response = await fetch(`http://localhost:1337/api/farms?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -111,7 +116,16 @@ export default function PlantingBatchesPage() {
                 throw new Error('Failed to fetch farms');
             }
             const data = await response.json();
-            setFarmdata(data.data);
+            setFarmdata(data.data.map((farm: any) => ({
+                id: farm.id,
+                documentId: farm.documentId,
+                Crop_Type: farm.Crop_Type,
+                Cultivation_Method: farm.Cultivation_Method,
+                Farm_Size_Unit: farm.Farm_Size_Unit,
+                Farm_Size: farm.Farm_Size,
+                Farm_Address: farm.Farm_Address,
+                Farm_Name: farm.Farm_Name,
+            })));
             return data;
         } catch (error) {
             console.error('Error fetching farms:', error);
@@ -120,7 +134,6 @@ export default function PlantingBatchesPage() {
     };
 
 
-    const [plantingbatches, setPlantingBatches] = useState<PlantingBatch[]>([]);
     const fetchPlantingBatches = async () => {
         try {
             const response = await fetch(`http://localhost:1337/api/batches?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
@@ -154,6 +167,81 @@ export default function PlantingBatchesPage() {
         }
     }
 
+    const handleAddBatch = async () => {
+        try {
+            const jwt = localStorage.getItem("jwt");
+            const userId = localStorage.getItem("userId");
+
+            if (!jwt || !userId || !selectedFarm) {
+                console.error("Missing required data");
+                return;
+            }
+
+            let imageId = null;
+
+            if (imageInputRef.current?.files?.[0]) {
+                const formData = new FormData();
+                formData.append("files", imageInputRef.current.files[0]);
+
+                const uploadRes = await fetch("http://localhost:1337/api/upload", {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${jwt}`,
+                    },
+                    body: formData,
+                });
+
+                const uploadData = await uploadRes.json();
+                imageId = uploadData[0]?.id;
+            }
+
+            const newBatchId = `T-Batch-${String(
+                plantingbatches.reduce((max, batch) => {
+                    const match = batch.Batch_id.match(/T-Batch-(\d+)/);
+                    return match ? Math.max(max, parseInt(match[1], 10)) : max;
+                }, 0) + 1
+            ).padStart(3, "0")}`;
+
+            const batchPayload = {
+                data: {
+                    Batch_id: newBatchId,
+                    Date_of_Planting: plantingDate,
+                    Plant_Variety: plantVariety,
+                    Batch_Status: status,
+                    user_documentId: userId,
+                    Farm: selectedFarm.documentId,
+                    Batch_image: imageId,
+                    Cultivation_Method: cultivationMethod,
+                },
+            };
+
+            const response = await fetch("http://localhost:1337/api/batches", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${jwt}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(batchPayload),
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to add batch");
+            }
+
+            const result = await response.json();
+            console.log("Batch added:", result);
+            await fetchPlantingBatches();
+            setIsDialogOpen(false);
+            alert("Batch added successfully!");
+            
+        } catch (error) {
+            console.error("Error adding batch:", error);
+            alert("Something went wrong while adding the batch.");
+        }
+    };
+
+
+
     React.useEffect(() => {
         fetchFarms();
         fetchPlantingBatches();
@@ -171,7 +259,7 @@ export default function PlantingBatchesPage() {
                 </header>
                 <main>
                     <div className="grid grid-cols-4 gap-4 p-4">
-                        <Dialog>
+                        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                             <DialogTrigger>
                                 <Card className="h-full items-center justify-center hover:bg-accent cursor-pointer">
                                     <div className="flex flex-col gap-4 p-4 justify-center items-center">
@@ -194,20 +282,38 @@ export default function PlantingBatchesPage() {
                                             <Label htmlFor="batch-id" className="text-sm font-medium flex items-center gap-2">
                                                 Batch ID
                                             </Label>
-                                            <Input id="batch-id" placeholder="T-Batch-003" disabled className="cursor-not-allowed bg-gray-100" />
+                                            <Input
+                                                id="batch-id"
+                                                value={`T-Batch-${String(
+                                                    plantingbatches.reduce((max, batch) => {
+                                                        const match = batch.Batch_id.match(/T-Batch-(\d+)/);
+                                                        return match ? Math.max(max, parseInt(match[1], 10)) : max;
+                                                    }, 0) + 1
+                                                ).padStart(3, '0')}`}
+                                                disabled
+                                                className="cursor-not-allowed bg-gray-100"
+                                            />
                                         </div>
                                         <div>
                                             <Label htmlFor="planting-date" className="text-sm font-medium">
                                                 Planting Date
                                             </Label>
-                                            <Input id="planting-date" type="date" placeholder="2023-09-01" />
+                                            <Input
+                                                id="planting-date"
+                                                type="date"
+                                                value={plantingDate}
+                                                onChange={(e) => setPlantingDate(e.target.value)}
+                                            />
                                         </div>
                                         <div>
                                             <Label htmlFor="plant-variety" className="text-sm font-medium">
                                                 Plant Variety
                                             </Label>
-                                            <Input id="plant-variety" placeholder="Enter plant variety" />
-
+                                            <Input
+                                                id="plant-variety"
+                                                value={plantVariety}
+                                                onChange={(e) => setPlantVariety(e.target.value)}
+                                            />
                                         </div>
                                         <div>
                                             <Label htmlFor="cultivation-method" className="text-sm font-medium">
@@ -232,17 +338,21 @@ export default function PlantingBatchesPage() {
                                             <Label htmlFor="location" className="text-sm font-medium">
                                                 Location
                                             </Label>
-                                            <Select value={location} onValueChange={setLocation}>
+                                            <Select value={location} onValueChange={(value) => {
+                                                setLocation(value);
+                                                const farm = farmdata.find((f) => f.Farm_Name === value);
+                                                setSelectedFarm(farm);
+                                            }}>
                                                 <SelectTrigger className="w-full">
                                                     <SelectValue placeholder="Select Farm" />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="Little Farm">
-                                                        Little Farm
-                                                    </SelectItem>
-                                                    <SelectItem value="Little Farm 2">
-                                                        Little Farm 2
-                                                    </SelectItem>
+                                                    {farmdata.map((farm) => (
+                                                        <SelectItem key={farm.id} value={farm.Farm_Name}>
+                                                            {farm.Farm_Name}
+                                                        </SelectItem>
+                                                    ))}
+
                                                 </SelectContent>
                                             </Select>
 
@@ -322,10 +432,15 @@ export default function PlantingBatchesPage() {
                                     }}>
                                         Clear
                                     </Button>
-                                    <Button type="submit" className="bg-green-600 dark:text-white" onClick={(e) => {
-                                        // function for Save Batch
-                                    }}>
-                                        Save Batch
+                                    <Button
+                                        type="submit"
+                                        className="bg-green-600 dark:text-white"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            handleAddBatch();   
+                                        }}
+                                    >
+                                        Add Batch
                                     </Button>
                                 </DialogFooter>
                             </DialogContent>
