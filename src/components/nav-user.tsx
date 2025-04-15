@@ -47,6 +47,7 @@ export function NavUser({
 
   const handleLogout = () => {
     localStorage.removeItem("jwt")
+    localStorage.removeItem("userId")
     console.log({jwt: localStorage.getItem("jwt")})
     console.log("Logout successful")
     router.push("/")

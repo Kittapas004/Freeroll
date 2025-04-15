@@ -88,6 +88,7 @@ export default function PlantingBatchesPage() {
         Crop_Type: string;
         Cultivation_Method: string;
         Farm_Size_Unit: string;
+        Farm_Status: string;
         Farm_Size: number;
         Farm_Address: string;
         Farm_Name: string;
@@ -100,6 +101,7 @@ export default function PlantingBatchesPage() {
         Plant_Variety: string;
         Farm_documentId: string;
         Farm_Name: string;
+        Farm_Status: string;
         Farm_Cultivation_Method: string;
         Batch_Status: string;
         Batch_image: string;
@@ -124,6 +126,7 @@ export default function PlantingBatchesPage() {
                 Farm_Size_Unit: farm.Farm_Size_Unit,
                 Farm_Size: farm.Farm_Size,
                 Farm_Address: farm.Farm_Address,
+                Farm_Status: farm.Farm_Status,
                 Farm_Name: farm.Farm_Name,
             })));
             return data;
@@ -152,6 +155,7 @@ export default function PlantingBatchesPage() {
                     Date_of_Planting: batch.Date_of_Planting,
                     Plant_Variety: batch.Plant_Variety,
                     Farm_documentId: batch.Farm.documentId,
+                    Farm_Status: batch.Farm.Farm_Status,
                     Farm_Name: batch.Farm.Farm_Name,
                     Farm_Cultivation_Method: batch.Farm.Cultivation_Method,
                     Batch_Status: batch.Batch_Status,
@@ -207,7 +211,7 @@ export default function PlantingBatchesPage() {
                     Batch_id: newBatchId,
                     Date_of_Planting: plantingDate,
                     Plant_Variety: plantVariety,
-                    Batch_Status: status,
+                    Batch_Status: "Pending Actions",
                     user_documentId: userId,
                     Farm: selectedFarm.documentId,
                     Batch_image: imageId,
@@ -227,6 +231,27 @@ export default function PlantingBatchesPage() {
             if (!response.ok) {
                 throw new Error("Failed to add batch");
             }
+
+            if (response.ok) {
+            const farmUpdatePayload = {
+                data: {
+                    Farm_Status: "Planted",
+                },
+            };
+
+            const farmUpdateResponse = await fetch(`http://localhost:1337/api/farms/${selectedFarm?.documentId}`, {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${jwt}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(farmUpdatePayload),
+            });
+
+            if (!farmUpdateResponse.ok) {
+                throw new Error("Failed to update farm status");
+            }
+        }
 
             const result = await response.json();
             console.log("Batch added:", result);
@@ -454,7 +479,7 @@ export default function PlantingBatchesPage() {
                                     <img
                                         src={batch.Batch_image}
                                         alt="Batch Image"
-                                        className="w-full h-37.5 object-cover"
+                                        className={`w-full h-37.5 object-cover ${batch.Batch_Status === "Completed Past Data"?"grayscale-100":""}`}
                                     />
                                     <Circle
                                         className={`absolute top-2 right-2 w-6 h-6 ${batch.Batch_Status === "Completed Successfully"
@@ -482,7 +507,7 @@ export default function PlantingBatchesPage() {
                                         <div className="flex flex-col lg:flex-row gap-2">
                                             <p className="text-sm text-gray-500">Status:</p>
                                             <h1 className="text-sm font-semibold">
-                                                {batch.Batch_Status}
+                                                {batch.Farm_Status}
                                             </h1>
                                         </div>
                                         <div className="flex flex-col lg:flex-row gap-2">

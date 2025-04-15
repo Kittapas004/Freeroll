@@ -50,7 +50,7 @@ export function LoginForm({
       localStorage.setItem("jwt", data.jwt)
       localStorage.setItem("userId", data.user.documentId)
 
-      await fetchUserData();
+      // await fetchUserData();
 
       router.push("/dashboard")
     } catch (error) {
@@ -59,26 +59,26 @@ export function LoginForm({
     }
   }
 
-  const fetchUserData = async () => {
-    try {
-      const response = await fetch("http://localhost:1337/api/users/me", {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("jwt")}`,
-        },
-      });
+  // const fetchUserData = async () => {
+  //   try {
+  //     const response = await fetch("http://localhost:1337/api/users/me", {
+  //       headers: {
+  //         Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+  //       },
+  //     });
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch user data");
-      }
+  //     if (!response.ok) {
+  //       throw new Error("Failed to fetch user data");
+  //     }
 
-      const userData = await response.json();
-      localStorage.setItem("userRole", userData.user_role || "")
-      console.log("User data fetched successfully:", localStorage.getItem("userRole"));
+  //     const userData = await response.json();
+  //     localStorage.setItem("userRole", userData.user_role || "")
+  //     console.log("User data fetched successfully:", localStorage.getItem("userRole"));
 
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-    }
-  };
+  //   } catch (error) {
+  //     console.error("Error fetching user data:", error);
+  //   }
+  // };
 
 
 
