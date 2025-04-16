@@ -6,7 +6,7 @@ import {
     SidebarTrigger,
 } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Lock, User } from 'lucide-react';
 import { Eye, EyeOff } from 'lucide-react';
@@ -16,8 +16,6 @@ interface UserData {
     email: string;
     avatar?: { url: string };
     phone?: string;
-    user_role?: string;
-    farms?: { name: string }[];
 }
 
 export default function SettingsPage() {
@@ -36,10 +34,37 @@ export default function SettingsPage() {
         onChange={(e) => setPhone(e.target.value)}
         className="w-full border rounded px-3 py-2"
     />
-    
+
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [currentPassword, setCurrentPassword] = useState('');
     const [showNewPassword, setShowNewPassword] = useState(false);
+    const [newPassword, setNewPassword] = useState('');
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFile = (file: File) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const file = e.dataTransfer.files?.[0];
+        if (file) {
+            handleFile(file);
+        }
+    };
+
+    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+        e.preventDefault();
+        e.stopPropagation();
+    };
 
     const toggleSidebar = () => {
         setIsSidebarOpen((prev) => {
@@ -48,13 +73,96 @@ export default function SettingsPage() {
         });
     };
 
+    const handleUpdateUser = async (userData: UserData) => {
+        try {
+            let imageId = null;
+
+            // Check if a new image is selected for upload
+            if (imageInputRef.current?.files?.[0]) {
+                const formData = new FormData();
+                formData.append("files", imageInputRef.current.files[0]);
+
+                console.log("📦 Uploading file:", imageInputRef.current.files[0]);
+
+                const uploadRes = await fetch("http://localhost:1337/api/upload", {
+                    method: "POST",
+                    headers: {
+                      Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                    },
+                    body: formData,
+                  });
+                  
+
+
+                if (!uploadRes.ok) {
+                    throw new Error("Failed to upload image");
+                }
+
+                const uploadData = await uploadRes.json();
+                imageId = uploadData[0]?.id; // Get the uploaded image ID
+            }
+
+            // Prepare the updated user data
+            const updatedUserData: any = {
+                username: userData.username,
+                email: userData.email,
+                phone: userData.phone,
+            };
+
+            // Include the uploaded image ID if available
+            if (imageId) {
+                updatedUserData.avatar = { id: imageId };
+            }
+
+            // Fetch the numeric user ID
+            const jwt = localStorage.getItem("jwt");
+            const userRes = await fetch("http://localhost:1337/api/users/me", {
+                headers: {
+                    Authorization: `Bearer ${jwt}`,
+                },
+            });
+
+            if (!userRes.ok) {
+                throw new Error("Failed to fetch user ID");
+            }
+
+            const userDataResponse = await userRes.json();
+            const userId = userDataResponse.id; // Numeric user ID
+
+            // Update the user
+            const res = await fetch(`http://localhost:1337/api/users/${userId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${jwt}`,
+                },
+                body: JSON.stringify(updatedUserData),
+            });
+
+            console.log("🔁 Update Status:", res.status);
+
+            if (!res.ok) {
+                const errorData = await res.json(); // Parse the error response
+                console.error("📜 Update Error body:", errorData);
+                throw new Error("Failed to update user");
+            }
+
+            const data = await res.json();
+            console.log("✅ Updated user:", data);
+            alert("User updated successfully!");
+        } catch (err) {
+            console.error("❌ Error updating user:", err);
+            alert("Failed to update user. Please try again.");
+        }
+    };
+
     useEffect(() => {
         const fetchUser = async () => {
             try {
                 const jwt = localStorage.getItem("jwt");
                 console.log("JWT token:", jwt);
 
-                const res = await fetch('http://localhost:1337/api/users/me?populate[avatar]=*&populate[farms]=*', {
+                const res = await fetch('http://localhost:1337/api/users/me?populate=*', {
                     headers: {
                         Authorization: `Bearer ${jwt}`,
                     },
@@ -106,27 +214,52 @@ export default function SettingsPage() {
                         </TabsList>
 
                         <TabsContent value="personal">
-                            <div className="bg-white rounded-xl shadow p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="col-span-full text-center mb-4">
+                            <div
+                                className="w-24 h-24 border-2 border-dashed border-gray-300 rounded-full flex flex-col items-center justify-center text-gray-500 hover:border-blue-500 transition cursor-pointer bg-gray-50 relative mx-auto"
+                                onClick={() => imageInputRef.current?.click()}
+                                onDrop={handleDrop}
+                                onDragOver={handleDragOver}
+                            >
+                                {imagePreview ? (
                                     <img
-                                        src={
-                                            user.avatar?.url
-                                                ? `http://localhost:1337${user.avatar.url}`
-                                                : '/kitapas.jpg'
-                                        }
-                                        alt="Profile"
-                                        className="w-24 h-24 rounded-full mx-auto mb-2 object-cover"
+                                        src={imagePreview}
+                                        alt="Preview"
+                                        className="absolute inset-0 object-cover w-full h-full rounded-full"
                                     />
-                                    <p className="text-blue-600 text-sm cursor-pointer hover:underline">Change Picture</p>
-                                </div>
+                                ) : user.avatar?.url ? (
+                                    <img
+                                        src={`http://localhost:1337${user.avatar.url}`}
+                                        alt="Preview"
+                                        className="absolute inset-0 object-cover w-full h-full rounded-full"
+                                    />
+                                ) : (
+                                    <div className="flex flex-col items-center gap-2 z-10">
+                                        <p className="text-sm">Drag & drop an image here</p>
+                                        <p className="text-xs text-gray-400">or click to browse</p>
+                                    </div>
+                                )}
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    ref={imageInputRef}
+                                    onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                            handleFile(file);
+                                        }
+                                    }}
+                                    className="hidden"
+                                />
+                            </div>
+                            <div className="bg-white rounded-xl shadow p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
 
                                 <div>
                                     <label className="text-sm font-medium block mb-1">Username</label>
                                     <input
                                         type="text"
                                         value={user.username}
+                                        onChange={(e) => setUser({ ...user, username: e.target.value })}
                                         className="w-full border rounded px-3 py-2"
-                                        disabled
                                     />
                                 </div>
                                 <div>
@@ -134,25 +267,20 @@ export default function SettingsPage() {
                                     <input
                                         type="email"
                                         value={user.email}
-                                        className="w-full border rounded px-3 py-2"
-                                        disabled
+                                        className="w-full border rounded px-3 py-2 cursor-not-allowed"
+                                        readOnly
                                     />
                                 </div>
                                 <div>
                                     <label className="text-sm font-medium block mb-1">Phone Number</label>
                                     <input
                                         type="tel"
-                                        value={user.phone || ''}
+                                        onChange={(e) => {
+                                            setPhone(e.target.value);
+                                            setUser({ ...user, phone: e.target.value });
+                                        }}
+                                        value={phone}
                                         className="w-full border rounded px-3 py-2"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium block mb-1">Farm Name</label>
-                                    <input
-                                        type="text"
-                                        value={user.farms?.[0]?.name || ''}
-                                        className="w-full border rounded px-3 py-2"
-                                        disabled
                                     />
                                 </div>
 
@@ -160,7 +288,9 @@ export default function SettingsPage() {
                                     <button className="px-4 py-2 border rounded text-white bg-red-600 hover:bg-red-700">
                                         Cancel
                                     </button>
-                                    <button className="px-4 py-2 border rounded text-white bg-green-600 hover:bg-green-700">
+                                    <button className="px-4 py-2 border rounded text-white bg-green-600 hover:bg-green-700"
+                                        onClick={() => handleUpdateUser(user!)}
+                                    >
                                         Save Changes
                                     </button>
                                 </div>
@@ -177,6 +307,8 @@ export default function SettingsPage() {
                                             type={showCurrentPassword ? "text" : "password"}
                                             className="w-full border rounded px-3 py-2 pr-10"
                                             placeholder="Enter current password"
+                                            value={currentPassword}
+                                            onChange={(e) => setCurrentPassword(e.target.value)}
                                         />
                                         <button
                                             type="button"
@@ -196,6 +328,8 @@ export default function SettingsPage() {
                                             type={showNewPassword ? "text" : "password"}
                                             className="w-full border rounded px-3 py-2 pr-10"
                                             placeholder="Enter new password"
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
                                         />
                                         <button
                                             type="button"
@@ -215,6 +349,8 @@ export default function SettingsPage() {
                                             type={showConfirmPassword ? "text" : "password"}
                                             className="w-full border rounded px-3 py-2 pr-10"
                                             placeholder="Confirm new password"
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
                                         />
                                         <button
                                             type="button"
@@ -230,7 +366,45 @@ export default function SettingsPage() {
                                     <button className="px-4 py-2 border rounded text-white bg-red-600 hover:bg-red-700">
                                         Cancel
                                     </button>
-                                    <button className="px-4 py-2 border rounded text-white bg-green-600 hover:bg-green-700">
+                                    <button
+                                        className="px-4 py-2 border rounded text-white bg-green-600 hover:bg-green-700"
+                                        onClick={async () => {
+                                            if (newPassword !== confirmPassword) {
+                                                alert("New password and confirmation do not match.");
+                                                return;
+                                            }
+                                            try {
+                                                const jwt = localStorage.getItem("jwt");
+                                                const res = await fetch("http://localhost:1337/api/auth/change-password", {
+                                                    method: "POST",
+                                                    headers: {
+                                                        "Content-Type": "application/json",
+                                                        Authorization: `Bearer ${jwt}`,
+                                                    },
+                                                    body: JSON.stringify({
+                                                        currentPassword,
+                                                        password: newPassword,
+                                                        passwordConfirmation: confirmPassword,
+                                                    }),
+                                                });
+
+                                                if (!res.ok) {
+                                                    const errorData = await res.json();
+                                                    console.error("Error changing password:", errorData);
+                                                    alert("Failed to change password. Please try again.");
+                                                    return;
+                                                }
+
+                                                alert("Password changed successfully!");
+                                                setCurrentPassword("");
+                                                setNewPassword("");
+                                                setConfirmPassword("");
+                                            } catch (err) {
+                                                console.error("Error:", err);
+                                                alert("An error occurred. Please try again.");
+                                            }
+                                        }}
+                                    >
                                         Save Changes
                                     </button>
                                 </div>

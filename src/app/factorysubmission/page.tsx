@@ -13,16 +13,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import React from "react";
+import Link from "next/link";
 
 
 export default function FactorySubmissionPage() {
     const [factorySubmissionData, setFactorySubmission] = useState<any[]>([]);
+    const [feedbackData, setFeedbackData] = useState<any[]>([]);
     const [allbatchData, setAllBatchData] = useState<any[]>([]);
     const [filters, setFilters] = useState({
         batchId: "",
         dateOfResult: "",
         farmName: "",
         qualityGrade: "",
+    });
+    const [factorySelection, setFactorySelection] = useState({
+        factory: "",
     });
     const fetchAllBatchData = async () => {
         try {
@@ -47,7 +52,8 @@ export default function FactorySubmissionPage() {
         try {
             const queryParams = new URLSearchParams();
             queryParams.append("filters[user_documentId][$eq]", localStorage.getItem("userId") || "");
-            
+            queryParams.append("filters[Submission_status][$eq]", "Waiting");
+
             if (filters.batchId) {
                 queryParams.append("filters[Batch_id][$eq]", filters.batchId);
             }
@@ -87,6 +93,37 @@ export default function FactorySubmissionPage() {
             );
         } catch (error) {
             console.error("Error fetching batch data:", error);
+        }
+    };
+
+    const handleSubmitToFactory = async (documentId: string, factorySelection: string) => {
+        if (!factorySelection) {
+            alert("Please select a factory before submitting.");
+            return;
+        }
+        try {
+            const response = await fetch(`http://localhost:1337/api/factory-submissions/${documentId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+                body: JSON.stringify({
+                    data: {
+                        Submission_status: "Pending",
+                        Factory: factorySelection,
+                        Date_Received: new Date().toISOString(),
+                    },
+                }),
+            });
+            if (!response.ok) {
+                throw new Error("Failed to submit to factory");
+            }
+            await fetchFactoryData();
+            alert("Submitted to factory successfully!");
+        }
+        catch (error) {
+            console.error("Error submitting to factory:", error);
         }
     };
     type Farm = {
@@ -135,27 +172,37 @@ export default function FactorySubmissionPage() {
     const router = useRouter();
 
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 1;
+    const itemsPerPage = 3;
 
-    const feedbackData = [
-        {
-            id: "T-Batch-001",
-            farm: "Little Farm",
-            output: "Capsules: 1200 packs",
-            remain: "50 Kg",
-            status: "Completed",
-            note: "All turmeric used efficiently.",
-        },
-        {
-            id: "T-Batch-021",
-            farm: "Little Farm 2",
-            output: "Capsules: 1200 packs",
-            remain: "50 Kg",
-            status: "In process",
-            note: "Awaiting final packaging",
-        },
-        // เพิ่มได้ตามต้องการ
-    ];
+    const fetchFeedbackData = async () => {
+        try {
+            const response = await fetch(`http://localhost:1337/api/factory-submissions?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}&filters[Submission_status][$ne]=Waiting`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+            });
+            if (!response.ok) {
+                throw new Error("Failed to fetch feedback data");
+            }
+            const data = await response.json();
+            setFeedbackData(
+                data.data.map((item: any) => ({
+                    id: item.Batch_id,
+                    documentId: item.documentId,
+                    farm: item.Farm_Name,
+                    output_capsules: item.Output_Capsules,
+                    output_essential_oil: item.Output_Essential_Oil,
+                    remain: item.Turmeric_Utilization_Remaining,
+                    unit: item.Unit,
+                    status: item.Submission_status,
+                    note: item.Note,
+                }))
+            );
+        }
+        catch (error) {
+            console.error("Error fetching feedback data:", error);
+        }
+    };
 
     const totalPages = Math.ceil(feedbackData.length / itemsPerPage);
     const currentItems = feedbackData.slice(
@@ -175,14 +222,14 @@ export default function FactorySubmissionPage() {
         if (selectAll) {
             setSelectedRows([]);
         } else {
-            setSelectedRows(factorySubmissionData.map((item) => item.id));
+            setSelectedRows(factorySubmissionData.map((item) => item.documentId));
         }
         setSelectAll(!selectAll);
     };
 
-    const handleSelectRow = (id: string) => {
+    const handleSelectRow = (documentId: string) => {
         setSelectedRows((prev) =>
-            prev.includes(id) ? prev.filter((row) => row !== id) : [...prev, id]
+            prev.includes(documentId) ? prev.filter((row) => row !== documentId) : [...prev, documentId]
         );
     };
 
@@ -190,6 +237,7 @@ export default function FactorySubmissionPage() {
         fetchFarms();
         fetchAllBatchData();
         fetchFactoryData();
+        fetchFeedbackData();
     }, []);
 
     return (
@@ -336,8 +384,8 @@ export default function FactorySubmissionPage() {
                                             <td className="px-2 py-2">
                                                 <input
                                                     type="checkbox"
-                                                    checked={selectedRows.includes(batch.id)}
-                                                    onChange={() => handleSelectRow(batch.id)}
+                                                    checked={selectedRows.includes(batch.documentId)}
+                                                    onChange={() => handleSelectRow(batch.documentId)}
                                                 />
                                             </td>
                                             <td className="px-2 py-2">{batch.id}</td>
@@ -354,16 +402,34 @@ export default function FactorySubmissionPage() {
                                             </td>
                                             <td className="px-2 py-2 text-green-600">{batch.status}</td>
                                             <td className="px-2 py-2">
-                                                <select className="border rounded px-2 py-1">
-                                                    <option>Select Factory</option>
-                                                </select>
+                                                <Select value={factorySelection.factory} onValueChange={(value) => setFactorySelection({ factory: value })}>
+                                                    <SelectTrigger className="w-full border rounded px-2 py-1">
+                                                        <SelectValue placeholder="Select Factory" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="MFU">
+                                                            MFU
+                                                        </SelectItem>
+                                                        <SelectItem value="Lamduan">
+                                                            Lamduan
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
                             <div className="mt-4 text-right">
-                                <button className="bg-green-600 text-white px-4 py-2 rounded transition-colors hover:bg-green-700">
+                                <button className="bg-green-600 text-white px-4 py-2 rounded transition-colors hover:bg-green-700"
+                                    onClick={() => {
+                                        selectedRows.forEach((documentId) => handleSubmitToFactory(documentId, factorySelection.factory));
+                                        fetchFactoryData();
+                                        setSelectedRows([]);
+                                        setSelectAll(false);
+                                        fetchFeedbackData();
+                                    }}
+                                >
                                     Submit to Factory
                                 </button>
                             </div>
@@ -386,18 +452,21 @@ export default function FactorySubmissionPage() {
                             </thead>
                             <tbody>
                                 {currentItems.length === 0 ? (
-                                    <tr>
+                                    <tr key="no-data">
                                         <td colSpan={7} className="text-center py-4 text-gray-500">
                                             No data on this page.
                                         </td>
                                     </tr>
                                 ) : (
                                     currentItems.map((item) => (
-                                        <tr key={item.id} className="border-b">
+                                        <tr key={item.documentId} className="border-b">
                                             <td className="py-2 px-2">{item.id}</td>
                                             <td className="py-2 px-2">{item.farm}</td>
-                                            <td className="py-2 px-2">{item.output}</td>
-                                            <td className="py-2 px-2">{item.remain}</td>
+                                            <td className="py-2 px-2">
+                                                {item.output_capsules || item.output_essential_oil
+                                                    ? `${item.output_capsules ? `Capsules: ${item.output_capsules} packs` : ""} ${item.output_essential_oil ? `Essential Oil: ${item.output_essential_oil} liters` : ""}`.trim()
+                                                    : "-"}</td>
+                                            <td className="py-2 px-2">{item.remain && item.unit ? `${item.remain} ${item.unit}` : "-"}</td>
                                             <td className="py-2 px-2">
                                                 <span
                                                     className={`text-xs px-3 py-1 rounded-full ${item.status === "Completed"
@@ -408,14 +477,18 @@ export default function FactorySubmissionPage() {
                                                     {item.status}
                                                 </span>
                                             </td>
-                                            <td className="py-2 px-2">{item.note}</td>
+                                            <td className="py-2 px-2">{item.note ? `${item.note}` : "-"}</td>
                                             <td className="py-2 px-2 text-center">
-                                                <button
-                                                    onClick={() => router.push(`/factorysubmission/${item.id}`)}
-                                                    className="text-blue-600 hover:underline flex items-center gap-1"
-                                                >
-                                                    View
-                                                </button>
+                                                <Link href={`/factorysubmission/${item.documentId}`} key={item.documentId}>
+                                                    {item.status === "Completed" && (
+                                                        <button
+                                                            onClick={() => router.push(`/factorysubmission/${item.id}`)}
+                                                            className="text-blue-600 hover:underline flex items-center gap-1"
+                                                        >
+                                                            View
+                                                        </button>
+                                                    )}
+                                                </Link>
                                             </td>
                                         </tr>
                                     ))
