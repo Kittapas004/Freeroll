@@ -3,7 +3,7 @@
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useRef, useState } from "react";
-import { notFound, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { MapPin, Calendar, Sprout, Leaf, Plus, Wrench, FlaskConical, Notebook, Check, ChartSpline, Star, SquarePen, Trash, Circle, ChevronDown, ChevronUp, Pencil, EllipsisVertical } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,12 +15,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import React from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useParams } from 'next/navigation';
-import { Sub } from "@radix-ui/react-dropdown-menu";
+import { useParams, useSearchParams } from 'next/navigation';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 
 export default function PlantingBatchDetail() {
+    const searchParams = useSearchParams();
     const { documentId } = useParams();
     const router = useRouter();
     console.log("Document ID:", documentId);
@@ -872,6 +872,20 @@ export default function PlantingBatchDetail() {
         setHarvestFormData({ ...harvest_formData, [name]: value });
     };
 
+    React.useEffect(() => {
+        // Check for query parameters and set the active tab
+        if (searchParams.has("fertilizer")) {
+            setActiveTab("fertilizer");
+        } else if (searchParams.has("harvest")) {
+            setActiveTab("harvest");
+        } else if (searchParams.has("lab")) {
+            setActiveTab("lab");
+        }
+    }, [searchParams]);
+    const handleTabChange = (newTab: string) => {
+        setActiveTab(newTab);
+    };
+
     if (!PlantingBatches) {
         return <p>Loading...</p>;
     }
@@ -1153,7 +1167,7 @@ export default function PlantingBatchDetail() {
                                     className={`flex items-center gap-2 text-sm font-medium px-2 pb-2 transition-all
                         ${activeTab === tab.key ? "text-green-600 font-semibold border-b-[1px] z-10 border-green-600" : "text-gray-400"}
                         `}
-                                    onClick={() => { setActiveTab(tab.key), setIsAdding(false) }}
+                                    onClick={() => { handleTabChange(tab.key), setIsAdding(false), setIsEditing(false) }}
                                 >
                                     {tab.icon} {tab.name}
                                 </button>
@@ -1178,8 +1192,8 @@ export default function PlantingBatchDetail() {
                                     <Card className="p-4 space-y-4 shadow-sm">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="flex flex-col gap-1">
-                                                <Label>Date</Label>
-                                                <Input type="date" name="date" value={fertilizer_formData.date} onChange={fertilizer_handleChange} />
+                                                <Label>Fertilizer Date</Label>
+                                                <Input type="datetime-local" name="date" value={fertilizer_formData.date} onChange={fertilizer_handleChange} />
                                             </div>
                                             <div className="flex flex-col gap-1">
                                                 <Label>Fertilizer Type</Label>
