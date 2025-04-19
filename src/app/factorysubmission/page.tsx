@@ -26,9 +26,8 @@ export default function FactorySubmissionPage() {
         farmName: "",
         qualityGrade: "",
     });
-    const [factorySelection, setFactorySelection] = useState({
-        factory: "",
-    });
+    const [factorySelections, setFactorySelections] = useState<{ [key: string]: string }>({});
+
     const fetchAllBatchData = async () => {
         try {
             const response = await fetch(`http://localhost:1337/api/factory-submissions?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
@@ -402,20 +401,25 @@ export default function FactorySubmissionPage() {
                                             </td>
                                             <td className="px-2 py-2 text-green-600">{batch.status}</td>
                                             <td className="px-2 py-2">
-                                                <Select value={factorySelection.factory} onValueChange={(value) => setFactorySelection({ factory: value })}>
+                                                <Select
+                                                    value={factorySelections[batch.documentId] || ""}
+                                                    onValueChange={(value) =>
+                                                        setFactorySelections((prev) => ({
+                                                            ...prev,
+                                                            [batch.documentId]: value,
+                                                        }))
+                                                    }
+                                                >
                                                     <SelectTrigger className="w-full border rounded px-2 py-1">
                                                         <SelectValue placeholder="Select Factory" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="MFU">
-                                                            MFU
-                                                        </SelectItem>
-                                                        <SelectItem value="Lamduan">
-                                                            Lamduan
-                                                        </SelectItem>
+                                                        <SelectItem value="MFU">MFU</SelectItem>
+                                                        <SelectItem value="Lamduan">Lamduan</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </td>
+
                                         </tr>
                                     ))}
                                 </tbody>
@@ -423,12 +427,17 @@ export default function FactorySubmissionPage() {
                             <div className="mt-4 text-right">
                                 <button className="bg-green-600 text-white px-4 py-2 rounded transition-colors hover:bg-green-700"
                                     onClick={() => {
-                                        selectedRows.forEach((documentId) => handleSubmitToFactory(documentId, factorySelection.factory));
+                                        selectedRows.forEach((documentId) => {
+                                            const selectedFactory = factorySelections[documentId]; // ✅ ดึงค่าโรงงานที่เลือกของแต่ละแถว
+                                            handleSubmitToFactory(documentId, selectedFactory);
+                                        });
+
                                         fetchFactoryData();
                                         setSelectedRows([]);
                                         setSelectAll(false);
                                         fetchFeedbackData();
                                     }}
+
                                 >
                                     Submit to Factory
                                 </button>
