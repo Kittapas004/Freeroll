@@ -10,8 +10,9 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import WeatherCard from "@/components/WeatherCard";
 import React from "react";
-import { Search } from "lucide-react";
+import { Inspect, Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import QualityDashboard from "./QualityDashboard";
 
 export default function DashboardPage() {
   const [batchDocumentID, setBatchDocumentID] = useState<string | null>(null);
@@ -264,7 +265,7 @@ export default function DashboardPage() {
       ...submittedtofactory,
     ];
 
-    return allEvents.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return allEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   };
 
   const timeline = generateTimeline();
@@ -343,7 +344,7 @@ export default function DashboardPage() {
     ];
 
     return allActivities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    
+
   };
 
   const activities = generateActivities();
@@ -530,6 +531,12 @@ export default function DashboardPage() {
                 {timeline.map((item, i) => (
                   <li key={i} className="relative pl-6 pb-6">
                     <span
+                      title={
+                        item.color === "green" ? "Completed"
+                          : item.color === "blue" ? "Pending"
+                            : item.color === "gray" ? "Waiting"
+                              : "Unknown"
+                      }
                       className={`
           absolute left-0 top-1 w-3 h-3 rounded-full border-2 border-white
           ring-2 ring-${item.color}-500 bg-white
@@ -554,24 +561,24 @@ export default function DashboardPage() {
               <div className="space-y-4">
                 {activities.length > 0 ? (
                   activities.slice(0, 3).map((act, i) => (
-                  <div
-                    key={i}
-                    className="border p-4 rounded-xl hover:shadow-md transition-shadow duration-200"
-                  >
-                    <div className="flex items-center gap-2 font-medium text-sm text-gray-700 mb-2">
-                    <span className="text-lg text-green-600">{act.icon}</span>
-                    <span>{act.title}</span>
+                    <div
+                      key={i}
+                      className="border p-4 rounded-xl hover:shadow-md transition-shadow duration-200"
+                    >
+                      <div className="flex items-center gap-2 font-medium text-sm text-gray-700 mb-2">
+                        <span className="text-lg text-green-600">{act.icon}</span>
+                        <span>{act.title}</span>
+                      </div>
+                      <ul className="text-xs text-gray-600 list-disc list-inside space-y-1">
+                        {act.content.map((line, j) => (
+                          <li key={j}>{line}</li>
+                        ))}
+                      </ul>
                     </div>
-                    <ul className="text-xs text-gray-600 list-disc list-inside space-y-1">
-                    {act.content.map((line, j) => (
-                      <li key={j}>{line}</li>
-                    ))}
-                    </ul>
-                  </div>
                   ))
                 ) : (
                   <div className="text-center text-gray-500 text-sm">
-                  No recent activities to display.
+                    No recent activities to display.
                   </div>
                 )}
               </div>
@@ -594,11 +601,17 @@ export default function DashboardPage() {
         </div>
       </main>
     ],
+
+    "Quality Inspection": [
+      <QualityDashboard />
+    ],
+
     //Admin Dashboard
     Admin: [
       <h1>Hello Admin</h1>
     ],
   }
+
 
   const dashboard = dashboardByRole[user.role]?.map((component, index) =>
     React.cloneElement(component, { key: `dashboard-${user.role}-${index}` })

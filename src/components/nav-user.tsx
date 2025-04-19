@@ -48,9 +48,13 @@ export function NavUser({
   const handleLogout = () => {
     localStorage.removeItem("jwt")
     localStorage.removeItem("userId")
-    console.log({jwt: localStorage.getItem("jwt")})
+    console.log({ jwt: localStorage.getItem("jwt") })
     console.log("Logout successful")
     router.push("/")
+  }
+
+  const handleSettings = () => {
+    router.push("/settings")
   }
 
   return (
@@ -95,17 +99,9 @@ export function NavUser({
 
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <BadgeCheck />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSettings}>
                 <Settings />
                 Settings
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell />
-                Notifications
               </DropdownMenuItem>
             </DropdownMenuGroup>
 
