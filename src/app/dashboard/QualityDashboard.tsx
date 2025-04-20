@@ -116,14 +116,14 @@ export default function QualityDashboard() {
   const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
     if (status === 'Passed') {
       return (
-        <div className="flex items-center rounded-full text-xs px-3 py-1 bg-green-100 text-green-600">
-          <CheckCircle size={12} className="mr-1" /> Passed
+        <div className="inline-flex items-center justify-center rounded-full text-xs px-3 py-1 bg-green-100 text-green-600">
+          <CheckCircle size={14} className="mr-1" /> Passed
         </div>
       );
     } else {
       return (
-        <div className="flex items-center rounded-full text-xs px-3 py-1 bg-red-100 text-red-600">
-          <XCircle size={12} className="mr-1" /> Failed
+        <div className="inline-flex items-center justify-center rounded-full text-xs px-3 py-1 bg-red-100 text-red-600">
+          <XCircle size={14} className="mr-1" /> Failed
         </div>
       );
     }
@@ -290,7 +290,7 @@ export default function QualityDashboard() {
           <Card className="p-4">
             <div className="text-sm font-bold text-gray-700 mb-4">Quick Action</div>
             <div className="space-y-2">
-              <button className="w-full py-2 bg-green-500 hover:bg-green-600 text-white rounded flex items-center justify-center">
+              {/* <button className="w-full py-2 bg-green-500 hover:bg-green-600 text-white rounded flex items-center justify-center">
                 <Activity size={16} className="mr-2" />
                 <span>Inspection Detail</span>
               </button>
@@ -301,7 +301,7 @@ export default function QualityDashboard() {
               <button className="w-full py-2 bg-gray-500 hover:bg-gray-600 text-white rounded flex items-center justify-center">
                 <FileText size={16} className="mr-2" />
                 <span>Reports & Data Export</span>
-              </button>
+              </button> */}
             </div>
           </Card>
         </div>
@@ -360,7 +360,7 @@ export default function QualityDashboard() {
         
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Notification</h2>
-          <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">2</span>
+          {/* <span className="bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">2</span> */}
         </div>
         
         <div className="space-y-3">
