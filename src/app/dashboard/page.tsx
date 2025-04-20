@@ -549,7 +549,13 @@ export default function DashboardPage() {
                   return (
                     <li key={i} className="relative pl-6 pb-6">
                       <span
-                        title={item.status}
+                        title={
+                          item.color === "green"
+                            ? "Completed"
+                            : item.color === "blue"
+                              ? "Pending"
+                              : "No Status"
+                        }
                         className={`absolute left-0 top-1 w-3 h-3 rounded-full border-2 border-white bg-white ring-2 ${ringColorClass}`}
                       />
                       <div className="font-medium text-gray-800">{item.status}</div>
