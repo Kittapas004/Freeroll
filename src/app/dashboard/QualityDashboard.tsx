@@ -393,15 +393,6 @@ export default function QualityDashboard() {
           </div>
         </div>
         
-        <div className="mt-auto pt-4">
-          <div className="flex items-center">
-            <div className="w-8 h-8 rounded-full bg-gray-200 mr-2 flex-shrink-0"></div>
-            <div className="flex-1">
-              <div className="text-sm font-medium">Kittapas Viriyapapaipool</div>
-              <div className="text-xs text-gray-500">MFULab@gmail.com</div>
-            </div>
-          </div>
-        </div>
       </div>
     </main>
   );
