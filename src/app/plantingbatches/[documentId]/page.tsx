@@ -91,6 +91,27 @@ export default function PlantingBatchDetail() {
 
     const [PlantingBatches, setPlantingBatches] = useState<Batches | null>(null);
     const [farmdata, setFarmdata] = useState<Farm[]>([]);
+    const [labdata, setLabdata] = useState<any[]>([]);
+
+    const fetchLabData = async () => {
+        try {
+            const response = await fetch(`http://localhost:1337/api/labs?populate=*`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+            });
+            if (!response.ok) throw new Error("Failed to fetch lab data");
+            const data = await response.json();
+            setLabdata(data.data.map((lab: any) => ({
+                id: lab.id,
+                documentId: lab.documentId,
+                Lab_name: lab.Lab_Name,
+            })));
+        }
+        catch (error) {
+            console.error("Error fetching lab data:", error);
+        }
+    };
 
     const fetchFarms = async () => {
         try {
@@ -175,7 +196,7 @@ export default function PlantingBatchDetail() {
                     id: record.id,
                     documentId: record.documentId,
                     date: record.Date,
-                    lab_name: record.Lab_name,
+                    lab_name: record.lab.Lab_Name,
                     quality_grade: record.Quality_grade,
                     status: record.Submission_status,
                     harvest_record: record.harvest_record.documentId,
@@ -338,13 +359,13 @@ export default function PlantingBatchDetail() {
                         },
                         body: JSON.stringify({
                             data: {
-                                Lab_name: selectedLab,
                                 Quality_grade: sample.quality_grade,
                                 Submission_status: "Pending",
                                 Date: new Date().toISOString(),
                                 Report: null,
                                 batch: documentId,
                                 harvest_record: sampleId,
+                                lab: selectedLab,
                             },
                         }),
                     });
@@ -652,6 +673,7 @@ export default function PlantingBatchDetail() {
 
     React.useEffect(() => {
         console.log("useEffect triggered");
+        fetchLabData();
         fetchFarms();
         fetchPlantingBatches();
     }
@@ -695,7 +717,7 @@ export default function PlantingBatchDetail() {
     });
 
     const [selectedSamples, setSelectedSamples] = useState<string[]>([]);
-    const [selectedLab, setSelectedLab] = useState<string>("MFU");
+    const [selectedLab, setSelectedLab] = useState<string>("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
@@ -1856,8 +1878,11 @@ export default function PlantingBatchDetail() {
                                         <SelectValue placeholder="Select Lab Name" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="MFU">MFU Lab</SelectItem>
-                                        <SelectItem value="VRI">VRI Lab</SelectItem>
+                                        {labdata.map((lab) => (
+                                            <SelectItem key={lab.id} value={lab.documentId}>
+                                                {lab.Lab_name}
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>

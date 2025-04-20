@@ -9,26 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
-interface LabSubmissionRecord {
-  id: number;
-  Date: string;
-  Lab_name: string;
-  Quality_grade: string;
-  Submission_status: string;
-  batch?: {
-    id: number;
-    Batch_ID: string;
-    Farm?: {
-      Name: string;
-    };
-    Harvest_Date: string;
-    Total_Yield: number;
-  };
-}
 
 export default function InspectionDetailsPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [records, setRecords] = useState<LabSubmissionRecord[]>([]);
+  const [recordDate, setRecordDate] = useState<any[]>([]);
   const [role, setRole] = useState<string | 'loading'>('loading');
   const [filters, setFilters] = useState({
     batchId: '',
@@ -46,6 +30,47 @@ export default function InspectionDetailsPage() {
 
   const ALLOWED_ROLES = ['Quality Inspection'];
 
+      const fetchLabSubmissions = async () => {
+      try {
+        const res = await fetch(`http://localhost:1337/api/labs?documentId=${localStorage.getItem("userId")}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+          },
+        });
+        const data = await res.json();
+        console.log('Lab documentId:', data.data[0].documentId);
+        
+        fetchLabSubmissionsByLabId(data.data[0].documentId);
+
+      } catch (err) {
+        console.error('Error fetching lab submission records:', err);
+      }
+    };
+
+    const fetchLabSubmissionsByLabId = async (id: string) => {
+      try {
+        const res = await fetch(`http://localhost:1337/api/lab-submission-records?populate[batch][populate]=Farm&populate[harvest_record][populate]=*&filters[lab][documentId][$eq]=${id}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+          },
+        });
+        const data = await res.json();
+        const mappedData = data.data.map((item: any) => ({
+          id: item.id,
+          batch_id: item.batch.Batch_id,
+          farm_name: item.batch.Farm.Farm_Name,
+          Date: item.Date,
+          Quality_grade: item.Quality_grade,
+          Submission_status: item.Submission_status,
+          yield: item.harvest_record.yleld,
+          yield_unit: item.harvest_record.Yleld_unit,
+        }));
+        setRecordDate(mappedData);
+      } catch (err) {
+        console.error('Error fetching lab submission records:', err);
+      }
+    }
+
   useEffect(() => {
     const userRole = localStorage.getItem('userRole');
     setRole(userRole || '');
@@ -59,38 +84,15 @@ export default function InspectionDetailsPage() {
   }, [role]);
 
   useEffect(() => {
-    const fetchLabSubmissions = async () => {
-      try {
-        const res = await fetch('http://localhost:1337/api/lab-submission-records?populate=batch.Farm', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('jwt')}`,
-          },
-        });
-        const data = await res.json();
-        const cleanedRecords = data.data
-          .filter((item: any) => item?.attributes?.batch?.data)
-          .map((item: any) => ({
-            id: item.id,
-            ...item.attributes,
-            batch: {
-              ...item.attributes.batch.data.attributes,
-              id: item.attributes.batch.data.id,
-              Farm: item.attributes.batch.data.attributes.Farm,
-            },
-          }));
-        setRecords(cleanedRecords);
-      } catch (err) {
-        console.error('Error fetching lab submission records:', err);
-      }
-    };
+
     if (role !== 'loading' && ALLOWED_ROLES.includes(role)) {
       fetchLabSubmissions();
     }
   }, [role]);
 
-  const filteredRecords = records.filter((record) => {
-    const batchMatch = record.batch?.Batch_ID.toLowerCase().includes(filters.batchId.toLowerCase());
-    const farmMatch = record.batch?.Farm?.Name.toLowerCase().includes(filters.farmName.toLowerCase());
+  const filteredRecords = recordDate.filter((record) => {
+    const batchMatch = record.batch_id.toLowerCase().includes(filters.batchId.toLowerCase());
+    const farmMatch = record.farm_name.toLowerCase().includes(filters.farmName.toLowerCase());
     const dateMatch = filters.date === '' || new Date(record.Date).toISOString().split('T')[0] === filters.date;
     const statusMatch = filters.status === '' || record.Submission_status === filters.status;
     return batchMatch && farmMatch && dateMatch && statusMatch;
@@ -167,12 +169,12 @@ export default function InspectionDetailsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredRecords.map((record) => (
               <Card key={record.id} className="p-4">
-                <div className="font-semibold text-lg">Batch: {record.batch?.Batch_ID || '-'}</div>
-                <div className="text-sm text-gray-600">Farm: {record.batch?.Farm?.Name || '-'}</div>
+                <div className="font-semibold text-lg">Batch: {record.batch_id || '-'}</div>
+                <div className="text-sm text-gray-600">Farm: {record.farm_name || '-'}</div>
                 <div className="text-sm">Date: {new Date(record.Date).toLocaleDateString()}</div>
                 <div className="text-sm">Quality: {record.Quality_grade}</div>
                 <div className="text-sm">Status: {record.Submission_status}</div>
-                <div className="text-sm">Yield: {record.batch?.Total_Yield} kg</div>
+                <div className="text-sm">Yield: {record.yield} {record.yield_unit}</div>
               </Card>
             ))}
           </div>
