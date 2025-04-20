@@ -41,6 +41,7 @@ export default function NotificationPanel() {
           time: notification.Date,
           Notification_status: notification.Notification_status,
         }))
+        .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()) // 👉 sort ตรงนี้
       );
     } catch (error) {
       console.error("Error fetching notifications:", error);
