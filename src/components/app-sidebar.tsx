@@ -4,12 +4,15 @@
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  LayoutGrid,
+  Search,
   FileText,
   Settings2,
   SquareTerminal,
   Factory,
-  Shovel
-} from "lucide-react"
+  Shovel,
+  History, // ✅ เพิ่มตรงนี้
+} from "lucide-react";
 
 import { NavMain } from "@/components/nav-main"
 
@@ -79,6 +82,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       { title: "Dashboard", url: "/dashboard", icon: SquareTerminal },
       { title: "User Management", url: "/users", icon: FileText },
       { title: "System Settings", url: "/admin/settings", icon: Settings2 },
+    ],
+    "Quality Inspection": [
+      { title: "Dashboard", url: "/dashboard", icon: LayoutGrid },
+      { title: "Inspection Details", url: "/inspection-details", icon: Search },
+      { title: "Inspection History", url: "/inspection-history", icon: History },
+      { title: "Reports & Data Export", url: "/reports", icon: FileText },
+      { title: "Settings", url: "/settings", icon: Settings2 },
     ],
   };
   // console.log("User role:", user.role);
