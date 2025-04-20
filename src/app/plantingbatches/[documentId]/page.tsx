@@ -239,6 +239,27 @@ export default function PlantingBatchDetail() {
                     }
                 })
             });
+            try {
+                const res_notification = await fetch(`http://localhost:1337/api/notifications`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                    },
+                    body: JSON.stringify({
+                        data: {
+                            Text: `A new fertilizer record has been created`,
+                            Date: new Date().toISOString(),
+                            Notification_status: "General",
+                            batch: documentId,
+                            user_documentId: localStorage.getItem("userId"),
+                        }
+                    })
+                });
+                if (!res_notification.ok) throw new Error("Failed to create notification record");
+            } catch (error) {
+                console.error("Error creating notification record:", error);
+            }
             if (!res.ok) throw new Error("Failed to create fertilizer record");
             const data = await res.json();
             console.log("Fertilizer record created:", data);
@@ -295,6 +316,27 @@ export default function PlantingBatchDetail() {
                     }
                 })
             });
+            try {
+                const res_notification = await fetch(`http://localhost:1337/api/notifications`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                    },
+                    body: JSON.stringify({
+                        data: {
+                            Text: `A new harvest record has been created`,
+                            Date: new Date().toISOString(),
+                            Notification_status: "General",
+                            batch: documentId,
+                            user_documentId: localStorage.getItem("userId"),
+                        }
+                    })
+                });
+                if (!res_notification.ok) throw new Error("Failed to create notification record");
+            } catch (error) {
+                console.error("Error creating notification record:", error);
+            }
             if (!res.ok) throw new Error("Failed to create fertilizer record");
             const data = await res.json();
             console.log("Fertilizer record created:", data);
@@ -370,6 +412,7 @@ export default function PlantingBatchDetail() {
                         }),
                     });
 
+
                     if (!res.ok) {
                         throw new Error(`Failed to create lab submission record for sample ID: ${sampleId}`);
                     }
@@ -392,6 +435,23 @@ export default function PlantingBatchDetail() {
                         if (!updateRes.ok) {
                             throw new Error(`Failed to update harvest record with ID: ${sampleId}`);
                         }
+                        const submitted_notification = await fetch(`http://localhost:1337/api/notifications`, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                            },
+                            body: JSON.stringify({
+                                data: {
+                                    Text: `A new lab submission has been created`,
+                                    Date: new Date().toISOString(),
+                                    Notification_status: "General",
+                                    batch: documentId,
+                                    user_documentId: localStorage.getItem("userId"),
+                                }
+                            })
+                        });
+                        if (!submitted_notification.ok) throw new Error("Failed to create notification record");
                     }
                 })
             );
@@ -844,6 +904,24 @@ export default function PlantingBatchDetail() {
 
             if (!farm_res.ok) throw new Error("Failed to update Farm Batch_Status to End Planted");
 
+            const notification_res = await fetch(`http://localhost:1337/api/notifications`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+                body: JSON.stringify({
+                    data: {
+                        Text: `Batch marked as completed successfully`,
+                        Date: new Date().toISOString(),
+                        Notification_status: "General",
+                        batch: documentId,
+                        user_documentId: localStorage.getItem("userId"),
+                    }
+                })
+            });
+            if (!notification_res.ok) throw new Error("Failed to create notification record");
+
             alert("Batch marked as Completed Successfully!");
 
             // Automatically update Batch_Status to "Completed Past Data" after 10 minutes
@@ -1135,7 +1213,7 @@ export default function PlantingBatchDetail() {
                                     </Dialog>
                                     <button
                                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                        onClick={() => {handleDeleteBatch()}
+                                        onClick={() => { handleDeleteBatch() }
                                         }
                                     >
                                         Delete
