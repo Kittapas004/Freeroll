@@ -255,7 +255,7 @@ export default function DashboardPage() {
     const submittedtofactory = dashboardData.factory_records.map(record => ({
       date: new Date(record.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
       status: record.status === "Pending" ? "Submitted to Factory" : "Factory Submission Completed",
-      color: record.status === "Pending" ? "gray" : "green"
+      color: record.status === "Pending" ? "blue" : "green"
     }));
 
     const allEvents = [
@@ -422,8 +422,10 @@ export default function DashboardPage() {
                 <span className="text-lg">🌾</span>
               </div>
               <div className="text-xl font-bold text-gray-800 mt-1">
-                {dashboardData?.planting_date ?
-                  (Math.max(0, Math.ceil((new Date(dashboardData.planting_date).getTime() + 270 * 24 * 60 * 60 * 1000 - Date.now()) / (1000 * 60 * 60 * 24))) > 0
+                {dashboardData?.Farm_Status === "End Planted"
+                  ? "Harvested"
+                  : dashboardData?.planting_date
+                  ? (Math.max(0, Math.ceil((new Date(dashboardData.planting_date).getTime() + 270 * 24 * 60 * 60 * 1000 - Date.now()) / (1000 * 60 * 60 * 24))) > 0
                     ? Math.max(0, Math.ceil((new Date(dashboardData.planting_date).getTime() + 270 * 24 * 60 * 60 * 1000 - Date.now()) / (1000 * 60 * 60 * 24))) + " days"
                     : "Ready to harvest")
                   : "N/A"}
@@ -488,11 +490,13 @@ export default function DashboardPage() {
                 <span className="text-lg">🌱</span>
               </div>
               <div className="text-xl font-bold text-gray-800 mt-1">{dashboardData?.Farm_Status}</div>
-              <div className="text-xs text-gray-400 mt-0.5">
-                {dashboardData?.planting_date ?
+                {dashboardData?.Farm_Status !== "End Planted" && (
+                <div className="text-xs text-gray-400 mt-0.5">
+                  {dashboardData?.planting_date ?
                   `${Math.max(0, Math.ceil((new Date(dashboardData.planting_date).getTime() + 9 * 30 * 24 * 60 * 60 * 1000 - Date.now()) / (1000 * 60 * 60 * 24 * 30)))} more Months to Go!`
-                  : "N/A"}
-              </div>
+                  : "Ready to harvest"}
+                </div>
+                )}
             </div>
             <div className="bg-white border rounded-2xl shadow-sm p-4">
               <div className="text-sm text-gray-500 flex items-center justify-between gap-2">
