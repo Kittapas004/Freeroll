@@ -12,6 +12,7 @@ import WeatherCard from "@/components/WeatherCard";
 import React from "react";
 import { Inspect, Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MapPin, Calendar, Sprout, Leaf, Factory, Wrench, FlaskConical, Notebook, Check, ChartSpline, Star, SquarePen, Trash, Circle, ChevronDown, ChevronUp, Pencil, EllipsisVertical } from "lucide-react";
 import QualityDashboard from "./QualityDashboard";
 
 export default function DashboardPage() {
@@ -272,80 +273,79 @@ export default function DashboardPage() {
 
   const generateActivities = () => {
     if (!dashboardData) return [];
-
-    const plantedActivities = dashboardData.planting_date.length > 0 ? [
-      {
-        icon: "🌱",
-        title: "Planted",
-        date: new Date(dashboardData.planting_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        content: [
-          `Batch : ${dashboardData.batches_id}`,
-          `Date : ${new Date(dashboardData.planting_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
-          `Location : ${dashboardData.location}`,
-          `Plant Variety : ${dashboardData.plant_variety}`,
-        ],
-      }
-    ] : [];
-    const fertilizerActivities = dashboardData.recent_fertilizer_record
-      .map(record => ({
-        icon: "🧪",
-        title: "Fertilizer Applied",
-        date: new Date(record.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        content: [
-          `Batch : ${dashboardData.batches_id}`,
-          `Date : ${new Date(record.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
-          `Fertilizer Type : ${record.fertilizer_type}`,
-          `Fertilizer Quantity : ${record.amount} ${record.unit}`,
-        ],
-      }));
-
-    const harvestingActivities = dashboardData.recent_harvest_record
-      .map(record => ({
-        icon: "🧺",
-        title: "Harvesting Completed",
-        date: new Date(record.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        content: [
-          `Batch : ${dashboardData.batches_id}`,
-          `Date : ${new Date(record.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
-          `Quality Grade : ${record.quality_grade}`,
-          `Yield : ${record.yleld} ${record.yleld_unit}`,
-        ],
-      }));
-
-    const labActivities = dashboardData.lab_submission_record.map(record => ({
-      icon: "🏭",
-      title: "Lab Submission",
-      date: new Date(record.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+  
+    const plantedActivities = dashboardData.planting_date ? [{
+      icon: <Sprout className="w-4 h-4 text-green-600" />, // ✅ ใช้ Lucide icon
+      title: "Planted",
+      date: dashboardData.planting_date,
       content: [
         `Batch : ${dashboardData.batches_id}`,
-        `Date : ${new Date(record.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+        `Date : ${new Date(dashboardData.planting_date).toLocaleDateString('en-US')}`,
+        `Location : ${dashboardData.location}`,
+        `Plant Variety : ${dashboardData.plant_variety}`,
+      ]
+    }] : [];
+  
+    const fertilizerActivities = dashboardData.recent_fertilizer_record.map(record => ({
+      icon: <Leaf className="w-4 h-4 text-green-600" />, // ✅ Leaf สำหรับ Fertilizer
+      title: "Fertilizer Applied",
+      date: record.date,
+      content: [
+        `Batch : ${dashboardData.batches_id}`,
+        `Date : ${new Date(record.date).toLocaleDateString('en-US')}`,
+        `Fertilizer Type : ${record.fertilizer_type}`,
+        `Fertilizer Quantity : ${record.amount} ${record.unit}`,
+      ]
+    }));
+  
+    const harvestingActivities = dashboardData.recent_harvest_record.map(record => ({
+      icon: <Wrench className="w-4 h-4 text-yellow-600" />, // ✅ Wrench สำหรับ Harvest
+      title: "Harvesting",
+      date: record.date,
+      content: [
+        `Batch : ${dashboardData.batches_id}`,
+        `Date : ${new Date(record.date).toLocaleDateString('en-US')}`,
+        `Quality Grade : ${record.quality_grade}`,
+        `Yield : ${record.yleld} ${record.yleld_unit}`,
+      ]
+    }));
+  
+    const labActivities = dashboardData.lab_submission_record.map(record => ({
+      icon: <FlaskConical className="w-4 h-4 text-blue-600" />, // ✅ Flask สำหรับ Lab
+      title: "Lab Submission",
+      date: record.date,
+      content: [
+        `Batch : ${dashboardData.batches_id}`,
+        `Date : ${new Date(record.date).toLocaleDateString('en-US')}`,
         `Lab Name : ${record.lab_name}`,
         `Quality Grade : ${record.quality_grade}`,
-      ],
+      ]
     }));
+  
     const factoryActivities = dashboardData.factory_records.map(record => ({
-      icon: "🏭",
+      icon: <Factory className="w-4 h-4 text-purple-600" />, // ✅ Notebook สำหรับ Factory
       title: "Factory Submission",
-      date: new Date(record.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      date: record.date,
       content: [
         `Batch : ${dashboardData.batches_id}`,
-        `Date : ${new Date(record.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+        `Date : ${new Date(record.date).toLocaleDateString('en-US')}`,
         `Factory Name : ${record.factory_name}`,
         `Status : ${record.status}`,
-      ],
+      ]
     }));
-
+  
     const allActivities = [
       ...plantedActivities,
       ...fertilizerActivities,
       ...harvestingActivities,
       ...labActivities,
-      ...factoryActivities,
+      ...factoryActivities
     ];
-
+  
+    // ✅ Sort by real date value
     return allActivities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
   };
+  
 
   const activities = generateActivities();
 
@@ -528,26 +528,25 @@ export default function DashboardPage() {
                   className="absolute left-5.25 w-0.5 bg-gray-300"
                   style={{ top: '0.75rem', bottom: '3.25rem' }} // Adjust bottom to stop before last dot
                 ></div>
-                {timeline.map((item, i) => (
-                  <li key={i} className="relative pl-6 pb-6">
-                    <span
-                      title={
-                        item.color === "green" ? "Completed"
-                          : item.color === "blue" ? "Pending"
-                            : item.color === "gray" ? "Waiting"
-                              : "Unknown"
-                      }
-                      className={`
-          absolute left-0 top-1 w-3 h-3 rounded-full border-2 border-white
-          ring-2 ring-${item.color}-500 bg-white
-        `}
-                    ></span>
-                    <div className="font-medium text-gray-800">{item.status}</div>
-                    <div className="text-xs text-gray-500">{item.date}</div>
-                  </li>
-                ))}
-              </ul>
+                {timeline.map((item, i) => {
+                  const ringColorClass = {
+                    green: "ring-green-500",
+                    blue: "ring-blue-500",
+                    gray: "ring-gray-500",
+                  }[item.color] || "ring-gray-500"; // fallback เผื่อไม่มีค่า
 
+                  return (
+                    <li key={i} className="relative pl-6 pb-6">
+                      <span
+                        title={item.status}
+                        className={`absolute left-0 top-1 w-3 h-3 rounded-full border-2 border-white bg-white ring-2 ${ringColorClass}`}
+                      />
+                      <div className="font-medium text-gray-800">{item.status}</div>
+                      <div className="text-xs text-gray-500">{item.date}</div>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
           </div>
 
