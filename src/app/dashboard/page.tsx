@@ -380,14 +380,14 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-4">
-              <div className="relative">
+              {/* <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
                   placeholder="Search batches..."
                   className="pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
-              </div>
+              </div> */}
               <span className="">
                 <Select
                   value={batchDocumentID ?? ""}
