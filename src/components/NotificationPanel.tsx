@@ -3,6 +3,32 @@ import { Info, CheckCircle2, XCircle, CircleArrowLeft, CircleArrowRight } from "
 import clsx from "clsx";
 import React, { useState, useEffect } from "react";
 
+function formatRelativeTime(dateString: string): string {
+  const now = new Date();
+  const date = new Date(dateString);
+  let diff = Math.round((now.getTime() - date.getTime()) / 1000); // seconds passed
+
+  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
+  const divisions = [
+    { amount: 60, name: "second" },
+    { amount: 60, name: "minute" },
+    { amount: 24, name: "hour" },
+    { amount: 30, name: "day" },
+    { amount: 12, name: "month" },
+    { amount: Infinity, name: "year" },
+  ];
+
+  for (let i = 0; i < divisions.length; i++) {
+    if (Math.abs(diff) < divisions[i].amount) {
+      return rtf.format(-diff, divisions[i].name as Intl.RelativeTimeFormatUnit);
+    }
+    diff = Math.round(diff / divisions[i].amount);
+  }
+
+  return "";
+}
+
 const iconMap = {
   General: <Info className="w-4 h-4 text-blue-500" />,
   Succeed: <CheckCircle2 className="w-4 h-4 text-green-500" />,
@@ -41,7 +67,7 @@ export default function NotificationPanel() {
           time: notification.Date,
           Notification_status: notification.Notification_status,
         }))
-        .sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime()) // 👉 sort ตรงนี้
+        .sort((a: any, b: any) => new Date(b.time).getTime() - new Date(a.time).getTime())
       );
     } catch (error) {
       console.error("Error fetching notifications:", error);
@@ -101,10 +127,7 @@ export default function NotificationPanel() {
                  {n.bacth_id} {n.message}
                 </div>
                 <div className="text-xs text-gray-400">
-                  {new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(
-                    Math.round((new Date(n.time).getTime() - Date.now()) / 60000),
-                    "minute"
-                  )}
+                {formatRelativeTime(n.time)}
                 </div>
               </div>
             </div>
