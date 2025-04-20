@@ -273,7 +273,7 @@ export default function DashboardPage() {
 
   const generateActivities = () => {
     if (!dashboardData) return [];
-  
+
     const plantedActivities = dashboardData.planting_date ? [{
       icon: <Sprout className="w-4 h-4 text-green-600" />, // ✅ ใช้ Lucide icon
       title: "Planted",
@@ -285,7 +285,7 @@ export default function DashboardPage() {
         `Plant Variety : ${dashboardData.plant_variety}`,
       ]
     }] : [];
-  
+
     const fertilizerActivities = dashboardData.recent_fertilizer_record.map(record => ({
       icon: <Leaf className="w-4 h-4 text-green-600" />, // ✅ Leaf สำหรับ Fertilizer
       title: "Fertilizer Applied",
@@ -297,7 +297,7 @@ export default function DashboardPage() {
         `Fertilizer Quantity : ${record.amount} ${record.unit}`,
       ]
     }));
-  
+
     const harvestingActivities = dashboardData.recent_harvest_record.map(record => ({
       icon: <Wrench className="w-4 h-4 text-yellow-600" />, // ✅ Wrench สำหรับ Harvest
       title: "Harvesting",
@@ -309,7 +309,7 @@ export default function DashboardPage() {
         `Yield : ${record.yleld} ${record.yleld_unit}`,
       ]
     }));
-  
+
     const labActivities = dashboardData.lab_submission_record.map(record => ({
       icon: <FlaskConical className="w-4 h-4 text-blue-600" />, // ✅ Flask สำหรับ Lab
       title: "Lab Submission",
@@ -321,7 +321,7 @@ export default function DashboardPage() {
         `Quality Grade : ${record.quality_grade}`,
       ]
     }));
-  
+
     const factoryActivities = dashboardData.factory_records.map(record => ({
       icon: <Factory className="w-4 h-4 text-purple-600" />, // ✅ Notebook สำหรับ Factory
       title: "Factory Submission",
@@ -333,7 +333,7 @@ export default function DashboardPage() {
         `Status : ${record.status}`,
       ]
     }));
-  
+
     const allActivities = [
       ...plantedActivities,
       ...fertilizerActivities,
@@ -341,11 +341,11 @@ export default function DashboardPage() {
       ...labActivities,
       ...factoryActivities
     ];
-  
+
     // ✅ Sort by real date value
     return allActivities.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
-  
+
 
   const activities = generateActivities();
 
@@ -425,16 +425,20 @@ export default function DashboardPage() {
                 {dashboardData?.Farm_Status === "End Planted"
                   ? "Harvested"
                   : dashboardData?.planting_date
-                  ? (Math.max(0, Math.ceil((new Date(dashboardData.planting_date).getTime() + 270 * 24 * 60 * 60 * 1000 - Date.now()) / (1000 * 60 * 60 * 24))) > 0
-                    ? Math.max(0, Math.ceil((new Date(dashboardData.planting_date).getTime() + 270 * 24 * 60 * 60 * 1000 - Date.now()) / (1000 * 60 * 60 * 24))) + " days"
-                    : "Ready to harvest")
-                  : "N/A"}
+                    ? (() => {
+                      const harvestDate = new Date(dashboardData.planting_date).getTime() + 270 * 24 * 60 * 60 * 1000;
+                      const daysLeft = Math.ceil((harvestDate - Date.now()) / (1000 * 60 * 60 * 24)) - 1;
+                      return daysLeft > 0 ? `${daysLeft} days` : "Ready to harvest";
+                    })()
+                    : "N/A"}
               </div>
               <div className="text-xs text-gray-400 mt-0.5">
-                Expected: {dashboardData?.planting_date ?
-                  new Date(new Date(dashboardData.planting_date).getTime() + 270 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+                Expected: {dashboardData?.planting_date
+                  ? new Date(new Date(dashboardData.planting_date).getTime() + 270 * 24 * 60 * 60 * 1000)
+                    .toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
                   : "N/A"}
               </div>
+
             </div>
             <div className="bg-white border rounded-2xl shadow-sm p-4">
               <div className="text-sm text-gray-500 flex items-center justify-between gap-2">
@@ -490,13 +494,16 @@ export default function DashboardPage() {
                 <span className="text-lg">🌱</span>
               </div>
               <div className="text-xl font-bold text-gray-800 mt-1">{dashboardData?.Farm_Status}</div>
-                {dashboardData?.Farm_Status !== "End Planted" && (
+              {dashboardData?.Farm_Status !== "End Planted" && (
                 <div className="text-xs text-gray-400 mt-0.5">
-                  {dashboardData?.planting_date ?
-                  `${Math.max(0, Math.ceil((new Date(dashboardData.planting_date).getTime() + 9 * 30 * 24 * 60 * 60 * 1000 - Date.now()) / (1000 * 60 * 60 * 24 * 30)))} more Months to Go!`
-                  : "Ready to harvest"}
+                  {dashboardData?.planting_date
+                    ? `${Math.max(0, Math.ceil(
+                      (new Date(dashboardData.planting_date).getTime() + 9 * 30 * 24 * 60 * 60 * 1000 - Date.now())
+                      / (1000 * 60 * 60 * 24 * 30)
+                    ) - 1)} more Months to Go!`
+                    : "N/A"}
                 </div>
-                )}
+              )}
             </div>
             <div className="bg-white border rounded-2xl shadow-sm p-4">
               <div className="text-sm text-gray-500 flex items-center justify-between gap-2">
