@@ -427,7 +427,7 @@ export default function DashboardPage() {
                   : dashboardData?.planting_date
                     ? (() => {
                       const harvestDate = new Date(dashboardData.planting_date).getTime() + 270 * 24 * 60 * 60 * 1000;
-                      const daysLeft = Math.ceil((harvestDate - Date.now()) / (1000 * 60 * 60 * 24)) - 1;
+                      const daysLeft = Math.ceil((harvestDate - Date.now()) / (1000 * 60 * 60 * 24)) ;
                       return daysLeft > 0 ? `${daysLeft} days` : "Ready to harvest";
                     })()
                     : "N/A"}
@@ -500,7 +500,7 @@ export default function DashboardPage() {
                     ? `${Math.max(0, Math.ceil(
                       (new Date(dashboardData.planting_date).getTime() + 9 * 30 * 24 * 60 * 60 * 1000 - Date.now())
                       / (1000 * 60 * 60 * 24 * 30)
-                    ) - 1)} more Months to Go!`
+                    ) )} more Months to Go!`
                     : "N/A"}
                 </div>
               )}

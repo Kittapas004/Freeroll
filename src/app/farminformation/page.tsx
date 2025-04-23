@@ -69,7 +69,7 @@ export default function FarmInformationPage() {
             return [];
         }
     };
-    
+
     React.useEffect(() => {
         fetchFarms();
     }, []);

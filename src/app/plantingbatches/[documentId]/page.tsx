@@ -257,6 +257,19 @@ export default function PlantingBatchDetail() {
                     })
                 });
                 if (!res_notification.ok) throw new Error("Failed to create notification record");
+                const update_status_res = await fetch(`http://localhost:1337/api/farms/${PlantingBatches?.farm_id}`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                    },
+                    body: JSON.stringify({
+                        data: {
+                            Farm_Status: "Fertilized",
+                        }
+                    })
+                });
+                if (!update_status_res.ok) throw new Error("Failed to update Farm Status")
             } catch (error) {
                 console.error("Error creating notification record:", error);
             }
@@ -337,9 +350,23 @@ export default function PlantingBatchDetail() {
             } catch (error) {
                 console.error("Error creating notification record:", error);
             }
-            if (!res.ok) throw new Error("Failed to create fertilizer record");
+
+            const update_status_res = await fetch(`http://localhost:1337/api/farms/${PlantingBatches?.farm_id}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+                body: JSON.stringify({
+                    data: {
+                        Farm_Status: "Harvested",
+                    }
+                })
+            });
+            if (!update_status_res.ok) throw new Error("Failed to update Farm Status")
+            if (!res.ok) throw new Error("Failed to create harvest record");
             const data = await res.json();
-            console.log("Fertilizer record created:", data);
+            console.log("Harvest record created:", data);
 
             setIsAdding(false);
             setHarvestFormData({
@@ -1491,40 +1518,44 @@ export default function PlantingBatchDetail() {
                                                     <span>{new Date(rec.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                                                 </div>
                                                 <div className="relative">
-                                                    <EllipsisVertical
-                                                        className="cursor-pointer hover:bg-muted rounded-2xl"
+                                                    <Button disabled={PlantingBatches.status === "Completed Successfully" || PlantingBatches.status === "Completed Past Data"} className="cursor-pointer hover:bg-muted rounded-3xl bg-white"
                                                         onClick={() => setExpandedRow(expandedRow === rec.id ? null : rec.id)}
-                                                    />
-                                                    {expandedRow === rec.id && (
-                                                        <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded shadow-lg z-10">
-                                                            <button
-                                                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                                onClick={() => {
-                                                                    setIsEditing(true);
-                                                                    setfertilizerFormData({
-                                                                        date: rec.date,
-                                                                        amount: rec.amount.toString(),
-                                                                        size: rec.size.toString(),
-                                                                        fertilizer_type: rec.fertilizer_type,
-                                                                        method: rec.method,
-                                                                        note: rec.note || "",
-                                                                        unit: rec.unit,
-                                                                    });
-                                                                    setEditingRecord(rec);
-                                                                }}
-                                                            >
-                                                                Edit
-                                                            </button>
-                                                            <button
-                                                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                                onClick={() => {
-                                                                    handleDeleteFertilizerRecord(rec.documentId);
-                                                                }}
-                                                            >
-                                                                Delete
-                                                            </button>
-                                                        </div>
-                                                    )}
+                                                    >
+                                                        <EllipsisVertical
+                                                            className="text-black"
+                                                        // onClick={() => setExpandedRow(expandedRow === rec.id ? null : rec.id)}
+                                                        />
+                                                        {expandedRow === rec.id && (
+                                                            <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded shadow-lg z-10">
+                                                                <div
+                                                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                                    onClick={() => {
+                                                                        setIsEditing(true);
+                                                                        setfertilizerFormData({
+                                                                            date: rec.date,
+                                                                            amount: rec.amount.toString(),
+                                                                            size: rec.size.toString(),
+                                                                            fertilizer_type: rec.fertilizer_type,
+                                                                            method: rec.method,
+                                                                            note: rec.note || "",
+                                                                            unit: rec.unit,
+                                                                        });
+                                                                        setEditingRecord(rec);
+                                                                    }}
+                                                                >
+                                                                    Edit
+                                                                </div>
+                                                                <div
+                                                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                                    onClick={() => {
+                                                                        handleDeleteFertilizerRecord(rec.documentId);
+                                                                    }}
+                                                                >
+                                                                    Delete
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </Button>
                                                 </div>
                                             </div>
                                             <h3 className="text-xl font-semibold">{rec.fertilizer_type}</h3>
