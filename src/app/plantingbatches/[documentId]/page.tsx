@@ -58,6 +58,19 @@ export default function PlantingBatchDetail() {
             yleld_unit: string;
             status: string;
             lab_status: string;
+            // KaminCAL fields
+            kamincal_sample_name?: string;
+            kamincal_plant_weight?: number;
+            kamincal_solvent_volume?: number;
+            kamincal_average_od?: number;
+            kamincal_concentration?: number;
+            kamincal_number_of_replications?: number;
+            kamincal_first_time?: number;
+            kamincal_analytical_instrument?: string;
+            kamincal_second_time?: number;
+            kamincal_curcuminoid_content?: string;
+            kamincal_curcuminoid_percentage?: number;
+            kamincal_third_time?: number;
         }[];
         lab_submission_record: {
             id: string;
@@ -81,6 +94,21 @@ export default function PlantingBatchDetail() {
         Farm_Size: number;
         Farm_Address: string;
         Farm_Name: string;
+    };
+
+    type KaminCALData = {
+        sample_name: string;
+        plant_weight: string;
+        solvent_volume: string;
+        average_od: string;
+        concentration: string;
+        number_of_replications: string;
+        first_time: string;
+        analytical_instrument: string;
+        second_time: string;
+        curcuminoid_content: string;
+        curcuminoid_percentage: string;
+        third_time: string;
     };
 
     const tabs = [
@@ -189,8 +217,20 @@ export default function PlantingBatchDetail() {
                     result_type: record.Result_type,
                     curcumin_quality: record.Curcumin_quality,
                     yleld_unit: record.Yleld_unit,
-                    // status: record.Harvest_status,
                     lab_status: record.Submission_status,
+                    // เพิ่มข้อมูล KaminCAL
+                    kamincal_sample_name: record.kamincal_sample_name || "",
+                    kamincal_plant_weight: record.kamincal_plant_weight || 0,
+                    kamincal_solvent_volume: record.kamincal_solvent_volume || 0,
+                    kamincal_average_od: record.kamincal_average_od || 0,
+                    kamincal_concentration: record.kamincal_concentration || 0,
+                    kamincal_number_of_replications: record.kamincal_number_of_replications || 0,
+                    kamincal_first_time: record.kamincal_first_time || 0,
+                    kamincal_analytical_instrument: record.kamincal_analytical_instrument || "UV-Vis",
+                    kamincal_second_time: record.kamincal_second_time || 0,
+                    kamincal_curcuminoid_content: record.kamincal_curcuminoid_content || "Pass",
+                    kamincal_curcuminoid_percentage: record.kamincal_curcuminoid_percentage || 0,
+                    kamincal_third_time: record.kamincal_third_time || 0,
                 })),
                 lab_submission_record: batch.lab_submission_records.map((record: any) => ({
                     id: record.id,
@@ -323,9 +363,21 @@ export default function PlantingBatchDetail() {
                         Result_type: harvest_formData.result_type,
                         Curcumin_quality: parseFloat(harvest_formData.curcumin_quality),
                         Yleld_unit: harvest_formData.yleld_unit,
-                        // Harvest_status: "Pending",
                         Submission_status: "Waiting",
                         batch: documentId,
+                        // เพิ่มข้อมูล KaminCAL
+                        kamincal_sample_name: kaminCALData.sample_name || "",
+                        kamincal_plant_weight: parseFloat(kaminCALData.plant_weight) || 0,
+                        kamincal_solvent_volume: parseFloat(kaminCALData.solvent_volume) || 0,
+                        kamincal_average_od: parseFloat(kaminCALData.average_od) || 0,
+                        kamincal_concentration: parseFloat(kaminCALData.concentration) || 0,
+                        kamincal_number_of_replications: parseInt(kaminCALData.number_of_replications) || 0,
+                        kamincal_first_time: parseFloat(kaminCALData.first_time) || 0,
+                        kamincal_analytical_instrument: kaminCALData.analytical_instrument || "HPLC",
+                        kamincal_second_time: parseFloat(kaminCALData.second_time) || 0,
+                        kamincal_curcuminoid_content: kaminCALData.curcuminoid_content || "Pass",
+                        kamincal_curcuminoid_percentage: parseFloat(kaminCALData.curcuminoid_percentage) || 0,
+                        kamincal_third_time: parseFloat(kaminCALData.third_time) || 0,
                     }
                 })
             });
@@ -391,36 +443,105 @@ export default function PlantingBatchDetail() {
         }
     };
 
-    const handleSubmitToLab = async () => {
-        try {
-            if (!selectedLab) {
-                alert("Please select a lab name.");
-                return;
-            }
+    const handleKaminCALChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setKaminCALData({ ...kaminCALData, [name]: value });
+    };
 
-            if (selectedSamples.length === 0) {
-                alert("Please select at least one sample to submit.");
-                return;
-            }
+const handleSubmitToLab = async () => {
+    try {
+        if (!selectedLab) {
+            alert("Please select a lab name.");
+            return;
+        }
 
-            if (!PlantingBatches) {
-                alert("PlantingBatches data is not available.");
-                return;
-            }
+        if (selectedSamples.length === 0) {
+            alert("Please select at least one sample to submit.");
+            return;
+        }
 
-            // Map through selected samples and create a lab submission record for each
-            await Promise.all(
-                selectedSamples.map(async (sampleId) => {
-                    const sample = PlantingBatches.recent_harvest_record.find(
-                        (rec_harvest) => rec_harvest.documentId === sampleId
-                    );
+        if (!PlantingBatches) {
+            alert("PlantingBatches data is not available.");
+            return;
+        }
 
-                    if (!sample) {
-                        console.error(`Sample with ID ${sampleId} not found.`);
-                        return;
-                    }
+        console.log('=== DEBUG SUBMIT TO LAB ===');
+        console.log('Selected Lab:', selectedLab);
+        console.log('Selected Samples:', selectedSamples);
+        console.log('Document ID:', documentId);
 
-                    const res = await fetch(`http://localhost:1337/api/lab-submission-records`, {
+        // Map through selected samples and create a lab submission record for each
+        await Promise.all(
+            selectedSamples.map(async (sampleId) => {
+                const sample = PlantingBatches.recent_harvest_record.find(
+                    (rec_harvest) => rec_harvest.documentId === sampleId
+                );
+
+                if (!sample) {
+                    console.error(`Sample with ID ${sampleId} not found.`);
+                    throw new Error(`Sample with ID ${sampleId} not found in harvest records.`);
+                }
+
+                console.log('Creating lab submission for sample:', sample);
+
+                const submitData = {
+                    data: {
+                        Quality_grade: sample.quality_grade,
+                        Submission_status: "Pending", 
+                        Date: new Date().toISOString(),
+                        Report: null,
+                        batch: documentId,
+                        harvest_record: sampleId,
+                        lab: selectedLab,
+                    },
+                };
+
+                console.log('Submission data:', submitData);
+
+                const res = await fetch(`http://localhost:1337/api/lab-submission-records`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                    },
+                    body: JSON.stringify(submitData),
+                });
+
+                console.log('Lab submission response status:', res.status);
+
+                if (!res.ok) {
+                    const errorText = await res.text();
+                    console.error('Lab submission error response:', errorText);
+                    throw new Error(`Failed to create lab submission record for sample ID: ${sampleId}. Status: ${res.status}, Error: ${errorText}`);
+                }
+
+                const responseData = await res.json();
+                console.log('Lab submission created successfully:', responseData);
+
+                // Update the harvest record status to "Pending"
+                console.log('Updating harvest record status...');
+                const updateRes = await fetch(`http://localhost:1337/api/harvest-records/${sampleId}`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                    },
+                    body: JSON.stringify({
+                        data: {
+                            Submission_status: "Pending",
+                        },
+                    }),
+                });
+
+                if (!updateRes.ok) {
+                    const updateErrorText = await updateRes.text();
+                    console.error('Update harvest record error:', updateErrorText);
+                    throw new Error(`Failed to update harvest record with ID: ${sampleId}. Status: ${updateRes.status}, Error: ${updateErrorText}`);
+                }
+
+                // Create notification
+                try {
+                    const submitted_notification = await fetch(`http://localhost:1337/api/notifications`, {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
@@ -428,69 +549,33 @@ export default function PlantingBatchDetail() {
                         },
                         body: JSON.stringify({
                             data: {
-                                Quality_grade: sample.quality_grade,
-                                Submission_status: "Pending",
+                                Text: `A new lab submission has been created for sample ${sampleId}`,
                                 Date: new Date().toISOString(),
-                                Report: null,
+                                Notification_status: "General",
                                 batch: documentId,
-                                harvest_record: sampleId,
-                                lab: selectedLab,
-                            },
-                        }),
+                                user_documentId: localStorage.getItem("userId"),
+                            }
+                        })
                     });
-
-
-                    if (!res.ok) {
-                        throw new Error(`Failed to create lab submission record for sample ID: ${sampleId}`);
+                    
+                    if (!submitted_notification.ok) {
+                        console.error("Failed to create notification, but continuing...");
                     }
+                } catch (notificationError) {
+                    console.error("Notification creation failed, but continuing:", notificationError);
+                }
+            })
+        );
 
-                    // Update the harvest record status to "Pending"
-                    if (res.ok) {
-                        const updateRes = await fetch(`http://localhost:1337/api/harvest-records/${sampleId}`, {
-                            method: "PUT",
-                            headers: {
-                                "Content-Type": "application/json",
-                                Authorization: `Bearer ${localStorage.getItem("jwt")}`,
-                            },
-                            body: JSON.stringify({
-                                data: {
-                                    Submission_status: "Pending",
-                                },
-                            }),
-                        });
-
-                        if (!updateRes.ok) {
-                            throw new Error(`Failed to update harvest record with ID: ${sampleId}`);
-                        }
-                        const submitted_notification = await fetch(`http://localhost:1337/api/notifications`, {
-                            method: "POST",
-                            headers: {
-                                "Content-Type": "application/json",
-                                Authorization: `Bearer ${localStorage.getItem("jwt")}`,
-                            },
-                            body: JSON.stringify({
-                                data: {
-                                    Text: `A new lab submission has been created`,
-                                    Date: new Date().toISOString(),
-                                    Notification_status: "General",
-                                    batch: documentId,
-                                    user_documentId: localStorage.getItem("userId"),
-                                }
-                            })
-                        });
-                        if (!submitted_notification.ok) throw new Error("Failed to create notification record");
-                    }
-                })
-            );
-
-            alert("Samples submitted to the lab successfully!");
-            setSelectedSamples([]); // Clear the selection
-            await fetchPlantingBatches(); // Refresh the data
-        } catch (error) {
-            console.error("Error submitting samples to the lab:", error);
-            alert("Failed to submit samples to the lab. Please try again.");
-        }
-    };
+        alert("Samples submitted to the lab successfully!");
+        setSelectedSamples([]); // Clear the selection
+        await fetchPlantingBatches(); // Refresh the data
+        
+    } catch (error) {
+        console.error("Error submitting samples to the lab:", error);
+        alert(`"Failed to submit samples to the lab. Please try again."`);
+    }
+};
 
     const handleDeleteLabRecord = async (recordId: string, harvest_record: string) => {
         try {
@@ -742,6 +827,19 @@ export default function PlantingBatchDetail() {
                         Result_type: harvest_formData.result_type,
                         Curcumin_quality: parseFloat(harvest_formData.curcumin_quality),
                         Yleld_unit: harvest_formData.yleld_unit,
+                        // Add KaminCAL data to the update
+                        kamincal_sample_name: kaminCALData.sample_name || "",
+                        kamincal_plant_weight: parseFloat(kaminCALData.plant_weight) || 0,
+                        kamincal_solvent_volume: parseFloat(kaminCALData.solvent_volume) || 0,
+                        kamincal_average_od: parseFloat(kaminCALData.average_od) || 0,
+                        kamincal_concentration: parseFloat(kaminCALData.concentration) || 0,
+                        kamincal_number_of_replications: parseInt(kaminCALData.number_of_replications) || 0,
+                        kamincal_first_time: parseFloat(kaminCALData.first_time) || 0,
+                        kamincal_analytical_instrument: kaminCALData.analytical_instrument || "UV-Vis",
+                        kamincal_second_time: parseFloat(kaminCALData.second_time) || 0,
+                        kamincal_curcuminoid_content: kaminCALData.curcuminoid_content || "Pass",
+                        kamincal_curcuminoid_percentage: parseFloat(kaminCALData.curcuminoid_percentage) || 0,
+                        kamincal_third_time: parseFloat(kaminCALData.third_time) || 0,
                     },
                 }),
             });
@@ -751,6 +849,21 @@ export default function PlantingBatchDetail() {
             alert("Harvest record updated successfully!");
             setIsEditing(false);
             setEditingRecord(null);
+            // Reset KaminCAL data
+            setKaminCALData({
+                sample_name: "",
+                plant_weight: "",
+                solvent_volume: "",
+                average_od: "",
+                concentration: "",
+                number_of_replications: "",
+                first_time: "",
+                analytical_instrument: "UV-Vis",
+                second_time: "",
+                curcuminoid_content: "Pass",
+                curcuminoid_percentage: "",
+                third_time: "",
+            });
             await fetchPlantingBatches(); // Refresh the data
         } catch (error) {
             console.error("Error updating harvest record:", error);
@@ -798,9 +911,24 @@ export default function PlantingBatchDetail() {
         quality_grade: "",
         method: "",
         note: "",
-        result_type: "UV Spectroscopy",
+        result_type: "UV-Vis",
         curcumin_quality: "",
         yleld_unit: "kg",
+    });
+
+    const [kaminCALData, setKaminCALData] = useState<KaminCALData>({
+        sample_name: "",
+        plant_weight: "",
+        solvent_volume: "",
+        average_od: "",
+        concentration: "",
+        number_of_replications: "",
+        first_time: "",
+        analytical_instrument: "UV-Vis",
+        second_time: "",
+        curcuminoid_content: "Pass",
+        curcuminoid_percentage: "",
+        third_time: "",
     });
 
     const [selectedSamples, setSelectedSamples] = useState<string[]>([]);
@@ -1531,6 +1659,7 @@ export default function PlantingBatchDetail() {
                                                                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                                                     onClick={() => {
                                                                         setIsEditing(true);
+                                                                        // ใช้ fertilizer form data ไม่ใช่ harvest form data
                                                                         setfertilizerFormData({
                                                                             date: rec.date,
                                                                             amount: rec.amount.toString(),
@@ -1595,8 +1724,10 @@ export default function PlantingBatchDetail() {
                                 </div>
                             )}
                             {isAdding && (
-                                <div className="flex flex-col gap-4 pt-1">
+                                <div className="flex flex-col gap-6 pt-1">
                                     <h2 className="text-lg font-semibold">Add Harvest Record</h2>
+
+                                    {/* Harvest Record Form */}
                                     <Card className="p-4 space-y-4 shadow-sm">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="flex flex-col gap-1">
@@ -1610,12 +1741,8 @@ export default function PlantingBatchDetail() {
                                                         <SelectValue placeholder="Select Harvest Method" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="Machine Harvesting">
-                                                            Machine Harvesting
-                                                        </SelectItem>
-                                                        <SelectItem value="Manual Harvesting">
-                                                            Manual Harvesting
-                                                        </SelectItem>
+                                                        <SelectItem value="Machine Harvesting">Machine Harvesting</SelectItem>
+                                                        <SelectItem value="Manual Harvesting">Manual Harvesting</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -1628,18 +1755,14 @@ export default function PlantingBatchDetail() {
                                                             <SelectValue />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            <SelectItem value="kg">
-                                                                kg
-                                                            </SelectItem>
-                                                            <SelectItem value="g">
-                                                                g
-                                                            </SelectItem>
+                                                            <SelectItem value="kg">kg</SelectItem>
+                                                            <SelectItem value="g">g</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
                                             </div>
                                             <div className="flex flex-col gap-1">
-                                                <Label>Curcumin Quatity (%)</Label>
+                                                <Label>Curcumin Quality (%)</Label>
                                                 <Input type="number" name="curcumin_quality" placeholder="Enter Curcumin Amount here ..." onChange={harvest_handleChange} min={0} max={100} value={harvest_formData.curcumin_quality} />
                                             </div>
                                             <div className="flex flex-col gap-1">
@@ -1649,12 +1772,8 @@ export default function PlantingBatchDetail() {
                                                         <SelectValue placeholder="Select Grade" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="Grade A">
-                                                            Grade A
-                                                        </SelectItem>
-                                                        <SelectItem value="Grade B">
-                                                            Grade B
-                                                        </SelectItem>
+                                                        <SelectItem value="Grade A">Grade A</SelectItem>
+                                                        <SelectItem value="Grade B">Grade B</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -1664,20 +1783,232 @@ export default function PlantingBatchDetail() {
                                             </div>
                                             <div className="flex flex-col gap-1">
                                                 <Label>Result Type</Label>
-                                                <Input type="result" name="result" disabled placeholder="Enter Result Type Amount here ..." defaultValue={"UV Spectroscopy"} onChange={harvest_handleChange} />
+                                                <Select
+                                                    value={harvest_formData.result_type}
+                                                    onValueChange={(value) =>
+                                                        setHarvestFormData({ ...harvest_formData, result_type: value })
+                                                    }
+                                                >
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue placeholder="Select Result Type" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="UV-Vis">UV-Vis</SelectItem>
+                                                        <SelectItem value="LED">LED</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
                                         </div>
-                                        <div className="flex justify-end gap-2">
-                                            <Button onClick={() => setIsAdding(false)} className="bg-red-500 hover:bg-red-600">Cancel</Button>
-                                            <Button onClick={() => harvest_createdata()} className="bg-green-600 hover:bg-green-700">Save</Button>
+                                    </Card>
+
+                                    {/* KaminCAL Section - Same styling as top card  */}
+                                    <h2 className="text-lg font-semibold">KaminCAL</h2>
+                                    <Card className="p-4 space-y-4 shadow-sm">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Sample Name</Label>
+                                                <Input
+                                                    name="sample_name"
+                                                    value={kaminCALData.sample_name}
+                                                    onChange={handleKaminCALChange}
+                                                    placeholder="Name"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Plant weight</Label>
+                                                <div className="flex flex-row gap-2 items-center">
+                                                    <Input
+                                                        name="plant_weight"
+                                                        type="number"
+                                                        value={kaminCALData.plant_weight}
+                                                        onChange={handleKaminCALChange}
+                                                        placeholder=""
+                                                        className="flex-1"
+                                                    />
+                                                    <Input
+                                                        value="mg"
+                                                        disabled
+                                                        className="w-16 text-center bg-gray-50 text-black font-medium"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Solvent volume</Label>
+                                                <div className="flex flex-row gap-2 items-center">
+                                                    <Input
+                                                        name="solvent_volume"
+                                                        type="number"
+                                                        value={kaminCALData.solvent_volume}
+                                                        onChange={handleKaminCALChange}
+                                                        placeholder=""
+                                                        className="flex-1"
+                                                    />
+                                                    <Input
+                                                        value="mL"
+                                                        disabled
+                                                        className="w-16 text-center bg-gray-50 text-black font-medium"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Average OD</Label>
+                                                <Input
+                                                    name="average_od"
+                                                    type="number"
+                                                    step="0.001"
+                                                    value={kaminCALData.average_od}
+                                                    onChange={handleKaminCALChange}
+                                                    placeholder=""
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Concentration</Label>
+                                                <div className="flex flex-row gap-2 items-center">
+                                                    <Input
+                                                        name="concentration"
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={kaminCALData.concentration}
+                                                        onChange={handleKaminCALChange}
+                                                        placeholder=""
+                                                        className="flex-1"
+                                                    />
+                                                    <Input
+                                                        value="mg/mL"
+                                                        disabled
+                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Number of replications</Label>
+                                                <Input
+                                                    name="number_of_replications"
+                                                    type="number"
+                                                    value={kaminCALData.number_of_replications}
+                                                    onChange={handleKaminCALChange}
+                                                    placeholder=""
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>First time</Label>
+                                                <div className="flex flex-row gap-2 items-center">
+                                                    <Input
+                                                        name="first_time"
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={kaminCALData.first_time}
+                                                        onChange={handleKaminCALChange}
+                                                        placeholder=""
+                                                        className="flex-1"
+                                                    />
+                                                    <Input
+                                                        value="mg/mL"
+                                                        disabled
+                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Analytical Instrument</Label>
+                                                <Select
+                                                    value={kaminCALData.analytical_instrument}
+                                                    onValueChange={(value) =>
+                                                        setKaminCALData({ ...kaminCALData, analytical_instrument: value })
+                                                    }
+                                                >
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue placeholder="UV-Vis" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="UV-Vis">UV-Vis</SelectItem>
+                                                        <SelectItem value="LED">LED</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Second time</Label>
+                                                <div className="flex flex-row gap-2 items-center">
+                                                    <Input
+                                                        name="second_time"
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={kaminCALData.second_time}
+                                                        onChange={handleKaminCALChange}
+                                                        placeholder=""
+                                                        className="flex-1"
+                                                    />
+                                                    <Input
+                                                        value="mg/mL"
+                                                        disabled
+                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Curcuminoid content (Percentage by weight)</Label>
+                                                <div className="flex flex-row gap-2 items-center">
+                                                    <Input
+                                                        name="curcuminoid_percentage"
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={kaminCALData.curcuminoid_percentage || ""}
+                                                        onChange={handleKaminCALChange}
+                                                        placeholder=""
+                                                        className="flex-1"
+                                                    />
+                                                    <div className="w-24">
+                                                        <Select
+                                                            value={kaminCALData.curcuminoid_content}
+                                                            onValueChange={(value) =>
+                                                                setKaminCALData({ ...kaminCALData, curcuminoid_content: value })
+                                                            }
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Pass" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Pass">Pass</SelectItem>
+                                                                <SelectItem value="Fail">Fail</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Third time</Label>
+                                                <div className="flex flex-row gap-2 items-center">
+                                                    <Input
+                                                        name="third_time"
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={kaminCALData.third_time}
+                                                        onChange={handleKaminCALChange}
+                                                        placeholder=""
+                                                        className="flex-1"
+                                                    />
+                                                    <Input
+                                                        value="mg/mL"
+                                                        disabled
+                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
                                     </Card>
+
+                                    {/* Buttons Outside Cards */}
+                                    <div className="flex justify-end gap-2">
+                                        <Button onClick={() => setIsAdding(false)} className="bg-red-500 hover:bg-red-600">Cancel</Button>
+                                        <Button onClick={() => harvest_createdata()} className="bg-green-600 hover:bg-green-700">Save</Button>
+                                    </div>
                                 </div>
                             )}
                             {isEditing && (
-                                <div className="flex flex-col gap-4 pt-1">
+                                <div className="flex flex-col gap-6 pt-1">
                                     <h2 className="text-lg font-semibold">Edit Harvest Record</h2>
-                                    {/* Edit Form Code */}
+
+                                    {/* Harvest Record Form */}
                                     <Card className="p-4 space-y-4 shadow-sm">
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="flex flex-col gap-1">
@@ -1735,7 +2066,7 @@ export default function PlantingBatchDetail() {
                                                 </div>
                                             </div>
                                             <div className="flex flex-col gap-1">
-                                                <Label>Curcumin Quatity (%)</Label>
+                                                <Label>Curcumin Quality (%)</Label>
                                                 <Input
                                                     type="number"
                                                     name="curcumin_quality"
@@ -1775,28 +2106,235 @@ export default function PlantingBatchDetail() {
                                             </div>
                                             <div className="flex flex-col gap-1">
                                                 <Label>Result Type</Label>
-                                                <Input
-                                                    type="result"
-                                                    name="result"
-                                                    disabled
-                                                    placeholder="Enter Result Type Amount here ..."
-                                                    defaultValue={"UV Spectroscopy"}
-                                                    onChange={harvest_handleChange}
-                                                />
+                                                <Select
+                                                    value={harvest_formData.result_type}
+                                                    onValueChange={(value) => setHarvestFormData({ ...harvest_formData, result_type: value })}
+                                                >
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue placeholder="Select Result Type" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="UV-Vis">UV-Vis</SelectItem>
+                                                        <SelectItem value="LED">LED</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
                                             </div>
                                         </div>
-                                        <div className="flex justify-end gap-2">
-                                            <Button onClick={() => setIsEditing(false)} className="bg-red-500 hover:bg-red-600">
-                                                Cancel
-                                            </Button>
-                                            <Button
-                                                onClick={() => handleUpdateHarvestRecord()}
-                                                className="bg-green-600 hover:bg-green-700"
-                                            >
-                                                Save
-                                            </Button>
+                                    </Card>
+
+                                    {/* KaminCAL Section - Same styling as top card  */}
+                                    <h2 className="text-lg font-semibold">KaminCAL</h2>
+                                    <Card className="p-4 space-y-4 shadow-sm">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Sample Name</Label>
+                                                <Input
+                                                    name="sample_name"
+                                                    value={kaminCALData.sample_name}
+                                                    onChange={handleKaminCALChange}
+                                                    placeholder="Name"
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Plant weight</Label>
+                                                <div className="flex flex-row gap-2 items-center">
+                                                    <Input
+                                                        name="plant_weight"
+                                                        type="number"
+                                                        value={kaminCALData.plant_weight}
+                                                        onChange={handleKaminCALChange}
+                                                        placeholder=""
+                                                        className="flex-1"
+                                                    />
+                                                    <Input
+                                                        value="mg"
+                                                        disabled
+                                                        className="w-16 text-center bg-gray-50 text-black font-medium"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Solvent volume</Label>
+                                                <div className="flex flex-row gap-2 items-center">
+                                                    <Input
+                                                        name="solvent_volume"
+                                                        type="number"
+                                                        value={kaminCALData.solvent_volume}
+                                                        onChange={handleKaminCALChange}
+                                                        placeholder=""
+                                                        className="flex-1"
+                                                    />
+                                                    <Input
+                                                        value="mL"
+                                                        disabled
+                                                        className="w-16 text-center bg-gray-50 text-black font-medium"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Average OD</Label>
+                                                <Input
+                                                    name="average_od"
+                                                    type="number"
+                                                    step="0.001"
+                                                    value={kaminCALData.average_od}
+                                                    onChange={handleKaminCALChange}
+                                                    placeholder=""
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Concentration</Label>
+                                                <div className="flex flex-row gap-2 items-center">
+                                                    <Input
+                                                        name="concentration"
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={kaminCALData.concentration}
+                                                        onChange={handleKaminCALChange}
+                                                        placeholder=""
+                                                        className="flex-1"
+                                                    />
+                                                    <Input
+                                                        value="mg/mL"
+                                                        disabled
+                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Number of replications</Label>
+                                                <Input
+                                                    name="number_of_replications"
+                                                    type="number"
+                                                    value={kaminCALData.number_of_replications}
+                                                    onChange={handleKaminCALChange}
+                                                    placeholder=""
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>First time</Label>
+                                                <div className="flex flex-row gap-2 items-center">
+                                                    <Input
+                                                        name="first_time"
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={kaminCALData.first_time}
+                                                        onChange={handleKaminCALChange}
+                                                        placeholder=""
+                                                        className="flex-1"
+                                                    />
+                                                    <Input
+                                                        value="mg/mL"
+                                                        disabled
+                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Analytical Instrument</Label>
+                                                <Select
+                                                    value={kaminCALData.analytical_instrument}
+                                                    onValueChange={(value) =>
+                                                        setKaminCALData({ ...kaminCALData, analytical_instrument: value })
+                                                    }
+                                                >
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue placeholder="UV-Vis" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="UV-Vis">UV-Vis</SelectItem>
+                                                        <SelectItem value="LED">LED</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Second time</Label>
+                                                <div className="flex flex-row gap-2 items-center">
+                                                    <Input
+                                                        name="second_time"
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={kaminCALData.second_time}
+                                                        onChange={handleKaminCALChange}
+                                                        placeholder=""
+                                                        className="flex-1"
+                                                    />
+                                                    <Input
+                                                        value="mg/mL"
+                                                        disabled
+                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Curcuminoid content (Percentage by weight)</Label>
+                                                <div className="flex flex-row gap-2 items-center">
+                                                    <Input
+                                                        name="curcuminoid_percentage"
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={kaminCALData.curcuminoid_percentage || ""}
+                                                        onChange={handleKaminCALChange}
+                                                        placeholder=""
+                                                        className="flex-1"
+                                                    />
+                                                    <div className="w-24">
+                                                        <Select
+                                                            value={kaminCALData.curcuminoid_content}
+                                                            onValueChange={(value) =>
+                                                                setKaminCALData({ ...kaminCALData, curcuminoid_content: value })
+                                                            }
+                                                        >
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Pass" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Pass">Pass</SelectItem>
+                                                                <SelectItem value="Fail">Fail</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Third time</Label>
+                                                <div className="flex flex-row gap-2 items-center">
+                                                    <Input
+                                                        name="third_time"
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={kaminCALData.third_time}
+                                                        onChange={handleKaminCALChange}
+                                                        placeholder=""
+                                                        className="flex-1"
+                                                    />
+                                                    <Input
+                                                        value="mg/mL"
+                                                        disabled
+                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
+                                                    />
+                                                </div>
+                                            </div>
                                         </div>
                                     </Card>
+                                    {/* Buttons Outside Cards */}
+                                    <div className="flex justify-end gap-2">
+                                        <Button
+                                            onClick={() => {
+                                                setIsEditing(false);
+                                                setEditingRecord(null);
+                                            }}
+                                            className="bg-red-500 hover:bg-red-600"
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            onClick={() => handleUpdateHarvestRecord()}
+                                            className="bg-green-600 hover:bg-green-700"
+                                        >
+                                            Save
+                                        </Button>
+                                    </div>
                                 </div>
                             )} {!isAdding && !isEditing && (
                                 <div className="flex flex-col gap-4">
@@ -1912,6 +2450,9 @@ export default function PlantingBatchDetail() {
                                                             <Button
                                                                 className="bg-blue-600 hover:bg-blue-700"
                                                                 onClick={() => {
+                                                                    console.log("=== EDIT HARVEST RECORD ===");
+                                                                    console.log("Full harvest record:", harvest_record);
+
                                                                     setIsEditing(true);
                                                                     setHarvestFormData({
                                                                         date: new Date(harvest_record.date).toLocaleString('en-CA', { hour12: false }).replace(', ', 'T'),
@@ -1919,11 +2460,43 @@ export default function PlantingBatchDetail() {
                                                                         quality_grade: harvest_record.quality_grade,
                                                                         method: harvest_record.method,
                                                                         note: harvest_record.note || "",
-                                                                        result_type: harvest_record.result_type || "UV Spectroscopy",
+                                                                        result_type: harvest_record.result_type || "UV-Vis", // เพิ่มบรรทัดนี้
                                                                         curcumin_quality: harvest_record.curcumin_quality.toString(),
                                                                         yleld_unit: harvest_record.yleld_unit || "kg",
                                                                     });
-                                                                    setEditingRecord(harvest_record); // Store the record being edited
+
+                                                                    // เพิ่มการ populate KaminCAL data
+                                                                    console.log("Populating KaminCAL data:", {
+                                                                        sample_name: harvest_record.kamincal_sample_name,
+                                                                        plant_weight: harvest_record.kamincal_plant_weight,
+                                                                        solvent_volume: harvest_record.kamincal_solvent_volume,
+                                                                        average_od: harvest_record.kamincal_average_od,
+                                                                        concentration: harvest_record.kamincal_concentration,
+                                                                        number_of_replications: harvest_record.kamincal_number_of_replications,
+                                                                        first_time: harvest_record.kamincal_first_time,
+                                                                        analytical_instrument: harvest_record.kamincal_analytical_instrument,
+                                                                        second_time: harvest_record.kamincal_second_time,
+                                                                        curcuminoid_content: harvest_record.kamincal_curcuminoid_content,
+                                                                        curcuminoid_percentage: harvest_record.kamincal_curcuminoid_percentage,
+                                                                        third_time: harvest_record.kamincal_third_time,
+                                                                    });
+
+                                                                    setKaminCALData({
+                                                                        sample_name: harvest_record.kamincal_sample_name || "",
+                                                                        plant_weight: harvest_record.kamincal_plant_weight?.toString() || "",
+                                                                        solvent_volume: harvest_record.kamincal_solvent_volume?.toString() || "",
+                                                                        average_od: harvest_record.kamincal_average_od?.toString() || "",
+                                                                        concentration: harvest_record.kamincal_concentration?.toString() || "",
+                                                                        number_of_replications: harvest_record.kamincal_number_of_replications?.toString() || "",
+                                                                        first_time: harvest_record.kamincal_first_time?.toString() || "",
+                                                                        analytical_instrument: harvest_record.kamincal_analytical_instrument || "UV-Vis",
+                                                                        second_time: harvest_record.kamincal_second_time?.toString() || "",
+                                                                        curcuminoid_content: harvest_record.kamincal_curcuminoid_content || "Pass",
+                                                                        curcuminoid_percentage: harvest_record.kamincal_curcuminoid_percentage?.toString() || "",
+                                                                        third_time: harvest_record.kamincal_third_time?.toString() || "",
+                                                                    });
+
+                                                                    setEditingRecord(harvest_record);
                                                                 }}
                                                                 disabled={PlantingBatches.status === "Completed Successfully" || PlantingBatches.status === "Completed Past Data"}
                                                             >
@@ -1951,6 +2524,27 @@ export default function PlantingBatchDetail() {
                                                                         <div>
                                                                             <p className="text-gray-500">Notes:</p>
                                                                             <h1>{harvest_record.note || "-"}</h1>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="p-4">
+                                                                    <h1 className="text-green-600 text-xl font-semibold">KaminCAL</h1>
+                                                                    <div className="grid grid-cols-4 gap-4 mt-2">
+                                                                        <div>
+                                                                            <p className="text-gray-500">Sample Name</p>
+                                                                            <h1>{harvest_record.kamincal_sample_name || "N/A"}</h1>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-gray-500">Average OD</p>
+                                                                            <h1>{harvest_record.kamincal_average_od || "N/A"}</h1>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-gray-500">Curcuminoid Content</p>
+                                                                            <h1>{harvest_record.kamincal_curcuminoid_percentage || "N/A"}</h1>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-gray-500">% Accuracy</p>
+                                                                            <h1>{harvest_record.kamincal_curcuminoid_content || "N/A"}</h1>
                                                                         </div>
                                                                     </div>
                                                                 </div>
