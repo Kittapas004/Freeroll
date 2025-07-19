@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { useState, useEffect } from "react";
+import { FlaskConical } from "lucide-react";
 
 interface ChemicalChartProps {
   batchDoucumentId?: string
@@ -153,7 +154,7 @@ export default function ChemicalChart({ batchDoucumentId }: ChemicalChartProps) 
       <div className="flex items-center justify-between mb-2">
         <div className="text-sm font-semibold text-gray-700 flex items-center gap-2">
           <span role="img" aria-label="lab">
-            ⚗️
+            <FlaskConical className="text-green-600" size={16} />
           </span>{" "}
           Curcumin %
         </div>

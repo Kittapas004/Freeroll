@@ -9,17 +9,17 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 
 interface InspectionRecord {
-  id: string;
-  batch_id: string;
-  farm_name: string;
-  date: string;
-  status: string;
-  inspector: string;
-  curcumin_quality?: number;
-  moisture_quality?: number;
-  test_date?: string;
-  inspector_notes?: string;
-  harvest_date?: string;
+    id: string;
+    batch_id: string;
+    farm_name: string;
+    date: string;
+    status: string;
+    inspector: string;
+    curcumin_quality?: number;
+    moisture_quality?: number;
+    test_date?: string;
+    inspector_notes?: string;
+    harvest_date?: string;
 }
 
 export default function InspectionHistory() {
@@ -30,7 +30,7 @@ export default function InspectionHistory() {
     const [currentPage, setCurrentPage] = useState(1);
     const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
     const [isDateDropdownOpen, setIsDateDropdownOpen] = useState(false);
-    
+
     // State for API data
     const [inspections, setInspections] = useState<InspectionRecord[]>([]);
     const [loading, setLoading] = useState(true);
@@ -98,15 +98,15 @@ export default function InspectionHistory() {
             // Process and map the records
             const mappedInspections: InspectionRecord[] = await Promise.all(recordsData.data.map(async (record: any) => {
                 const attrs = record.attributes || record;
-                
+
                 // Extract batch and farm info with multiple fallback methods
                 let batchId = 'N/A';
                 let farmName = 'Unknown Farm';
-                
+
                 if (attrs?.batch?.data?.attributes) {
                     const batchData = attrs.batch.data.attributes;
                     batchId = batchData?.Batch_id || 'N/A';
-                    
+
                     if (batchData?.Farm?.data?.attributes) {
                         farmName = batchData.Farm.data.attributes.Farm_Name || 'Unknown Farm';
                     }
@@ -129,7 +129,7 @@ export default function InspectionHistory() {
                                 Authorization: `Bearer ${localStorage.getItem('jwt')}`,
                             },
                         });
-                        
+
                         if (batchRes.ok) {
                             const batchData = await batchRes.json();
                             if (batchData.data && batchData.data.length > 0) {
@@ -155,10 +155,10 @@ export default function InspectionHistory() {
                     // Define quality thresholds
                     const curcuminThreshold = 3.0; // minimum 3% curcumin
                     const moistureThreshold = 15.0; // maximum 15% moisture
-                    
+
                     const curcuminPass = curcuminQuality === null || curcuminQuality >= curcuminThreshold;
                     const moisturePass = moistureQuality === null || moistureQuality <= moistureThreshold;
-                    
+
                     status = (curcuminPass && moisturePass) ? 'Passed' : 'Failed';
                 } else {
                     // Skip records that are not completed or don't have test results
@@ -201,35 +201,35 @@ export default function InspectionHistory() {
     // Filter inspections based on search and filters
     const filteredInspections = inspections.filter(inspection => {
         const matchesSearch = inspection.batch_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            inspection.farm_name.toLowerCase().includes(searchQuery.toLowerCase());
+            inspection.farm_name.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = statusFilter === "All status" || inspection.status === statusFilter;
-        
+
         // Date filtering (simplified)
-let matchesDate = true;
+        let matchesDate = true;
         if (dateFilter !== "All time") {
             const inspectionDate = new Date(inspection.date);
             const now = new Date();
-            
+
             // Reset time to start of day for accurate comparison
             now.setHours(23, 59, 59, 999);
-            
+
             const daysAgo = {
                 "Last 7 days": 7,
                 "Last 30 days": 30,
                 "Last 90 days": 90
             }[dateFilter];
-            
+
             if (daysAgo) {
                 const cutoffDate = new Date(now.getTime() - (daysAgo * 24 * 60 * 60 * 1000));
                 cutoffDate.setHours(0, 0, 0, 0); // Set to start of cutoff day
-                
+
                 // Check if inspection date is valid and within range
                 if (isNaN(inspectionDate.getTime())) {
                     matchesDate = false; // Invalid date
                 } else {
                     matchesDate = inspectionDate >= cutoffDate && inspectionDate <= now;
                 }
-                
+
                 console.log(`Date Filter Debug:`, {
                     filter: dateFilter,
                     daysAgo,
@@ -240,7 +240,7 @@ let matchesDate = true;
                 });
             }
         }
-        
+
         return matchesSearch && matchesStatus && matchesDate;
     });
     // Format date for display
@@ -366,9 +366,9 @@ let matchesDate = true;
                         <div className="flex items-center gap-2 mb-6">
                             <SidebarTrigger onClick={() => setIsSidebarOpen(!isSidebarOpen)} />
                             <h1 className="text-2xl font-semibold text-gray-800">Quality Inspection History</h1>
-                            <Button 
-                                onClick={fetchInspectionHistory} 
-                                variant="outline" 
+                            <Button
+                                onClick={fetchInspectionHistory}
+                                variant="outline"
                                 size="sm"
                                 className="ml-auto"
                             >
@@ -418,7 +418,7 @@ let matchesDate = true;
                                     )}
                                 </div>
 
-{/* Date Filter */}
+                                {/* Date Filter */}
                                 <div className="relative">
                                     <button
                                         className="flex items-center justify-between px-4 py-2 border border-gray-300 rounded-md bg-white w-full sm:w-40"
@@ -563,29 +563,28 @@ let matchesDate = true;
                                         Showing {Math.min(currentPage * resultsPerPage, filteredInspections.length)} of {filteredInspections.length} results
                                     </div>
                                     <div className="flex space-x-1">
-                                        <button 
+                                        <button
                                             className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50"
                                             disabled={currentPage === 1}
                                             onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                                         >
                                             <ChevronLeft size={16} />
                                         </button>
-                                        
+
                                         {[1, 2, 3].map((page) => (
                                             <button
                                                 key={page}
-                                                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                                    currentPage === page
+                                                className={`w-8 h-8 rounded-full flex items-center justify-center ${currentPage === page
                                                         ? "bg-green-500 text-white"
                                                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                                }`}
+                                                    }`}
                                                 onClick={() => setCurrentPage(page)}
                                             >
                                                 {page}
                                             </button>
                                         ))}
-                                        
-                                        <button 
+
+                                        <button
                                             className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50"
                                             disabled={currentPage === totalPages}
                                             onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}

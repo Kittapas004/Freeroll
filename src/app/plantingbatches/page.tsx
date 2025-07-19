@@ -38,6 +38,7 @@ export default function PlantingBatchesPage() {
     const [status] = useState("Pending Actions");
     const [selectedFarm, setSelectedFarm] = useState<Farm | undefined>();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [previewBatchId, setPreviewBatchId] = useState("");
 
     React.useEffect(() => {
         const userRole = localStorage.getItem("userRole");
@@ -169,7 +170,36 @@ export default function PlantingBatchesPage() {
             console.error('Error fetching planting batches:', error);
             return [];
         }
-    }
+    };
+
+    const fetchAllBatchesForIDGeneration = async () => {
+        try {
+            const response = await fetch(`http://localhost:1337/api/batches`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch all batches');
+            }
+            const data = await response.json();
+            return data.data;
+        } catch (error) {
+            console.error('Error fetching all batches:', error);
+            return [];
+        }
+    };
+
+    const generateNewBatchId = async () => {
+        const allBatches = await fetchAllBatchesForIDGeneration();
+
+        const maxBatchNumber = allBatches.reduce((max: number, batch: any) => {
+            const match = batch.Batch_id?.match(/T-Batch-(\d+)/);
+            return match ? Math.max(max, parseInt(match[1], 10)) : max;
+        }, 0);
+
+        return `T-Batch-${String(maxBatchNumber + 1).padStart(3, "0")}`;
+    };
 
     const handleAddBatch = async () => {
         try {
@@ -199,12 +229,7 @@ export default function PlantingBatchesPage() {
                 imageId = uploadData[0]?.id;
             }
 
-            const newBatchId = `T-Batch-${String(
-                plantingbatches.reduce((max, batch) => {
-                    const match = batch.Batch_id.match(/T-Batch-(\d+)/);
-                    return match ? Math.max(max, parseInt(match[1], 10)) : max;
-                }, 0) + 1
-            ).padStart(3, "0")}`;
+            const newBatchId = await generateNewBatchId();
 
             const batchPayload = {
                 data: {
@@ -233,32 +258,32 @@ export default function PlantingBatchesPage() {
             }
 
             if (response.ok) {
-            const farmUpdatePayload = {
-                data: {
-                    Farm_Status: "Planted",
-                },
-            };
+                const farmUpdatePayload = {
+                    data: {
+                        Farm_Status: "Planted",
+                    },
+                };
 
-            const farmUpdateResponse = await fetch(`http://localhost:1337/api/farms/${selectedFarm?.documentId}`, {
-                method: "PUT",
-                headers: {
-                    Authorization: `Bearer ${jwt}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(farmUpdatePayload),
-            });
+                const farmUpdateResponse = await fetch(`http://localhost:1337/api/farms/${selectedFarm?.documentId}`, {
+                    method: "PUT",
+                    headers: {
+                        Authorization: `Bearer ${jwt}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(farmUpdatePayload),
+                });
 
-            if (!farmUpdateResponse.ok) {
-                throw new Error("Failed to update farm status");
+                if (!farmUpdateResponse.ok) {
+                    throw new Error("Failed to update farm status");
+                }
             }
-        }
 
             const result = await response.json();
             console.log("Batch added:", result);
             await fetchPlantingBatches();
             setIsDialogOpen(false);
             alert("Batch added successfully!");
-            
+
         } catch (error) {
             console.error("Error adding batch:", error);
             alert("Something went wrong while adding the batch.");
@@ -271,6 +296,12 @@ export default function PlantingBatchesPage() {
         fetchFarms();
         fetchPlantingBatches();
     }, []);
+
+    React.useEffect(() => {
+        if (isDialogOpen) {
+            generateNewBatchId().then(setPreviewBatchId);
+        }
+    }, [isDialogOpen]);
 
     return (
         <SidebarProvider open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
@@ -309,12 +340,7 @@ export default function PlantingBatchesPage() {
                                             </Label>
                                             <Input
                                                 id="batch-id"
-                                                value={`T-Batch-${String(
-                                                    plantingbatches.reduce((max, batch) => {
-                                                        const match = batch.Batch_id.match(/T-Batch-(\d+)/);
-                                                        return match ? Math.max(max, parseInt(match[1], 10)) : max;
-                                                    }, 0) + 1
-                                                ).padStart(3, '0')}`}
+                                                value={previewBatchId || "Loading..."}
                                                 disabled
                                                 className="cursor-not-allowed bg-gray-100"
                                             />
@@ -462,7 +488,7 @@ export default function PlantingBatchesPage() {
                                         className="bg-green-600 dark:text-white"
                                         onClick={(e) => {
                                             e.preventDefault();
-                                            handleAddBatch();   
+                                            handleAddBatch();
                                         }}
                                     >
                                         Add Batch
@@ -479,7 +505,7 @@ export default function PlantingBatchesPage() {
                                     <img
                                         src={batch.Batch_image}
                                         alt="Batch Image"
-                                        className={`w-full h-37.5 object-cover ${batch.Batch_Status === "Completed Past Data"?"grayscale-100":""}`}
+                                        className={`w-full h-37.5 object-cover ${batch.Batch_Status === "Completed Past Data" ? "grayscale-100" : ""}`}
                                     />
                                     <Circle
                                         className={`absolute top-2 right-2 w-6 h-6 ${batch.Batch_Status === "Completed Successfully"

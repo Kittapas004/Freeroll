@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { useRouter } from 'next/navigation';
-import { MapPin, Calendar, Sprout, Leaf, Plus, Wrench, FlaskConical, Notebook, Check, ChartSpline, Star, SquarePen, Trash, Circle, ChevronDown, ChevronUp, Pencil, EllipsisVertical } from "lucide-react";
+import { MapPin, Calendar, Sprout, Leaf, Plus, Wrench, FlaskConical, Notebook, Check, ChartSpline, Star, SquarePen, Trash, Circle, ChevronDown, ChevronUp, Pencil, EllipsisVertical, ChevronLeft, ChevronRight } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
@@ -56,10 +56,10 @@ export default function InspectionDetailsPage() {
       console.log('=== DEBUG: Fetching Lab Submissions ===');
       console.log('Lab ID:', id);
       console.log('API URL:', `http://localhost:1337/api/lab-submission-records?populate[batch][populate]=Farm&populate[harvest_record][populate]=*&filters[lab][documentId][$eq]=${id}`);
-      
+
       // ดึงข้อมูล lab submission records พร้อม populate batch และ farm
       const res = await fetch(
-        `http://localhost:1337/api/lab-submission-records?populate[batch][populate]=Farm&populate[harvest_record][populate]=*&filters[lab][documentId][$eq]=${id}`, 
+        `http://localhost:1337/api/lab-submission-records?populate[batch][populate]=Farm&populate[harvest_record][populate]=*&filters[lab][documentId][$eq]=${id}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -82,37 +82,37 @@ export default function InspectionDetailsPage() {
       const mappedData = data.data.map((item: any, index: number) => {
         console.log(`=== Processing Item ${index + 1} ===`);
         console.log('Raw item:', item);
-        
+
         const attrs = item.attributes;
-        
+
         // วิธีที่ 1: ลองดึงข้อมูล batch จาก relation ก่อน (ใหม่)
         let batchId = 'N/A';
         let farmName = 'Unknown Farm';
-        
+
         if (attrs?.batch?.data?.attributes) {
           const batchData = attrs.batch.data.attributes;
           batchId = batchData?.Batch_id || 'N/A';
           console.log('Batch ID from relation:', batchId);
-          
+
           if (batchData?.Farm?.data?.attributes) {
             const farmData = batchData.Farm.data.attributes;
             farmName = farmData?.Farm_Name || 'Unknown Farm';
             console.log('Farm name from relation:', farmName);
           }
         }
-        
+
         // วิธีที่ 2: ถ้าไม่ได้ใช้วิธีเดิม (fallback)
         if (batchId === 'N/A') {
-          batchId = attrs?.batch?.data?.attributes?.Batch_id || 
-                    item.batch?.Batch_id || 
-                    'N/A';
+          batchId = attrs?.batch?.data?.attributes?.Batch_id ||
+            item.batch?.Batch_id ||
+            'N/A';
           console.log('Batch ID from fallback:', batchId);
         }
-        
+
         if (farmName === 'Unknown Farm') {
-          farmName = attrs?.batch?.data?.attributes?.Farm?.data?.attributes?.Farm_Name || 
-                     item.batch?.Farm?.Farm_Name || 
-                     'Unknown Farm';
+          farmName = attrs?.batch?.data?.attributes?.Farm?.data?.attributes?.Farm_Name ||
+            item.batch?.Farm?.Farm_Name ||
+            'Unknown Farm';
           console.log('Farm name from fallback:', farmName);
         }
 
@@ -128,7 +128,7 @@ export default function InspectionDetailsPage() {
           yield_amount = item.harvest_record?.yleld || 0;
           yield_unit = item.harvest_record?.Yleld_unit || 'kg';
         }
-        
+
         const mappedItem = {
           id: item.id,
           batch_id: batchId,
@@ -143,7 +143,7 @@ export default function InspectionDetailsPage() {
           test_date: attrs?.test_date,
           inspector_notes: attrs?.inspector_notes
         };
-        
+
         console.log('Mapped item:', mappedItem);
         return mappedItem;
       });
@@ -152,7 +152,7 @@ export default function InspectionDetailsPage() {
       console.log('Total mapped records:', mappedData.length);
       console.log('Final mapped data:', mappedData);
       setRecordDate(mappedData);
-      
+
     } catch (err) {
       console.error('Error fetching lab submission records:', err);
     }
@@ -183,6 +183,38 @@ export default function InspectionDetailsPage() {
     const statusMatch = filters.status === '' || record.Submission_status === filters.status;
     return batchMatch && farmMatch && dateMatch && statusMatch;
   });
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(6);
+
+  // คำนวณข้อมูลสำหรับ pagination
+  const totalItems = filteredRecords.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentRecords = filteredRecords.slice(startIndex, endIndex);
+
+  // รีเซ็ต currentPage เมื่อ filter เปลี่ยน
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
+
+  // ฟังก์ชันสำหรับเปลี่ยนหน้า
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
   if (role === 'loading') {
     return (
@@ -251,7 +283,6 @@ export default function InspectionDetailsPage() {
             </div>
           </div>
 
-          {/* ✅ Show Filtered Results */}
           <div className="bg-white rounded-xl shadow p-4">
             <table className="w-full table-auto text-sm">
               <thead className="border-b">
@@ -266,14 +297,14 @@ export default function InspectionDetailsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredRecords.length === 0 ? (
+                {currentRecords.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-4 text-center text-gray-500">
                       No records found
                     </td>
                   </tr>
                 ) : (
-                  filteredRecords.map((record) => {
+                  currentRecords.map((record) => {
                     console.log('Rendering record:', record);
 
                     return (
@@ -281,10 +312,10 @@ export default function InspectionDetailsPage() {
                         <td className="py-3">{record.batch_id}</td>
                         <td className="py-3">{record.farm_name}</td>
                         <td className="py-3">
-                          {record.Date ? new Date(record.Date).toLocaleDateString('en-US', { 
-                            month: 'short', 
-                            day: 'numeric', 
-                            year: 'numeric' 
+                          {record.Date ? new Date(record.Date).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
                           }) : 'N/A'}
                         </td>
                         <td className="py-3">{record.Quality_grade}</td>
@@ -308,7 +339,6 @@ export default function InspectionDetailsPage() {
                         </td>
                         <td className="py-3">
                           <div className="flex items-center gap-2">
-                            {/* <span className="text-xs text-gray-500">ID: {record.id}</span> */}
                             <button
                               className="text-indigo-600 hover:text-indigo-900 p-1"
                               title="Edit"
@@ -327,9 +357,55 @@ export default function InspectionDetailsPage() {
                 )}
               </tbody>
             </table>
+
+            {/* เพิ่มส่วน Pagination แบบเดียวกับ Farmer */}
+            {totalItems > 0 && (
+              <div className="mt-4 flex items-center justify-between border-t pt-4">
+                {/* แสดงสถิติ */}
+                <div className="text-sm text-gray-600">
+                  Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} results
+                </div>
+
+                {/* ปุ่ม Pagination แบบตัวเลข */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center items-center gap-2">
+                    <button
+                      onClick={handlePreviousPage}
+                      disabled={currentPage === 1}
+                      className="p-1 rounded-full hover:bg-gray-100 disabled:text-gray-300"
+                    >
+                      <ChevronLeft size={16} className="text-gray-600" />
+                    </button>
+
+                    <div className="flex gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => (
+                        <button
+                          key={i + 1}
+                          className={`w-8 h-8 rounded-full text-sm font-medium transition-colors flex items-center justify-center ${i + 1 === currentPage
+                              ? 'bg-green-500 text-white'
+                              : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                            }`}
+                          onClick={() => handlePageChange(i + 1)}
+                        >
+                          {i + 1}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={handleNextPage}
+                      disabled={currentPage === totalPages}
+                      className="p-1 rounded-full hover:bg-gray-100 disabled:text-gray-300"
+                    >
+                      <ChevronRight size={16} className="text-gray-600" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </main>
       </SidebarInset>
-    </SidebarProvider>
+    </SidebarProvider >
   );
 }

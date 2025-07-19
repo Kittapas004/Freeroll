@@ -4,7 +4,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 import { AppSidebar } from "@/components/app-sidebar";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, Calendar, Sprout, Leaf, Plus, Wrench, FlaskConical, Notebook, Check, ChartSpline, Star, SquarePen, Trash, Circle, ChevronDown, ChevronUp, Pencil, EllipsisVertical } from "lucide-react";
+import { MapPin, Calendar, Sprout, Leaf, Plus, Wrench, FlaskConical, Notebook, Check, ChartSpline, Star, SquarePen, Trash, Circle, ChevronDown, ChevronUp, Pencil, EllipsisVertical, Tractor, Settings, Package, BarChart, FileText, Scale, Beaker, BarChart3, Droplets, RotateCcw, Timer, Repeat, History, ChevronRight, ChevronLeft, SprayCan, Microscope } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { useParams, useSearchParams } from 'next/navigation';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 
 
 export default function PlantingBatchDetail() {
@@ -80,7 +81,7 @@ export default function PlantingBatchDetail() {
             quality_grade: string;
             status: string;
             harvest_record: string;
-            report: File | null;
+            report: string | null;
         }[];
     };
 
@@ -114,7 +115,7 @@ export default function PlantingBatchDetail() {
     const tabs = [
         { name: "Fertilizer", icon: <Sprout size={16} />, key: "fertilizer" },
         { name: "Harvest", icon: <Wrench size={16} />, key: "harvest" },
-        { name: "Lab Submission", icon: <FlaskConical size={16} />, key: "lab" }
+        { name: "Lab History", icon: <History size={16} />, key: "lab" }
     ];
 
     const [PlantingBatches, setPlantingBatches] = useState<Batches | null>(null);
@@ -448,134 +449,134 @@ export default function PlantingBatchDetail() {
         setKaminCALData({ ...kaminCALData, [name]: value });
     };
 
-const handleSubmitToLab = async () => {
-    try {
-        if (!selectedLab) {
-            alert("Please select a lab name.");
-            return;
-        }
+    const handleSubmitToLab = async () => {
+        try {
+            if (!selectedLab) {
+                alert("Please select a lab name.");
+                return;
+            }
 
-        if (selectedSamples.length === 0) {
-            alert("Please select at least one sample to submit.");
-            return;
-        }
+            if (selectedSamples.length === 0) {
+                alert("Please select at least one sample to submit.");
+                return;
+            }
 
-        if (!PlantingBatches) {
-            alert("PlantingBatches data is not available.");
-            return;
-        }
+            if (!PlantingBatches) {
+                alert("PlantingBatches data is not available.");
+                return;
+            }
 
-        console.log('=== DEBUG SUBMIT TO LAB ===');
-        console.log('Selected Lab:', selectedLab);
-        console.log('Selected Samples:', selectedSamples);
-        console.log('Document ID:', documentId);
+            console.log('=== DEBUG SUBMIT TO LAB ===');
+            console.log('Selected Lab:', selectedLab);
+            console.log('Selected Samples:', selectedSamples);
+            console.log('Document ID:', documentId);
 
-        // Map through selected samples and create a lab submission record for each
-        await Promise.all(
-            selectedSamples.map(async (sampleId) => {
-                const sample = PlantingBatches.recent_harvest_record.find(
-                    (rec_harvest) => rec_harvest.documentId === sampleId
-                );
+            // Map through selected samples and create a lab submission record for each
+            await Promise.all(
+                selectedSamples.map(async (sampleId) => {
+                    const sample = PlantingBatches.recent_harvest_record.find(
+                        (rec_harvest) => rec_harvest.documentId === sampleId
+                    );
 
-                if (!sample) {
-                    console.error(`Sample with ID ${sampleId} not found.`);
-                    throw new Error(`Sample with ID ${sampleId} not found in harvest records.`);
-                }
+                    if (!sample) {
+                        console.error(`Sample with ID ${sampleId} not found.`);
+                        throw new Error(`Sample with ID ${sampleId} not found in harvest records.`);
+                    }
 
-                console.log('Creating lab submission for sample:', sample);
+                    console.log('Creating lab submission for sample:', sample);
 
-                const submitData = {
-                    data: {
-                        Quality_grade: sample.quality_grade,
-                        Submission_status: "Pending", 
-                        Date: new Date().toISOString(),
-                        Report: null,
-                        batch: documentId,
-                        harvest_record: sampleId,
-                        lab: selectedLab,
-                    },
-                };
-
-                console.log('Submission data:', submitData);
-
-                const res = await fetch(`http://localhost:1337/api/lab-submission-records`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
-                    },
-                    body: JSON.stringify(submitData),
-                });
-
-                console.log('Lab submission response status:', res.status);
-
-                if (!res.ok) {
-                    const errorText = await res.text();
-                    console.error('Lab submission error response:', errorText);
-                    throw new Error(`Failed to create lab submission record for sample ID: ${sampleId}. Status: ${res.status}, Error: ${errorText}`);
-                }
-
-                const responseData = await res.json();
-                console.log('Lab submission created successfully:', responseData);
-
-                // Update the harvest record status to "Pending"
-                console.log('Updating harvest record status...');
-                const updateRes = await fetch(`http://localhost:1337/api/harvest-records/${sampleId}`, {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
-                    },
-                    body: JSON.stringify({
+                    const submitData = {
                         data: {
+                            Quality_grade: sample.quality_grade,
                             Submission_status: "Pending",
+                            Date: new Date().toISOString(),
+                            Report: null,
+                            batch: documentId,
+                            harvest_record: sampleId,
+                            lab: selectedLab,
                         },
-                    }),
-                });
+                    };
 
-                if (!updateRes.ok) {
-                    const updateErrorText = await updateRes.text();
-                    console.error('Update harvest record error:', updateErrorText);
-                    throw new Error(`Failed to update harvest record with ID: ${sampleId}. Status: ${updateRes.status}, Error: ${updateErrorText}`);
-                }
+                    console.log('Submission data:', submitData);
 
-                // Create notification
-                try {
-                    const submitted_notification = await fetch(`http://localhost:1337/api/notifications`, {
+                    const res = await fetch(`http://localhost:1337/api/lab-submission-records`, {
                         method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                        },
+                        body: JSON.stringify(submitData),
+                    });
+
+                    console.log('Lab submission response status:', res.status);
+
+                    if (!res.ok) {
+                        const errorText = await res.text();
+                        console.error('Lab submission error response:', errorText);
+                        throw new Error(`Failed to create lab submission record for sample ID: ${sampleId}. Status: ${res.status}, Error: ${errorText}`);
+                    }
+
+                    const responseData = await res.json();
+                    console.log('Lab submission created successfully:', responseData);
+
+                    // Update the harvest record status to "Pending"
+                    console.log('Updating harvest record status...');
+                    const updateRes = await fetch(`http://localhost:1337/api/harvest-records/${sampleId}`, {
+                        method: "PUT",
                         headers: {
                             "Content-Type": "application/json",
                             Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                         },
                         body: JSON.stringify({
                             data: {
-                                Text: `A new lab submission has been created for sample ${sampleId}`,
-                                Date: new Date().toISOString(),
-                                Notification_status: "General",
-                                batch: documentId,
-                                user_documentId: localStorage.getItem("userId"),
-                            }
-                        })
+                                Submission_status: "Pending",
+                            },
+                        }),
                     });
-                    
-                    if (!submitted_notification.ok) {
-                        console.error("Failed to create notification, but continuing...");
-                    }
-                } catch (notificationError) {
-                    console.error("Notification creation failed, but continuing:", notificationError);
-                }
-            })
-        );
 
-        alert("Samples submitted to the lab successfully!");
-        setSelectedSamples([]); // Clear the selection
-        await fetchPlantingBatches(); // Refresh the data
-        
-    } catch (error) {
-        console.error("Error submitting samples to the lab:", error);
-        alert(`"Failed to submit samples to the lab. Please try again."`);
-    }
-};
+                    if (!updateRes.ok) {
+                        const updateErrorText = await updateRes.text();
+                        console.error('Update harvest record error:', updateErrorText);
+                        throw new Error(`Failed to update harvest record with ID: ${sampleId}. Status: ${updateRes.status}, Error: ${updateErrorText}`);
+                    }
+
+                    // Create notification
+                    try {
+                        const submitted_notification = await fetch(`http://localhost:1337/api/notifications`, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                            },
+                            body: JSON.stringify({
+                                data: {
+                                    Text: `A new lab submission has been created for sample ${sampleId}`,
+                                    Date: new Date().toISOString(),
+                                    Notification_status: "General",
+                                    batch: documentId,
+                                    user_documentId: localStorage.getItem("userId"),
+                                }
+                            })
+                        });
+
+                        if (!submitted_notification.ok) {
+                            console.error("Failed to create notification, but continuing...");
+                        }
+                    } catch (notificationError) {
+                        console.error("Notification creation failed, but continuing:", notificationError);
+                    }
+                })
+            );
+
+            alert("Samples submitted to the lab successfully!");
+            setSelectedSamples([]); // Clear the selection
+            await fetchPlantingBatches(); // Refresh the data
+
+        } catch (error) {
+            console.error("Error submitting samples to the lab:", error);
+            alert(`"Failed to submit samples to the lab. Please try again."`);
+        }
+    };
 
     const handleDeleteLabRecord = async (recordId: string, harvest_record: string) => {
         try {
@@ -933,9 +934,29 @@ const handleSubmitToLab = async () => {
 
     const [selectedSamples, setSelectedSamples] = useState<string[]>([]);
     const [selectedLab, setSelectedLab] = useState<string>("");
+    const [labSubmissionModal, setLabSubmissionModal] = useState<{
+        isOpen: boolean;
+        harvestRecordId: string | null;
+        selectedLab: string;
+    }>({
+        isOpen: false,
+        harvestRecordId: null,
+        selectedLab: ""
+    });
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
+    // เพิ่ม state สำหรับ Lab pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(5);
+
+    // เพิ่ม state สำหรับ harvest pagination
+    const [harvestCurrentPage, setHarvestCurrentPage] = useState(1);
+    const [harvestItemsPerPage] = useState(5);
+
+    // เพิ่ม state สำหรับ fertilizer pagination
+    const [fertilizerCurrentPage, setFertilizerCurrentPage] = useState(1);
+    const [fertilizerItemsPerPage] = useState(2);
 
     const handleFile = (file: File) => {
         const reader = new FileReader();
@@ -1127,6 +1148,120 @@ const handleSubmitToLab = async () => {
         setHarvestFormData({ ...harvest_formData, [name]: value });
     };
 
+    // เพิ่มฟังก์ชันนี้ก่อนหน้า React.useEffect
+    const handleSubmitSingleToLab = async () => {
+        try {
+            if (!labSubmissionModal.selectedLab) {
+                alert("Please select a lab name.");
+                return;
+            }
+
+            if (!labSubmissionModal.harvestRecordId) {
+                alert("No harvest record selected.");
+                return;
+            }
+
+            if (!PlantingBatches) {
+                alert("PlantingBatches data is not available.");
+                return;
+            }
+
+            console.log('=== DEBUG SUBMIT SINGLE TO LAB ===');
+            console.log('Selected Lab:', labSubmissionModal.selectedLab);
+            console.log('Harvest Record ID:', labSubmissionModal.harvestRecordId);
+
+            const sample = PlantingBatches.recent_harvest_record.find(
+                (rec_harvest) => rec_harvest.documentId === labSubmissionModal.harvestRecordId
+            );
+
+            if (!sample) {
+                console.error(`Sample with ID ${labSubmissionModal.harvestRecordId} not found.`);
+                throw new Error(`Sample with ID ${labSubmissionModal.harvestRecordId} not found in harvest records.`);
+            }
+
+            const submitData = {
+                data: {
+                    Quality_grade: sample.quality_grade,
+                    Submission_status: "Pending",
+                    Date: new Date().toISOString(),
+                    Report: null,
+                    batch: documentId,
+                    harvest_record: labSubmissionModal.harvestRecordId,
+                    lab: labSubmissionModal.selectedLab,
+                },
+            };
+
+            const res = await fetch(`http://localhost:1337/api/lab-submission-records`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+                body: JSON.stringify(submitData),
+            });
+
+            if (!res.ok) {
+                const errorText = await res.text();
+                throw new Error(`Failed to create lab submission record. Status: ${res.status}, Error: ${errorText}`);
+            }
+
+            // Update the harvest record status to "Pending"
+            const updateRes = await fetch(`http://localhost:1337/api/harvest-records/${labSubmissionModal.harvestRecordId}`, {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+                body: JSON.stringify({
+                    data: {
+                        Submission_status: "Pending",
+                    },
+                }),
+            });
+
+            if (!updateRes.ok) {
+                throw new Error(`Failed to update harvest record.`);
+            }
+
+            // Create notification
+            try {
+                await fetch(`http://localhost:1337/api/notifications`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                    },
+                    body: JSON.stringify({
+                        data: {
+                            Text: `A new lab submission has been created for sample ${labSubmissionModal.harvestRecordId}`,
+                            Date: new Date().toISOString(),
+                            Notification_status: "General",
+                            batch: documentId,
+                            user_documentId: localStorage.getItem("userId"),
+                        }
+                    })
+                });
+            } catch (notificationError) {
+                console.error("Notification creation failed, but continuing:", notificationError);
+            }
+
+            alert("Sample submitted to the lab successfully!");
+
+            // Close modal and reset state
+            setLabSubmissionModal({
+                isOpen: false,
+                harvestRecordId: null,
+                selectedLab: ""
+            });
+
+            await fetchPlantingBatches(); // Refresh the data
+
+        } catch (error) {
+            console.error("Error submitting sample to the lab:", error);
+            alert("Failed to submit sample to the lab. Please try again.");
+        }
+    };
+
     React.useEffect(() => {
         // Check for query parameters and set the active tab
         if (searchParams.has("fertilizer")) {
@@ -1140,6 +1275,121 @@ const handleSubmitToLab = async () => {
     const handleTabChange = (newTab: string) => {
         setActiveTab(newTab);
     };
+
+    if (!PlantingBatches) {
+        return <p>Loading...</p>;
+    }
+
+    // คำนวณข้อมูลสำหรับ pagination
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentLabRecords = PlantingBatches?.lab_submission_record?.slice(indexOfFirstItem, indexOfLastItem) || [];
+    const totalItems = PlantingBatches?.lab_submission_record?.length || 0;
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+
+    // เพิ่มการคำนวณสำหรับ harvest pagination
+    const harvestIndexOfLastItem = harvestCurrentPage * harvestItemsPerPage;
+    const harvestIndexOfFirstItem = harvestIndexOfLastItem - harvestItemsPerPage;
+    const currentHarvestRecords = PlantingBatches?.recent_harvest_record?.slice(harvestIndexOfFirstItem, harvestIndexOfLastItem) || [];
+    const harvestTotalItems = PlantingBatches?.recent_harvest_record?.length || 0;
+    const harvestTotalPages = Math.ceil(harvestTotalItems / harvestItemsPerPage);
+
+    // เพิ่มการคำนวณสำหรับ fertilizer pagination
+    const fertilizerIndexOfLastItem = fertilizerCurrentPage * fertilizerItemsPerPage;
+    const fertilizerIndexOfFirstItem = fertilizerIndexOfLastItem - fertilizerItemsPerPage;
+    const currentFertilizerRecords = PlantingBatches?.recent_fertilizer_record?.slice(fertilizerIndexOfFirstItem, fertilizerIndexOfLastItem) || [];
+    const fertilizerTotalItems = PlantingBatches?.recent_fertilizer_record?.length || 0;
+    const fertilizerTotalPages = Math.ceil(fertilizerTotalItems / fertilizerItemsPerPage);
+
+
+    // ฟังก์ชันสำหรับเปลี่ยนหน้า
+    const handlePageChange = (pageNumber: number) => {
+        setCurrentPage(pageNumber);
+    };
+
+    // ฟังก์ชันสำหรับไปหน้าก่อนหน้า
+    const handlePrevPage = () => {
+        if (currentPage > 1) {
+            setCurrentPage(currentPage - 1);
+        }
+    };
+
+    // ฟังก์ชันสำหรับไปหน้าถัดไป
+    const handleNextPage = () => {
+        if (currentPage < totalPages) {
+            setCurrentPage(currentPage + 1);
+        }
+    };
+
+    // เพิ่มฟังก์ชันสำหรับ harvest pagination
+    const handleHarvestPageChange = (pageNumber: number) => {
+        setHarvestCurrentPage(pageNumber);
+    };
+
+    const handleHarvestPrevPage = () => {
+        if (harvestCurrentPage > 1) {
+            setHarvestCurrentPage(harvestCurrentPage - 1);
+        }
+    };
+
+    const handleHarvestNextPage = () => {
+        if (harvestCurrentPage < harvestTotalPages) {
+            setHarvestCurrentPage(harvestCurrentPage + 1);
+        }
+    };
+
+    // เพิ่มฟังก์ชันสำหรับ fertilizer pagination
+    const handleFertilizerPageChange = (pageNumber: number) => {
+        setFertilizerCurrentPage(pageNumber);
+    };
+
+    const handleFertilizerPrevPage = () => {
+        if (fertilizerCurrentPage > 1) {
+            setFertilizerCurrentPage(fertilizerCurrentPage - 1);
+        }
+    };
+
+    const handleFertilizerNextPage = () => {
+        if (fertilizerCurrentPage < fertilizerTotalPages) {
+            setFertilizerCurrentPage(fertilizerCurrentPage + 1);
+        }
+    };
+
+    const resetHarvestForm = () => {
+        setHarvestFormData({
+            date: "",
+            method: "",
+            yleld: "",
+            yleld_unit: "kg",
+            quality_grade: "",
+            curcumin_quality: "",
+            note: "",
+            result_type: ""
+        });
+    };
+
+    const resetKaminCALForm = () => {
+        setKaminCALData({
+            sample_name: "",
+            plant_weight: "",
+            solvent_volume: "",
+            average_od: "",
+            concentration: "",
+            number_of_replications: "",
+            first_time: "",
+            analytical_instrument: "UV-Vis",
+            second_time: "",
+            curcuminoid_percentage: "",
+            curcuminoid_content: "Pass",
+            third_time: ""
+        });
+    };
+
+    const resetAllForms = () => {
+        resetHarvestForm();
+        resetKaminCALForm();
+    };
+
 
     if (!PlantingBatches) {
         return <p>Loading...</p>;
@@ -1443,8 +1693,14 @@ const handleSubmitToLab = async () => {
                             )}
                             {isAdding && (
                                 <div className="flex flex-col gap-4 pt-1">
-                                    <h2 className="text-lg font-semibold">Add Fertilizer Record</h2>
                                     <Card className="p-4 space-y-4 shadow-sm">
+                                        <div>
+                                            <div className="flex items-center gap-3">
+                                                <SprayCan className="h-6 w-6 text-green-600" />
+                                                <h2 className="text-lg font-semibold">Add Fertilizer Record</h2>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground">Fill in Fertilizer Application Information</p>
+                                        </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="flex flex-col gap-1">
                                                 <Label>Fertilizer Date</Label>
@@ -1637,72 +1893,139 @@ const handleSubmitToLab = async () => {
                                 </div>
                             )}
                             {!isAdding && !isEditing && (
-                                PlantingBatches.recent_fertilizer_record.map((rec, i) => (
-                                    <Card key={i} className="p-4 space-y-1 shadow-sm">
-                                        <div className="gap-1 flex flex-col">
-                                            <div className="flex flex-row justify-between items-center">
-                                                <div className="flex gap-2 text-sm text-muted-foreground">
-                                                    <span className="bg-green-500 text-white px-2 rounded">{rec.method}</span>
-                                                    <span>{new Date(rec.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                                </div>
-                                                <div className="relative">
-                                                    <Button disabled={PlantingBatches.status === "Completed Successfully" || PlantingBatches.status === "Completed Past Data"} className="cursor-pointer hover:bg-muted rounded-3xl bg-white"
-                                                        onClick={() => setExpandedRow(expandedRow === rec.id ? null : rec.id)}
-                                                    >
-                                                        <EllipsisVertical
-                                                            className="text-black"
-                                                        // onClick={() => setExpandedRow(expandedRow === rec.id ? null : rec.id)}
-                                                        />
-                                                        {expandedRow === rec.id && (
-                                                            <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded shadow-lg z-10">
-                                                                <div
-                                                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                                    onClick={() => {
-                                                                        setIsEditing(true);
-                                                                        // ใช้ fertilizer form data ไม่ใช่ harvest form data
-                                                                        setfertilizerFormData({
-                                                                            date: rec.date,
-                                                                            amount: rec.amount.toString(),
-                                                                            size: rec.size.toString(),
-                                                                            fertilizer_type: rec.fertilizer_type,
-                                                                            method: rec.method,
-                                                                            note: rec.note || "",
-                                                                            unit: rec.unit,
-                                                                        });
-                                                                        setEditingRecord(rec);
-                                                                    }}
-                                                                >
-                                                                    Edit
+                                <div className="flex flex-col gap-4">
+                                    {currentFertilizerRecords.map((rec, i) => (
+                                        <Card key={i} className="p-4 space-y-1 shadow-sm">
+                                            <div className="gap-1 flex flex-col">
+                                                <div className="flex flex-row justify-between items-center">
+                                                    <div className="flex gap-2 text-sm text-muted-foreground">
+                                                        <span className="bg-green-500 text-white px-2 rounded">{rec.method}</span>
+                                                        <span>{new Date(rec.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                                    </div>
+                                                    <div className="relative">
+                                                        <Button disabled={PlantingBatches.status === "Completed Successfully" || PlantingBatches.status === "Completed Past Data"} className="cursor-pointer hover:bg-muted rounded-3xl bg-white"
+                                                            onClick={() => setExpandedRow(expandedRow === rec.id ? null : rec.id)}
+                                                        >
+                                                            <EllipsisVertical
+                                                                className="text-black"
+                                                            />
+                                                            {expandedRow === rec.id && (
+                                                                <div className="absolute right-0 mt-2 w-32 bg-white border border-gray-200 rounded shadow-lg z-10">
+                                                                    <div
+                                                                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                                        onClick={() => {
+                                                                            setIsEditing(true);
+                                                                            setfertilizerFormData({
+                                                                                date: rec.date,
+                                                                                amount: rec.amount.toString(),
+                                                                                size: rec.size.toString(),
+                                                                                fertilizer_type: rec.fertilizer_type,
+                                                                                method: rec.method,
+                                                                                note: rec.note || "",
+                                                                                unit: rec.unit,
+                                                                            });
+                                                                            setEditingRecord(rec);
+                                                                        }}
+                                                                    >
+                                                                        Edit
+                                                                    </div>
+                                                                    <div
+                                                                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                                                        onClick={() => {
+                                                                            handleDeleteFertilizerRecord(rec.documentId);
+                                                                        }}
+                                                                    >
+                                                                        Delete
+                                                                    </div>
                                                                 </div>
-                                                                <div
-                                                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                                                    onClick={() => {
-                                                                        handleDeleteFertilizerRecord(rec.documentId);
-                                                                    }}
-                                                                >
-                                                                    Delete
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                    </Button>
+                                                            )}
+                                                        </Button>
+                                                    </div>
                                                 </div>
+                                                <h3 className="text-xl font-semibold">{rec.fertilizer_type}</h3>
+                                                <div className="flex flex-row gap-4">
+                                                    <div className="flex flex-col">
+                                                        <p className="text-sm text-muted-foreground">Applied:</p>
+                                                        <h1>{rec.amount} kg per square meter</h1>
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <p className="text-sm text-muted-foreground">Acres:</p>
+                                                        <h1>{rec.size}</h1>
+                                                    </div>
+                                                </div>
+                                                <Separator orientation="horizontal" className="h-[2px] bg-gray-300 mt-1"></Separator>
+                                                <p className="flex flex-row items-center gap-1 text-xs text-muted-foreground"><Notebook />Note: {rec.note}</p>
                                             </div>
-                                            <h3 className="text-xl font-semibold">{rec.fertilizer_type}</h3>
-                                            <div className="flex flex-row gap-4">
-                                                <div className="flex flex-col">
-                                                    <p className="text-sm text-muted-foreground">Applied:</p>
-                                                    <h1>{rec.amount} kg per square meter</h1>
-                                                </div>
-                                                <div className="flex flex-col">
-                                                    <p className="text-sm text-muted-foreground">Acres:</p>
-                                                    <h1>{rec.size}</h1>
-                                                </div>
-                                            </div>
-                                            <Separator orientation="horizontal" className="h-[2px] bg-gray-300 mt-1"></Separator>
-                                            <p className="flex flex-row items-center gap-1 text-xs text-muted-foreground"><Notebook />Note: {rec.note}</p>
+                                        </Card>
+                                    ))}
+
+                                    {/* Fertilizer Pagination Section */}
+                                    <div className="flex items-center justify-between mt-4">
+                                        <div className="text-sm text-muted-foreground">
+                                            Showing {fertilizerTotalItems > 0 ? fertilizerIndexOfFirstItem + 1 : 0} to {Math.min(fertilizerIndexOfLastItem, fertilizerTotalItems)} of {fertilizerTotalItems} results
                                         </div>
-                                    </Card>
-                                ))
+
+                                        <div className="flex items-center gap-2">
+                                            {/* Previous Button */}
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={handleFertilizerPrevPage}
+                                                disabled={fertilizerCurrentPage === 1}
+                                                className="h-8 w-8 p-0"
+                                            >
+                                                <ChevronLeft size={16} />
+                                            </Button>
+
+                                            {/* Page Numbers */}
+                                            <div className="flex items-center gap-1">
+                                                {Array.from({ length: fertilizerTotalPages }, (_, i) => i + 1).map((pageNumber) => {
+                                                    if (
+                                                        pageNumber === 1 ||
+                                                        pageNumber === fertilizerTotalPages ||
+                                                        (pageNumber >= fertilizerCurrentPage - 1 && pageNumber <= fertilizerCurrentPage + 1)
+                                                    ) {
+                                                        return (
+                                                            <Button
+                                                                key={pageNumber}
+                                                                variant={fertilizerCurrentPage === pageNumber ? "default" : "outline"}
+                                                                size="sm"
+                                                                onClick={() => handleFertilizerPageChange(pageNumber)}
+                                                                className={`h-8 w-8 p-0 ${fertilizerCurrentPage === pageNumber
+                                                                    ? "bg-green-600 text-white hover:bg-green-700"
+                                                                    : ""
+                                                                    }`}
+                                                            >
+                                                                {pageNumber}
+                                                            </Button>
+                                                        );
+                                                    } else if (
+                                                        pageNumber === fertilizerCurrentPage - 2 ||
+                                                        pageNumber === fertilizerCurrentPage + 2
+                                                    ) {
+                                                        return (
+                                                            <span key={pageNumber} className="px-2 text-muted-foreground">
+                                                                ...
+                                                            </span>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })}
+                                            </div>
+
+                                            {/* Next Button */}
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={handleFertilizerNextPage}
+                                                disabled={fertilizerCurrentPage === fertilizerTotalPages || fertilizerTotalPages === 0}
+                                                className="h-8 w-8 p-0"
+                                            >
+                                                <ChevronRight size={16} />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
                             )}
                         </div>
                     )}
@@ -1717,7 +2040,14 @@ const handleSubmitToLab = async () => {
                                             onClick={() => handleMarkAsComplete()}
                                             disabled={PlantingBatches.status === "Completed Successfully" || PlantingBatches.status === "Completed Past Data"}
                                         ><Check size={16} /> Mark as Complete</Button>
-                                        <Button onClick={() => setIsAdding(true)} className="bg-green-600 hover:bg-green-700" disabled={PlantingBatches.status === "Completed Successfully" || PlantingBatches.status === "Completed Past Data"}>
+                                        <Button
+                                            onClick={() => {
+                                                resetAllForms(); // เพิ่มการ reset form ก่อนเปิด add mode
+                                                setIsAdding(true);
+                                            }}
+                                            className="bg-green-600 hover:bg-green-700"
+                                            disabled={PlantingBatches.status === "Completed Successfully" || PlantingBatches.status === "Completed Past Data"}
+                                        >
                                             <Plus size={16} /> Add Record
                                         </Button>
                                     </div>
@@ -1725,29 +2055,269 @@ const handleSubmitToLab = async () => {
                             )}
                             {isAdding && (
                                 <div className="flex flex-col gap-6 pt-1">
-                                    <h2 className="text-lg font-semibold">Add Harvest Record</h2>
-
                                     {/* Harvest Record Form */}
                                     <Card className="p-4 space-y-4 shadow-sm">
+                                        {/* Updated Header with Tractor Icon และ KaminCAL */}
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <div className="flex items-center gap-3">
+                                                    <Tractor className="h-6 w-6 text-green-600" />
+                                                    <h2 className="text-lg font-semibold">Add Harvest Record</h2>
+                                                </div>
+                                                <p className="text-sm text-muted-foreground">Fill in Harvest Information</p>
+                                            </div>
+
+                                            {/* ย้าย KaminCAL มาไว้ที่นี่ */}
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button className="text-white bg-black hover:bg-gray-800 hover:text-white transition-colors duration-200">
+                                                        <Microscope className="h-4 w-4 mr-2" />
+                                                        KaminCAL
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent side="left" className="w-[800px] max-h-[600px] overflow-y-auto">
+                                                    <div className="p-4">
+                                                        <div className="flex items-center gap-3 mb-4">
+                                                            <Leaf className="h-6 w-6 text-green-600" />
+                                                            <h2 className="text-lg font-semibold">KaminCAL</h2>
+                                                        </div>
+                                                        <p className="text-sm text-muted-foreground mb-4">Fill in Turmeric Information</p>
+
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><FileText className="h-4 w-4" />Sample Name</Label>
+                                                                <Input
+                                                                    name="sample_name"
+                                                                    value={kaminCALData.sample_name}
+                                                                    onChange={handleKaminCALChange}
+                                                                    placeholder="Name"
+                                                                />
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><Scale className="h-4 w-4" />Plant weight</Label>
+                                                                <div className="flex flex-row gap-2 items-center">
+                                                                    <Input
+                                                                        name="plant_weight"
+                                                                        type="number"
+                                                                        value={kaminCALData.plant_weight}
+                                                                        onChange={handleKaminCALChange}
+                                                                        placeholder="e.g., 100 mg"
+                                                                        className="flex-1"
+                                                                    />
+                                                                    <Input
+                                                                        value="mg"
+                                                                        disabled
+                                                                        className="w-16 text-center bg-gray-50 text-black font-medium"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><Beaker className="h-4 w-4" />Solvent volume</Label>
+                                                                <div className="flex flex-row gap-2 items-center">
+                                                                    <Input
+                                                                        name="solvent_volume"
+                                                                        type="number"
+                                                                        value={kaminCALData.solvent_volume}
+                                                                        onChange={handleKaminCALChange}
+                                                                        placeholder="e.g., 100 mg"
+                                                                        className="flex-1"
+                                                                    />
+                                                                    <Input
+                                                                        value="mL"
+                                                                        disabled
+                                                                        className="w-16 text-center bg-gray-50 text-black font-medium"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><BarChart3 className="h-4 w-4" />Average OD</Label>
+                                                                <Input
+                                                                    name="average_od"
+                                                                    type="number"
+                                                                    step="0.001"
+                                                                    value={kaminCALData.average_od}
+                                                                    onChange={handleKaminCALChange}
+                                                                    placeholder="e.g., 1.2"
+                                                                />
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><Droplets className="h-4 w-4" />Concentration</Label>
+                                                                <div className="flex flex-row gap-2 items-center">
+                                                                    <Input
+                                                                        name="concentration"
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={kaminCALData.concentration}
+                                                                        onChange={handleKaminCALChange}
+                                                                        placeholder="e.g., 100 mg"
+                                                                        className="flex-1"
+                                                                    />
+                                                                    <Input
+                                                                        value="mg/mL"
+                                                                        disabled
+                                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><Repeat className="h-4 w-4" />Number of replications</Label>
+                                                                <Input
+                                                                    name="number_of_replications"
+                                                                    type="number"
+                                                                    value={kaminCALData.number_of_replications}
+                                                                    onChange={handleKaminCALChange}
+                                                                    placeholder="Enter the number of times the test"
+                                                                />
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><Timer className="h-4 w-4" />First time</Label>
+                                                                <div className="flex flex-row gap-2 items-center">
+                                                                    <Input
+                                                                        name="first_time"
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={kaminCALData.first_time}
+                                                                        onChange={handleKaminCALChange}
+                                                                        placeholder="e.g., 100 mg/mL"
+                                                                        className="flex-1"
+                                                                    />
+                                                                    <Input
+                                                                        value="mg/mL"
+                                                                        disabled
+                                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><Settings className="h-4 w-4" />Analytical Instrument</Label>
+                                                                <Select
+                                                                    value={kaminCALData.analytical_instrument}
+                                                                    onValueChange={(value) =>
+                                                                        setKaminCALData({ ...kaminCALData, analytical_instrument: value })
+                                                                    }
+                                                                >
+                                                                    <SelectTrigger className="w-full">
+                                                                        <SelectValue placeholder="UV-Vis" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="UV-Vis">UV-Vis</SelectItem>
+                                                                        <SelectItem value="LED">LED</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><Timer className="h-4 w-4" />Second time</Label>
+                                                                <div className="flex flex-row gap-2 items-center">
+                                                                    <Input
+                                                                        name="second_time"
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={kaminCALData.second_time}
+                                                                        onChange={handleKaminCALChange}
+                                                                        placeholder="e.g., 100 mg/mL"
+                                                                        className="flex-1"
+                                                                    />
+                                                                    <Input
+                                                                        value="mg/mL"
+                                                                        disabled
+                                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><FlaskConical className="h-4 w-4" />Curcuminoid content (Percentage by weight)</Label>
+                                                                <div className="flex flex-row gap-2 items-center">
+                                                                    <Input
+                                                                        name="curcuminoid_percentage"
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={kaminCALData.curcuminoid_percentage || ""}
+                                                                        onChange={handleKaminCALChange}
+                                                                        placeholder="Enter the curcuminoid percentage by weight"
+                                                                        className="flex-1"
+                                                                    />
+                                                                    <div className="w-24">
+                                                                        <Select
+                                                                            value={kaminCALData.curcuminoid_content}
+                                                                            onValueChange={(value) =>
+                                                                                setKaminCALData({ ...kaminCALData, curcuminoid_content: value })
+                                                                            }
+                                                                        >
+                                                                            <SelectTrigger>
+                                                                                <SelectValue placeholder="Pass" />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                <SelectItem value="Pass">Pass</SelectItem>
+                                                                                <SelectItem value="Fail">Fail</SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><Timer className="h-4 w-4" />Third time</Label>
+                                                                <div className="flex flex-row gap-2 items-center">
+                                                                    <Input
+                                                                        name="third_time"
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={kaminCALData.third_time}
+                                                                        onChange={handleKaminCALChange}
+                                                                        placeholder="e.g., 100 mg/mL"
+                                                                        className="flex-1"
+                                                                    />
+                                                                    <Input
+                                                                        value="mg/mL"
+                                                                        disabled
+                                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex justify-end mt-6 gap-2">
+                                                            <Button
+                                                                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-800"
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        await harvest_createdata();
+                                                                        alert('KaminCAL data saved successfully');
+                                                                    } catch (error) {
+                                                                        console.error('Error saving KaminCAL data:', error);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                Save KaminCAL 
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
+
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="flex flex-col gap-1">
-                                                <Label>Harvest Date</Label>
+                                                <Label><Calendar className="h-4 w-4" />Harvest Date</Label>
                                                 <Input type="datetime-local" name="date" value={harvest_formData.date} onChange={harvest_handleChange} />
                                             </div>
                                             <div className="flex flex-col gap-1">
-                                                <Label>Harvest Method</Label>
+                                                <Label><Tractor className="h-4 w-4" />Harvest Method</Label>
                                                 <Select value={harvest_formData.method} onValueChange={(value) => setHarvestFormData({ ...harvest_formData, method: value })}>
                                                     <SelectTrigger className="w-full">
                                                         <SelectValue placeholder="Select Harvest Method" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="Machine Harvesting">Machine Harvesting</SelectItem>
-                                                        <SelectItem value="Manual Harvesting">Manual Harvesting</SelectItem>
+                                                        <SelectItem value="Machine Harvesting">
+                                                            Machine Harvesting
+                                                        </SelectItem>
+                                                        <SelectItem value="Manual Harvesting">
+                                                            Manual Harvesting
+                                                        </SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
                                             <div className="flex flex-col gap-1">
-                                                <Label>Yield Amount</Label>
+                                                <Label><Package className="h-4 w-4" />Yield Amount</Label>
                                                 <div className="flex flex-row gap-2 items-center">
                                                     <Input type="number" name="yleld" min={0} placeholder="Enter Yield Amount here ..." value={harvest_formData.yleld} onChange={harvest_handleChange} />
                                                     <Select defaultValue="kg" value={harvest_formData.yleld_unit} onValueChange={(value) => setHarvestFormData({ ...harvest_formData, yleld_unit: value })}>
@@ -1762,11 +2332,11 @@ const handleSubmitToLab = async () => {
                                                 </div>
                                             </div>
                                             <div className="flex flex-col gap-1">
-                                                <Label>Curcumin Quality (%)</Label>
+                                                <Label><FlaskConical className="h-4 w-4" />Curcumin Quality (%)</Label>
                                                 <Input type="number" name="curcumin_quality" placeholder="Enter Curcumin Amount here ..." onChange={harvest_handleChange} min={0} max={100} value={harvest_formData.curcumin_quality} />
                                             </div>
                                             <div className="flex flex-col gap-1">
-                                                <Label>Quality Grade</Label>
+                                                <Label><Star className="h-4 w-4" />Quality Grade</Label>
                                                 <Select value={harvest_formData.quality_grade} onValueChange={(value) => setHarvestFormData({ ...harvest_formData, quality_grade: value })}>
                                                     <SelectTrigger className="w-full">
                                                         <SelectValue placeholder="Select Grade" />
@@ -1778,11 +2348,11 @@ const handleSubmitToLab = async () => {
                                                 </Select>
                                             </div>
                                             <div className="flex flex-col gap-1 row-span-2">
-                                                <Label>Notes (Optional)</Label>
+                                                <Label><Notebook className="h-4 w-4" />Notes (Optional)</Label>
                                                 <Textarea className="h-full" name="note" placeholder="Enter Notes here ... (Optional)" onChange={harvest_handleChange} value={harvest_formData.note} />
                                             </div>
                                             <div className="flex flex-col gap-1">
-                                                <Label>Result Type</Label>
+                                                <Label><Settings className="h-4 w-4" />Result Type</Label>
                                                 <Select
                                                     value={harvest_formData.result_type}
                                                     onValueChange={(value) =>
@@ -1801,260 +2371,287 @@ const handleSubmitToLab = async () => {
                                         </div>
                                     </Card>
 
-                                    {/* KaminCAL Section - Same styling as top card  */}
-                                    <h2 className="text-lg font-semibold">KaminCAL</h2>
-                                    <Card className="p-4 space-y-4 shadow-sm">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Sample Name</Label>
-                                                <Input
-                                                    name="sample_name"
-                                                    value={kaminCALData.sample_name}
-                                                    onChange={handleKaminCALChange}
-                                                    placeholder="Name"
-                                                />
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Plant weight</Label>
-                                                <div className="flex flex-row gap-2 items-center">
-                                                    <Input
-                                                        name="plant_weight"
-                                                        type="number"
-                                                        value={kaminCALData.plant_weight}
-                                                        onChange={handleKaminCALChange}
-                                                        placeholder=""
-                                                        className="flex-1"
-                                                    />
-                                                    <Input
-                                                        value="mg"
-                                                        disabled
-                                                        className="w-16 text-center bg-gray-50 text-black font-medium"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Solvent volume</Label>
-                                                <div className="flex flex-row gap-2 items-center">
-                                                    <Input
-                                                        name="solvent_volume"
-                                                        type="number"
-                                                        value={kaminCALData.solvent_volume}
-                                                        onChange={handleKaminCALChange}
-                                                        placeholder=""
-                                                        className="flex-1"
-                                                    />
-                                                    <Input
-                                                        value="mL"
-                                                        disabled
-                                                        className="w-16 text-center bg-gray-50 text-black font-medium"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Average OD</Label>
-                                                <Input
-                                                    name="average_od"
-                                                    type="number"
-                                                    step="0.001"
-                                                    value={kaminCALData.average_od}
-                                                    onChange={handleKaminCALChange}
-                                                    placeholder=""
-                                                />
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Concentration</Label>
-                                                <div className="flex flex-row gap-2 items-center">
-                                                    <Input
-                                                        name="concentration"
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={kaminCALData.concentration}
-                                                        onChange={handleKaminCALChange}
-                                                        placeholder=""
-                                                        className="flex-1"
-                                                    />
-                                                    <Input
-                                                        value="mg/mL"
-                                                        disabled
-                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Number of replications</Label>
-                                                <Input
-                                                    name="number_of_replications"
-                                                    type="number"
-                                                    value={kaminCALData.number_of_replications}
-                                                    onChange={handleKaminCALChange}
-                                                    placeholder=""
-                                                />
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>First time</Label>
-                                                <div className="flex flex-row gap-2 items-center">
-                                                    <Input
-                                                        name="first_time"
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={kaminCALData.first_time}
-                                                        onChange={handleKaminCALChange}
-                                                        placeholder=""
-                                                        className="flex-1"
-                                                    />
-                                                    <Input
-                                                        value="mg/mL"
-                                                        disabled
-                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Analytical Instrument</Label>
-                                                <Select
-                                                    value={kaminCALData.analytical_instrument}
-                                                    onValueChange={(value) =>
-                                                        setKaminCALData({ ...kaminCALData, analytical_instrument: value })
-                                                    }
-                                                >
-                                                    <SelectTrigger className="w-full">
-                                                        <SelectValue placeholder="UV-Vis" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="UV-Vis">UV-Vis</SelectItem>
-                                                        <SelectItem value="LED">LED</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Second time</Label>
-                                                <div className="flex flex-row gap-2 items-center">
-                                                    <Input
-                                                        name="second_time"
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={kaminCALData.second_time}
-                                                        onChange={handleKaminCALChange}
-                                                        placeholder=""
-                                                        className="flex-1"
-                                                    />
-                                                    <Input
-                                                        value="mg/mL"
-                                                        disabled
-                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Curcuminoid content (Percentage by weight)</Label>
-                                                <div className="flex flex-row gap-2 items-center">
-                                                    <Input
-                                                        name="curcuminoid_percentage"
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={kaminCALData.curcuminoid_percentage || ""}
-                                                        onChange={handleKaminCALChange}
-                                                        placeholder=""
-                                                        className="flex-1"
-                                                    />
-                                                    <div className="w-24">
-                                                        <Select
-                                                            value={kaminCALData.curcuminoid_content}
-                                                            onValueChange={(value) =>
-                                                                setKaminCALData({ ...kaminCALData, curcuminoid_content: value })
-                                                            }
-                                                        >
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Pass" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="Pass">Pass</SelectItem>
-                                                                <SelectItem value="Fail">Fail</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Third time</Label>
-                                                <div className="flex flex-row gap-2 items-center">
-                                                    <Input
-                                                        name="third_time"
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={kaminCALData.third_time}
-                                                        onChange={handleKaminCALChange}
-                                                        placeholder=""
-                                                        className="flex-1"
-                                                    />
-                                                    <Input
-                                                        value="mg/mL"
-                                                        disabled
-                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Card>
-
-                                    {/* Buttons Outside Cards */}
+                                    {/* Buttons Section - เหลือแค่ Cancel และ Save */}
                                     <div className="flex justify-end gap-2">
-                                        <Button onClick={() => setIsAdding(false)} className="bg-red-500 hover:bg-red-600">Cancel</Button>
+                                        <Button
+                                            onClick={() => {
+                                                resetAllForms();
+                                                setIsAdding(false);
+                                            }}
+                                            className="bg-red-500 hover:bg-red-600"
+                                        >Cancel</Button>
                                         <Button onClick={() => harvest_createdata()} className="bg-green-600 hover:bg-green-700">Save</Button>
                                     </div>
                                 </div>
                             )}
                             {isEditing && (
-                                <div className="flex flex-col gap-6 pt-1">
-                                    <h2 className="text-lg font-semibold">Edit Harvest Record</h2>
-
+<div className="flex flex-col gap-6 pt-1">
                                     {/* Harvest Record Form */}
                                     <Card className="p-4 space-y-4 shadow-sm">
+                                        {/* Updated Header with Tractor Icon และ KaminCAL */}
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <div className="flex items-center gap-3">
+                                                    <Tractor className="h-6 w-6 text-green-600" />
+                                                    <h2 className="text-lg font-semibold">Edit Harvest Record</h2>
+                                                </div>
+                                                <p className="text-sm text-muted-foreground">Fill in Edit Harvest Information</p>
+                                            </div>
+
+                                            {/* ย้าย KaminCAL มาไว้ที่นี่ */}
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button className="text-white bg-black hover:bg-gray-800 hover:text-white transition-colors duration-200">
+                                                        <Microscope className="h-4 w-4 mr-2" />
+                                                        KaminCAL
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent side="left" className="w-[800px] max-h-[600px] overflow-y-auto">
+                                                    <div className="p-4">
+                                                        <div className="flex items-center gap-3 mb-4">
+                                                            <Leaf className="h-6 w-6 text-green-600" />
+                                                            <h2 className="text-lg font-semibold">KaminCAL</h2>
+                                                        </div>
+                                                        <p className="text-sm text-muted-foreground mb-4">Fill in Edit Turmeric Information</p>
+
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><FileText className="h-4 w-4" />Sample Name</Label>
+                                                                <Input
+                                                                    name="sample_name"
+                                                                    value={kaminCALData.sample_name}
+                                                                    onChange={handleKaminCALChange}
+                                                                    placeholder="Name"
+                                                                />
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><Scale className="h-4 w-4" />Plant weight</Label>
+                                                                <div className="flex flex-row gap-2 items-center">
+                                                                    <Input
+                                                                        name="plant_weight"
+                                                                        type="number"
+                                                                        value={kaminCALData.plant_weight}
+                                                                        onChange={handleKaminCALChange}
+                                                                        placeholder="e.g., 100 mg"
+                                                                        className="flex-1"
+                                                                    />
+                                                                    <Input
+                                                                        value="mg"
+                                                                        disabled
+                                                                        className="w-16 text-center bg-gray-50 text-black font-medium"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><Beaker className="h-4 w-4" />Solvent volume</Label>
+                                                                <div className="flex flex-row gap-2 items-center">
+                                                                    <Input
+                                                                        name="solvent_volume"
+                                                                        type="number"
+                                                                        value={kaminCALData.solvent_volume}
+                                                                        onChange={handleKaminCALChange}
+                                                                        placeholder="e.g., 100 mg"
+                                                                        className="flex-1"
+                                                                    />
+                                                                    <Input
+                                                                        value="mL"
+                                                                        disabled
+                                                                        className="w-16 text-center bg-gray-50 text-black font-medium"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><BarChart3 className="h-4 w-4" />Average OD</Label>
+                                                                <Input
+                                                                    name="average_od"
+                                                                    type="number"
+                                                                    step="0.001"
+                                                                    value={kaminCALData.average_od}
+                                                                    onChange={handleKaminCALChange}
+                                                                    placeholder="e.g., 1.2"
+                                                                />
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><Droplets className="h-4 w-4" />Concentration</Label>
+                                                                <div className="flex flex-row gap-2 items-center">
+                                                                    <Input
+                                                                        name="concentration"
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={kaminCALData.concentration}
+                                                                        onChange={handleKaminCALChange}
+                                                                        placeholder="e.g., 100 mg"
+                                                                        className="flex-1"
+                                                                    />
+                                                                    <Input
+                                                                        value="mg/mL"
+                                                                        disabled
+                                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><Repeat className="h-4 w-4" />Number of replications</Label>
+                                                                <Input
+                                                                    name="number_of_replications"
+                                                                    type="number"
+                                                                    value={kaminCALData.number_of_replications}
+                                                                    onChange={handleKaminCALChange}
+                                                                    placeholder="Enter the number of times the test"
+                                                                />
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><Timer className="h-4 w-4" />First time</Label>
+                                                                <div className="flex flex-row gap-2 items-center">
+                                                                    <Input
+                                                                        name="first_time"
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={kaminCALData.first_time}
+                                                                        onChange={handleKaminCALChange}
+                                                                        placeholder="e.g., 100 mg/mL"
+                                                                        className="flex-1"
+                                                                    />
+                                                                    <Input
+                                                                        value="mg/mL"
+                                                                        disabled
+                                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><Settings className="h-4 w-4" />Analytical Instrument</Label>
+                                                                <Select
+                                                                    value={kaminCALData.analytical_instrument}
+                                                                    onValueChange={(value) =>
+                                                                        setKaminCALData({ ...kaminCALData, analytical_instrument: value })
+                                                                    }
+                                                                >
+                                                                    <SelectTrigger className="w-full">
+                                                                        <SelectValue placeholder="UV-Vis" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="UV-Vis">UV-Vis</SelectItem>
+                                                                        <SelectItem value="LED">LED</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><Timer className="h-4 w-4" />Second time</Label>
+                                                                <div className="flex flex-row gap-2 items-center">
+                                                                    <Input
+                                                                        name="second_time"
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={kaminCALData.second_time}
+                                                                        onChange={handleKaminCALChange}
+                                                                        placeholder="e.g., 100 mg/mL"
+                                                                        className="flex-1"
+                                                                    />
+                                                                    <Input
+                                                                        value="mg/mL"
+                                                                        disabled
+                                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><FlaskConical className="h-4 w-4" />Curcuminoid content (Percentage by weight)</Label>
+                                                                <div className="flex flex-row gap-2 items-center">
+                                                                    <Input
+                                                                        name="curcuminoid_percentage"
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={kaminCALData.curcuminoid_percentage || ""}
+                                                                        onChange={handleKaminCALChange}
+                                                                        placeholder="Enter the curcuminoid percentage by weight"
+                                                                        className="flex-1"
+                                                                    />
+                                                                    <div className="w-24">
+                                                                        <Select
+                                                                            value={kaminCALData.curcuminoid_content}
+                                                                            onValueChange={(value) =>
+                                                                                setKaminCALData({ ...kaminCALData, curcuminoid_content: value })
+                                                                            }
+                                                                        >
+                                                                            <SelectTrigger>
+                                                                                <SelectValue placeholder="Pass" />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent>
+                                                                                <SelectItem value="Pass">Pass</SelectItem>
+                                                                                <SelectItem value="Fail">Fail</SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex flex-col gap-1">
+                                                                <Label><Timer className="h-4 w-4" />Third time</Label>
+                                                                <div className="flex flex-row gap-2 items-center">
+                                                                    <Input
+                                                                        name="third_time"
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={kaminCALData.third_time}
+                                                                        onChange={handleKaminCALChange}
+                                                                        placeholder="e.g., 100 mg/mL"
+                                                                        className="flex-1"
+                                                                    />
+                                                                    <Input
+                                                                        value="mg/mL"
+                                                                        disabled
+                                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex justify-end mt-6 gap-2">
+                                                            <Button
+                                                                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-800"
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        await harvest_createdata();
+                                                                        alert('KaminCAL data saved successfully');
+                                                                    } catch (error) {
+                                                                        console.error('Error saving KaminCAL data:', error);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                Save KaminCAL 
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
+
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="flex flex-col gap-1">
-                                                <Label>Harvest Date</Label>
-                                                <Input
-                                                    type="datetime-local"
-                                                    name="date"
-                                                    value={harvest_formData.date}
-                                                    onChange={harvest_handleChange}
-                                                />
+                                                <Label><Calendar className="h-4 w-4" />Harvest Date</Label>
+                                                <Input type="datetime-local" name="date" value={harvest_formData.date} onChange={harvest_handleChange} />
                                             </div>
                                             <div className="flex flex-col gap-1">
-                                                <Label>Harvest Method</Label>
-                                                <Select
-                                                    value={harvest_formData.method}
-                                                    onValueChange={(value) =>
-                                                        setHarvestFormData({ ...harvest_formData, method: value })
-                                                    }
-                                                >
+                                                <Label><Tractor className="h-4 w-4" />Harvest Method</Label>
+                                                <Select value={harvest_formData.method} onValueChange={(value) => setHarvestFormData({ ...harvest_formData, method: value })}>
                                                     <SelectTrigger className="w-full">
                                                         <SelectValue placeholder="Select Harvest Method" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="Machine Harvesting">Machine Harvesting</SelectItem>
-                                                        <SelectItem value="Manual Harvesting">Manual Harvesting</SelectItem>
+                                                        <SelectItem value="Machine Harvesting">
+                                                            Machine Harvesting
+                                                        </SelectItem>
+                                                        <SelectItem value="Manual Harvesting">
+                                                            Manual Harvesting
+                                                        </SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
                                             <div className="flex flex-col gap-1">
-                                                <Label>Yield Amount</Label>
+                                                <Label><Package className="h-4 w-4" />Yield Amount</Label>
                                                 <div className="flex flex-row gap-2 items-center">
-                                                    <Input
-                                                        type="number"
-                                                        name="yleld"
-                                                        min={0}
-                                                        placeholder="Enter Yield Amount here ..."
-                                                        value={harvest_formData.yleld}
-                                                        onChange={harvest_handleChange}
-                                                    />
-                                                    <Select
-                                                        defaultValue="kg"
-                                                        value={harvest_formData.yleld_unit}
-                                                        onValueChange={(value) =>
-                                                            setHarvestFormData({ ...harvest_formData, yleld_unit: value })
-                                                        }
-                                                    >
+                                                    <Input type="number" name="yleld" min={0} placeholder="Enter Yield Amount here ..." value={harvest_formData.yleld} onChange={harvest_handleChange} />
+                                                    <Select defaultValue="kg" value={harvest_formData.yleld_unit} onValueChange={(value) => setHarvestFormData({ ...harvest_formData, yleld_unit: value })}>
                                                         <SelectTrigger>
                                                             <SelectValue />
                                                         </SelectTrigger>
@@ -2066,25 +2663,12 @@ const handleSubmitToLab = async () => {
                                                 </div>
                                             </div>
                                             <div className="flex flex-col gap-1">
-                                                <Label>Curcumin Quality (%)</Label>
-                                                <Input
-                                                    type="number"
-                                                    name="curcumin_quality"
-                                                    placeholder="Enter Curcumin Amount here ..."
-                                                    onChange={harvest_handleChange}
-                                                    min={0}
-                                                    max={100}
-                                                    value={harvest_formData.curcumin_quality}
-                                                />
+                                                <Label><FlaskConical className="h-4 w-4" />Curcumin Quality (%)</Label>
+                                                <Input type="number" name="curcumin_quality" placeholder="Enter Curcumin Amount here ..." onChange={harvest_handleChange} min={0} max={100} value={harvest_formData.curcumin_quality} />
                                             </div>
                                             <div className="flex flex-col gap-1">
-                                                <Label>Quality Grade</Label>
-                                                <Select
-                                                    value={harvest_formData.quality_grade}
-                                                    onValueChange={(value) =>
-                                                        setHarvestFormData({ ...harvest_formData, quality_grade: value })
-                                                    }
-                                                >
+                                                <Label><Star className="h-4 w-4" />Quality Grade</Label>
+                                                <Select value={harvest_formData.quality_grade} onValueChange={(value) => setHarvestFormData({ ...harvest_formData, quality_grade: value })}>
                                                     <SelectTrigger className="w-full">
                                                         <SelectValue placeholder="Select Grade" />
                                                     </SelectTrigger>
@@ -2095,20 +2679,16 @@ const handleSubmitToLab = async () => {
                                                 </Select>
                                             </div>
                                             <div className="flex flex-col gap-1 row-span-2">
-                                                <Label>Notes (Optional)</Label>
-                                                <Textarea
-                                                    className="h-full"
-                                                    name="note"
-                                                    placeholder="Enter Notes here ... (Optional)"
-                                                    onChange={harvest_handleChange}
-                                                    value={harvest_formData.note}
-                                                />
+                                                <Label><Notebook className="h-4 w-4" />Notes (Optional)</Label>
+                                                <Textarea className="h-full" name="note" placeholder="Enter Notes here ... (Optional)" onChange={harvest_handleChange} value={harvest_formData.note} />
                                             </div>
                                             <div className="flex flex-col gap-1">
-                                                <Label>Result Type</Label>
+                                                <Label><Settings className="h-4 w-4" />Result Type</Label>
                                                 <Select
                                                     value={harvest_formData.result_type}
-                                                    onValueChange={(value) => setHarvestFormData({ ...harvest_formData, result_type: value })}
+                                                    onValueChange={(value) =>
+                                                        setHarvestFormData({ ...harvest_formData, result_type: value })
+                                                    }
                                                 >
                                                     <SelectTrigger className="w-full">
                                                         <SelectValue placeholder="Select Result Type" />
@@ -2122,202 +2702,7 @@ const handleSubmitToLab = async () => {
                                         </div>
                                     </Card>
 
-                                    {/* KaminCAL Section - Same styling as top card  */}
-                                    <h2 className="text-lg font-semibold">KaminCAL</h2>
-                                    <Card className="p-4 space-y-4 shadow-sm">
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Sample Name</Label>
-                                                <Input
-                                                    name="sample_name"
-                                                    value={kaminCALData.sample_name}
-                                                    onChange={handleKaminCALChange}
-                                                    placeholder="Name"
-                                                />
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Plant weight</Label>
-                                                <div className="flex flex-row gap-2 items-center">
-                                                    <Input
-                                                        name="plant_weight"
-                                                        type="number"
-                                                        value={kaminCALData.plant_weight}
-                                                        onChange={handleKaminCALChange}
-                                                        placeholder=""
-                                                        className="flex-1"
-                                                    />
-                                                    <Input
-                                                        value="mg"
-                                                        disabled
-                                                        className="w-16 text-center bg-gray-50 text-black font-medium"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Solvent volume</Label>
-                                                <div className="flex flex-row gap-2 items-center">
-                                                    <Input
-                                                        name="solvent_volume"
-                                                        type="number"
-                                                        value={kaminCALData.solvent_volume}
-                                                        onChange={handleKaminCALChange}
-                                                        placeholder=""
-                                                        className="flex-1"
-                                                    />
-                                                    <Input
-                                                        value="mL"
-                                                        disabled
-                                                        className="w-16 text-center bg-gray-50 text-black font-medium"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Average OD</Label>
-                                                <Input
-                                                    name="average_od"
-                                                    type="number"
-                                                    step="0.001"
-                                                    value={kaminCALData.average_od}
-                                                    onChange={handleKaminCALChange}
-                                                    placeholder=""
-                                                />
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Concentration</Label>
-                                                <div className="flex flex-row gap-2 items-center">
-                                                    <Input
-                                                        name="concentration"
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={kaminCALData.concentration}
-                                                        onChange={handleKaminCALChange}
-                                                        placeholder=""
-                                                        className="flex-1"
-                                                    />
-                                                    <Input
-                                                        value="mg/mL"
-                                                        disabled
-                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Number of replications</Label>
-                                                <Input
-                                                    name="number_of_replications"
-                                                    type="number"
-                                                    value={kaminCALData.number_of_replications}
-                                                    onChange={handleKaminCALChange}
-                                                    placeholder=""
-                                                />
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>First time</Label>
-                                                <div className="flex flex-row gap-2 items-center">
-                                                    <Input
-                                                        name="first_time"
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={kaminCALData.first_time}
-                                                        onChange={handleKaminCALChange}
-                                                        placeholder=""
-                                                        className="flex-1"
-                                                    />
-                                                    <Input
-                                                        value="mg/mL"
-                                                        disabled
-                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Analytical Instrument</Label>
-                                                <Select
-                                                    value={kaminCALData.analytical_instrument}
-                                                    onValueChange={(value) =>
-                                                        setKaminCALData({ ...kaminCALData, analytical_instrument: value })
-                                                    }
-                                                >
-                                                    <SelectTrigger className="w-full">
-                                                        <SelectValue placeholder="UV-Vis" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="UV-Vis">UV-Vis</SelectItem>
-                                                        <SelectItem value="LED">LED</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Second time</Label>
-                                                <div className="flex flex-row gap-2 items-center">
-                                                    <Input
-                                                        name="second_time"
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={kaminCALData.second_time}
-                                                        onChange={handleKaminCALChange}
-                                                        placeholder=""
-                                                        className="flex-1"
-                                                    />
-                                                    <Input
-                                                        value="mg/mL"
-                                                        disabled
-                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Curcuminoid content (Percentage by weight)</Label>
-                                                <div className="flex flex-row gap-2 items-center">
-                                                    <Input
-                                                        name="curcuminoid_percentage"
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={kaminCALData.curcuminoid_percentage || ""}
-                                                        onChange={handleKaminCALChange}
-                                                        placeholder=""
-                                                        className="flex-1"
-                                                    />
-                                                    <div className="w-24">
-                                                        <Select
-                                                            value={kaminCALData.curcuminoid_content}
-                                                            onValueChange={(value) =>
-                                                                setKaminCALData({ ...kaminCALData, curcuminoid_content: value })
-                                                            }
-                                                        >
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Pass" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="Pass">Pass</SelectItem>
-                                                                <SelectItem value="Fail">Fail</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Label>Third time</Label>
-                                                <div className="flex flex-row gap-2 items-center">
-                                                    <Input
-                                                        name="third_time"
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={kaminCALData.third_time}
-                                                        onChange={handleKaminCALChange}
-                                                        placeholder=""
-                                                        className="flex-1"
-                                                    />
-                                                    <Input
-                                                        value="mg/mL"
-                                                        disabled
-                                                        className="w-20 text-center bg-gray-50 text-black font-medium"
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </Card>
-                                    {/* Buttons Outside Cards */}
+                                    {/* Buttons Section - เหลือแค่ Cancel และ Save */}
                                     <div className="flex justify-end gap-2">
                                         <Button
                                             onClick={() => {
@@ -2325,18 +2710,12 @@ const handleSubmitToLab = async () => {
                                                 setEditingRecord(null);
                                             }}
                                             className="bg-red-500 hover:bg-red-600"
-                                        >
-                                            Cancel
-                                        </Button>
-                                        <Button
-                                            onClick={() => handleUpdateHarvestRecord()}
-                                            className="bg-green-600 hover:bg-green-700"
-                                        >
-                                            Save
-                                        </Button>
+                                        >Cancel</Button>
+                                        <Button onClick={() => harvest_createdata()} className="bg-green-600 hover:bg-green-700">Save</Button>
                                     </div>
                                 </div>
-                            )} {!isAdding && !isEditing && (
+                            )}
+                            {!isAdding && !isEditing && (
                                 <div className="flex flex-col gap-4">
                                     <div className="grid grid-cols-3 gap-10 w-full max-w-5xl mx-auto pt-1">
                                         <Card className="items-center justify-center">
@@ -2389,7 +2768,6 @@ const handleSubmitToLab = async () => {
                                                         <span className="text-gray-500">No records available</span>
                                                     )}
                                                 </p>
-
                                             </CardContent>
                                         </Card>
                                         <Card className="items-center justify-center">
@@ -2418,7 +2796,6 @@ const handleSubmitToLab = async () => {
                                                             return `${diffInMinutes} minute${diffInMinutes !== 1 ? 's' : ''} ago`;
                                                         }
                                                         return `${diffInHours} hours ago`;
-
                                                     } else {
                                                         return "No updates available";
                                                     }
@@ -2426,6 +2803,7 @@ const handleSubmitToLab = async () => {
                                             </CardContent>
                                         </Card>
                                     </div>
+
                                     <Table>
                                         <TableHeader>
                                             <TableRow>
@@ -2438,7 +2816,7 @@ const handleSubmitToLab = async () => {
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {PlantingBatches.recent_harvest_record.map((harvest_record) => (
+                                            {currentHarvestRecords.map((harvest_record) => (
                                                 <React.Fragment key={harvest_record.id}>
                                                     <TableRow key={harvest_record.id}>
                                                         <TableCell>{new Date(harvest_record.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</TableCell>
@@ -2460,25 +2838,9 @@ const handleSubmitToLab = async () => {
                                                                         quality_grade: harvest_record.quality_grade,
                                                                         method: harvest_record.method,
                                                                         note: harvest_record.note || "",
-                                                                        result_type: harvest_record.result_type || "UV-Vis", // เพิ่มบรรทัดนี้
+                                                                        result_type: harvest_record.result_type || "UV-Vis",
                                                                         curcumin_quality: harvest_record.curcumin_quality.toString(),
                                                                         yleld_unit: harvest_record.yleld_unit || "kg",
-                                                                    });
-
-                                                                    // เพิ่มการ populate KaminCAL data
-                                                                    console.log("Populating KaminCAL data:", {
-                                                                        sample_name: harvest_record.kamincal_sample_name,
-                                                                        plant_weight: harvest_record.kamincal_plant_weight,
-                                                                        solvent_volume: harvest_record.kamincal_solvent_volume,
-                                                                        average_od: harvest_record.kamincal_average_od,
-                                                                        concentration: harvest_record.kamincal_concentration,
-                                                                        number_of_replications: harvest_record.kamincal_number_of_replications,
-                                                                        first_time: harvest_record.kamincal_first_time,
-                                                                        analytical_instrument: harvest_record.kamincal_analytical_instrument,
-                                                                        second_time: harvest_record.kamincal_second_time,
-                                                                        curcuminoid_content: harvest_record.kamincal_curcuminoid_content,
-                                                                        curcuminoid_percentage: harvest_record.kamincal_curcuminoid_percentage,
-                                                                        third_time: harvest_record.kamincal_third_time,
                                                                     });
 
                                                                     setKaminCALData({
@@ -2502,7 +2864,39 @@ const handleSubmitToLab = async () => {
                                                             >
                                                                 <SquarePen size={16} />
                                                             </Button>
-                                                            <Button className="bg-red-600 hover:bg-red-700" onClick={() => handleDeleteHarvestRecord(harvest_record.documentId)} disabled={PlantingBatches.status === "Completed Successfully" || PlantingBatches.status === "Completed Past Data"}><Trash size={16} /></Button>
+
+                                                            <Button
+                                                                className="bg-red-600 hover:bg-red-700"
+                                                                onClick={() => handleDeleteHarvestRecord(harvest_record.documentId)}
+                                                                disabled={PlantingBatches.status === "Completed Successfully" || PlantingBatches.status === "Completed Past Data"}
+                                                            >
+                                                                <Trash size={16} />
+                                                            </Button>
+
+                                                            {/* ปุ่ม Lab to Submission */}
+                                                            <Button
+                                                                className={
+                                                                    harvest_record.lab_status === "Pending"
+                                                                        ? "bg-gray-400 text-gray-600 cursor-not-allowed"
+                                                                        : "bg-green-600 hover:bg-green-700"
+                                                                }
+                                                                onClick={() => {
+                                                                    if (harvest_record.lab_status !== "Pending") {
+                                                                        setLabSubmissionModal({
+                                                                            isOpen: true,
+                                                                            harvestRecordId: harvest_record.documentId,
+                                                                            selectedLab: ""
+                                                                        });
+                                                                    }
+                                                                }}
+                                                                disabled={
+                                                                    harvest_record.lab_status === "Pending" ||
+                                                                    PlantingBatches.status === "Completed Successfully" ||
+                                                                    PlantingBatches.status === "Completed Past Data"
+                                                                }
+                                                            >
+                                                                <FlaskConical size={16} />
+                                                            </Button>
                                                         </TableCell>
                                                         <TableCell>
                                                             <Button variant="ghost" onClick={() => toggleRow(harvest_record.id)}>
@@ -2555,75 +2949,115 @@ const handleSubmitToLab = async () => {
                                             ))}
                                         </TableBody>
                                     </Table>
+
+                                    {/* Harvest Pagination Section */}
+                                    <div className="flex items-center justify-between mt-4">
+                                        <div className="text-sm text-muted-foreground">
+                                            Showing {harvestTotalItems > 0 ? harvestIndexOfFirstItem + 1 : 0} to {Math.min(harvestIndexOfLastItem, harvestTotalItems)} of {harvestTotalItems} results
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            {/* Previous Button */}
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={handleHarvestPrevPage}
+                                                disabled={harvestCurrentPage === 1}
+                                                className="h-8 w-8 p-0"
+                                            >
+                                                <ChevronLeft size={16} />
+                                            </Button>
+
+                                            {/* Page Numbers */}
+                                            <div className="flex items-center gap-1">
+                                                {Array.from({ length: harvestTotalPages }, (_, i) => i + 1).map((pageNumber) => {
+                                                    if (
+                                                        pageNumber === 1 ||
+                                                        pageNumber === harvestTotalPages ||
+                                                        (pageNumber >= harvestCurrentPage - 1 && pageNumber <= harvestCurrentPage + 1)
+                                                    ) {
+                                                        return (
+                                                            <Button
+                                                                key={pageNumber}
+                                                                variant={harvestCurrentPage === pageNumber ? "default" : "outline"}
+                                                                size="sm"
+                                                                onClick={() => handleHarvestPageChange(pageNumber)}
+                                                                className={`h-8 w-8 p-0 ${harvestCurrentPage === pageNumber
+                                                                    ? "bg-green-600 text-white hover:bg-green-700"
+                                                                    : ""
+                                                                    }`}
+                                                            >
+                                                                {pageNumber}
+                                                            </Button>
+                                                        );
+                                                    } else if (
+                                                        pageNumber === harvestCurrentPage - 2 ||
+                                                        pageNumber === harvestCurrentPage + 2
+                                                    ) {
+                                                        return (
+                                                            <span key={pageNumber} className="px-2 text-muted-foreground">
+                                                                ...
+                                                            </span>
+                                                        );
+                                                    }
+                                                    return null;
+                                                })}
+                                            </div>
+
+                                            {/* Next Button */}
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={handleHarvestNextPage}
+                                                disabled={harvestCurrentPage === harvestTotalPages || harvestTotalPages === 0}
+                                                className="h-8 w-8 p-0"
+                                            >
+                                                <ChevronRight size={16} />
+                                            </Button>
+                                        </div>
+                                    </div>
                                 </div>
                             )}
                         </div>
                     )}
+
                     {activeTab === "lab" && (
                         <div className="px-4 py-4 space-y-4">
-                            <h2 className="text-lg font-semibold">Laboratory Report</h2>
+                            <div>
+                                <div className="flex items-center gap-3">
+                                    <FlaskConical className="text-green-600" />
+                                    <h2 className="text-lg font-semibold">Lab Submission History</h2>
+                                </div>
+                                <p className="text-sm text-muted-foreground">View details of previously submitted samples and lab reports.</p>
+                            </div>
                             <div className="flex flex-row gap-4 items-center">
-                                <div className="flex flex-row gap-2 items-center"><Sprout className="text-green-600" />
+                                <div className="flex flex-row gap-2 items-center">
+                                    <Sprout className="text-green-600" />
                                     <p className="text-sm text-muted-foreground">Total Yield:</p>
                                     <h1 className="font-semibold">{PlantingBatches.recent_harvest_record.reduce((total, record) => total + record.yleld, 0)}</h1>
                                 </div>
-                                <div className="flex flex-row gap-2 items-center"><Calendar className="text-green-600" />
+                                <div className="flex flex-row gap-2 items-center">
+                                    <Calendar className="text-green-600" />
                                     <p className="text-sm text-muted-foreground">Harvest Date:</p>
                                     <h1 className="font-semibold">{PlantingBatches.recent_harvest_record.length > 0 ? new Date(PlantingBatches.recent_harvest_record.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "No records available"}</h1>
                                 </div>
                             </div>
-                            <div className="flex flex-col">
-                                <Label className="text-lg">
-                                    Lab Name
-                                </Label>
-                                <Select value={selectedLab} onValueChange={(value) => setSelectedLab(value)}>
-                                    <SelectTrigger className="w-fit">
-                                        <SelectValue placeholder="Select Lab Name" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {labdata.map((lab) => (
-                                            <SelectItem key={lab.id} value={lab.documentId}>
-                                                {lab.Lab_name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="flex flex-col">
-                                <Label>Select Samples for Testing</Label>
-                                {PlantingBatches.recent_harvest_record
-                                    .filter((rec_harvest) => rec_harvest.lab_status === "Waiting")
-                                    .map((rec_harvest) => (
-                                        <Card className="p-4 flex flex-row gap-4 mt-4 items-center justify-between hover:bg-accent" key={rec_harvest.documentId}>
-                                            <div className="flex flex-row gap-6 items-center">
-                                                <Checkbox
-                                                    id={rec_harvest.documentId}
-                                                    className="h-4 w-4 border-muted-foreground"
-                                                    checked={selectedSamples.includes(rec_harvest.documentId)}
-                                                    onCheckedChange={() => handleCheckboxChange(rec_harvest.documentId)}
-                                                />
-                                                <div className="flex flex-col gap-2 pr-4">
-                                                    <p className="text-sm">Sample from {new Date(rec_harvest.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-                                                    <h1 className="text-lg font-semibold">{rec_harvest.yleld} kg - Grade {rec_harvest.quality_grade}</h1>
-                                                </div>
-                                            </div>
-                                        </Card>
-                                    ))}
-                            </div>
-                            <div className="flex justify-end mt-4 gap-4">
-                                <Button className="bg-red-600 hover:bg-red-700 ml-2">Cancel</Button>
-                                <Button
-                                    className="bg-green-600 hover:bg-green-700"
-                                    onClick={handleSubmitToLab}
-                                >
-                                    Submit to Lab
-                                </Button>
-                            </div>
+
+                            {/* <div>
+                                <div className="flex items-center gap-3">
+                                    <FlaskConical className="text-green-600" />
+                                    <h2 className="text-lg font-semibold">Lab Submission History</h2>
+                                </div>
+                                <p className="text-sm text-muted-foreground">View details of previously submitted samples and lab reports.</p>
+                            </div> */}
+
+
                             <Table>
                                 <TableHeader>
                                     <TableRow>
                                         <TableHead>Lab Name</TableHead>
                                         <TableHead>Test Date</TableHead>
+                                        <TableHead>Yield</TableHead>
                                         <TableHead>Quality</TableHead>
                                         <TableHead>Status</TableHead>
                                         <TableHead>Report</TableHead>
@@ -2631,30 +3065,200 @@ const handleSubmitToLab = async () => {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {PlantingBatches.lab_submission_record.map((lab_rec) => (
-                                        <React.Fragment key={lab_rec.id}>
-                                            <TableRow key={lab_rec.id}>
-                                                <TableCell>{lab_rec.lab_name}</TableCell>
-                                                <TableCell>{new Date(lab_rec.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</TableCell>
-                                                <TableCell>{lab_rec.quality_grade}</TableCell>
-                                                <TableCell>{lab_rec.status}</TableCell>
-                                                <TableCell>{lab_rec.report ? (typeof lab_rec.report === "string" ? lab_rec.report : lab_rec.report.name) : "-"}</TableCell>
-                                                <TableCell className="flex gap-2">
-                                                    {/* <Button className="bg-blue-600 hover:bg-blue-700"><Pencil size={16} /></Button> */}
-                                                    <Button className="bg-red-600 hover:bg-red-700"
-                                                        onClick={
-                                                            () => handleDeleteLabRecord(lab_rec.documentId, lab_rec.harvest_record)
-                                                        }><Trash size={16} /></Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        </React.Fragment>
-                                    ))}
+                                    {currentLabRecords.map((lab_rec) => {
+                                        // หา harvest record ที่ตรงกับ lab submission นี้
+                                        const harvestRecord = PlantingBatches?.recent_harvest_record?.find(
+                                            harvest => harvest.documentId === lab_rec.harvest_record
+                                        );
+
+                                        return (
+                                            <React.Fragment key={lab_rec.id}>
+                                                <TableRow key={lab_rec.id}>
+                                                    <TableCell>{lab_rec.lab_name}</TableCell>
+                                                    <TableCell>{new Date(lab_rec.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</TableCell>
+                                                    <TableCell>
+                                                        {harvestRecord ? (
+                                                            <span>
+                                                                {harvestRecord.yleld} {harvestRecord.yleld_unit || 'kg'}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-gray-400">N/A</span>
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell>{lab_rec.quality_grade}</TableCell>
+                                                    <TableCell>
+                                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${lab_rec.status === 'Pending'
+                                                            ? 'bg-yellow-100 text-yellow-800'
+                                                            : lab_rec.status === 'Completed'
+                                                                ? 'bg-green-100 text-green-800'
+                                                                : lab_rec.status === 'Draft'
+                                                                    ? 'bg-gray-100 text-gray-800'
+                                                                    : 'bg-blue-100 text-blue-800'
+                                                            }`}>
+                                                            {lab_rec.status}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        {lab_rec.report ? (
+                                                            <Button
+                                                                variant="link"
+                                                                className="text-blue-600 hover:text-blue-800 p-0 h-auto"
+                                                                onClick={() => {
+                                                                    if (typeof lab_rec.report === "string" && lab_rec.report.startsWith("http")) {
+                                                                        window.open(lab_rec.report, '_blank');
+                                                                    }
+                                                                }}
+                                                            >
+                                                                📄 View Report
+                                                            </Button>
+                                                        ) : (
+                                                            "-"
+                                                        )}
+                                                    </TableCell>
+                                                    <TableCell className="flex gap-2">
+                                                        <Button
+                                                            className="bg-red-600 hover:bg-red-700"
+                                                            onClick={() => handleDeleteLabRecord(lab_rec.documentId, lab_rec.harvest_record)}
+                                                        >
+                                                            <Trash size={16} />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            </React.Fragment>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
+
+                            {/* Pagination Section */}
+                            <div className="flex items-center justify-between mt-4">
+                                <div className="text-sm text-muted-foreground">
+                                    Showing {totalItems > 0 ? indexOfFirstItem + 1 : 0} to {Math.min(indexOfLastItem, totalItems)} of {totalItems} results
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    {/* Previous Button */}
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handlePrevPage}
+                                        disabled={currentPage === 1}
+                                        className="h-8 w-8 p-0"
+                                    >
+                                        <ChevronLeft size={16} />
+                                    </Button>
+
+                                    {/* Page Numbers */}
+                                    <div className="flex items-center gap-1">
+                                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => {
+                                            // แสดงเฉพาะหน้าที่อยู่ใกล้กับหน้าปัจจุบัน
+                                            if (
+                                                pageNumber === 1 ||
+                                                pageNumber === totalPages ||
+                                                (pageNumber >= currentPage - 1 && pageNumber <= currentPage + 1)
+                                            ) {
+                                                return (
+                                                    <Button
+                                                        key={pageNumber}
+                                                        variant={currentPage === pageNumber ? "default" : "outline"}
+                                                        size="sm"
+                                                        onClick={() => handlePageChange(pageNumber)}
+                                                        className={`h-8 w-8 p-0 ${currentPage === pageNumber
+                                                            ? "bg-green-600 text-white hover:bg-green-700"
+                                                            : ""
+                                                            }`}
+                                                    >
+                                                        {pageNumber}
+                                                    </Button>
+                                                );
+                                            } else if (
+                                                pageNumber === currentPage - 2 ||
+                                                pageNumber === currentPage + 2
+                                            ) {
+                                                return (
+                                                    <span key={pageNumber} className="px-2 text-muted-foreground">
+                                                        ...
+                                                    </span>
+                                                );
+                                            }
+                                            return null;
+                                        })}
+                                    </div>
+
+                                    {/* Next Button */}
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={handleNextPage}
+                                        disabled={currentPage === totalPages || totalPages === 0}
+                                        className="h-8 w-8 p-0"
+                                    >
+                                        <ChevronRight size={16} />
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </main>
             </SidebarInset>
+            {/* เพิ่ม Dialog ตรงนี้ ก่อนปิด </SidebarProvider> */}
+            <Dialog open={labSubmissionModal.isOpen} onOpenChange={(open) => {
+                if (!open) {
+                    setLabSubmissionModal({
+                        isOpen: false,
+                        harvestRecordId: null,
+                        selectedLab: ""
+                    });
+                }
+            }}>
+                <DialogContent className="w-fit">
+                    <DialogHeader className="flex flex-col gap-2 items-start">
+                        <DialogTitle>Lab to Submission</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-col gap-4 p-4">
+                        <div className="flex flex-col gap-2">
+                            <Label className="text-lg">Lab Name</Label>
+                            <Select
+                                value={labSubmissionModal.selectedLab}
+                                onValueChange={(value) => setLabSubmissionModal(prev => ({
+                                    ...prev,
+                                    selectedLab: value
+                                }))}
+                            >
+                                <SelectTrigger className="w-full min-w-[250px]">
+                                    <SelectValue placeholder="Select Your Lab to Submission" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {labdata.map((lab) => (
+                                        <SelectItem key={lab.id} value={lab.documentId}>
+                                            {lab.Lab_name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter className="flex justify-end gap-2">
+                        <Button
+                            variant="outline"
+                            className="bg-red-600 text-white hover:bg-red-700"
+                            onClick={() => setLabSubmissionModal({
+                                isOpen: false,
+                                harvestRecordId: null,
+                                selectedLab: ""
+                            })}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            className="bg-green-600 text-white hover:bg-green-700"
+                            onClick={handleSubmitSingleToLab}
+                        >
+                            Confirm
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </SidebarProvider >
     );
 }

@@ -10,7 +10,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import WeatherCard from "@/components/WeatherCard";
 import React from "react";
-import { Inspect, Search } from "lucide-react";
+import { Activity, CalendarClock, ChartColumnBig, ClipboardList, History, Inspect, Search } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, Calendar, Sprout, Leaf, Factory, Wrench, FlaskConical, Notebook, Check, ChartSpline, Star, SquarePen, Trash, Circle, ChevronDown, ChevronUp, Pencil, EllipsisVertical } from "lucide-react";
 import QualityDashboard from "./QualityDashboard";
@@ -419,7 +419,7 @@ export default function DashboardPage() {
             <div className="bg-white border rounded-2xl shadow-sm p-4">
               <div className="text-sm text-gray-500 flex items-center justify-between gap-2">
                 Next Harvest
-                <span className="text-lg">🌾</span>
+                <span className="text-lg"><CalendarClock className="text-green-600" /></span>
               </div>
               <div className="text-xl font-bold text-gray-800 mt-1">
                 {dashboardData?.Farm_Status === "End Planted"
@@ -427,7 +427,7 @@ export default function DashboardPage() {
                   : dashboardData?.planting_date
                     ? (() => {
                       const harvestDate = new Date(dashboardData.planting_date).getTime() + 270 * 24 * 60 * 60 * 1000;
-                      const daysLeft = Math.ceil((harvestDate - Date.now()) / (1000 * 60 * 60 * 24)) ;
+                      const daysLeft = Math.ceil((harvestDate - Date.now()) / (1000 * 60 * 60 * 24));
                       return daysLeft > 0 ? `${daysLeft} days` : "Ready to harvest";
                     })()
                     : "N/A"}
@@ -443,7 +443,7 @@ export default function DashboardPage() {
             <div className="bg-white border rounded-2xl shadow-sm p-4">
               <div className="text-sm text-gray-500 flex items-center justify-between gap-2">
                 Harvest Quality
-                <span className="text-lg">⭐</span>
+                <span className="text-lg"><ChartColumnBig className="text-green-600" /></span>
               </div>
               <div className="text-xl font-bold text-gray-800 mt-1">
                 {dashboardData?.recent_harvest_record?.length ?? 0 > 0 ? (
@@ -491,7 +491,7 @@ export default function DashboardPage() {
             <div className="bg-white border rounded-2xl shadow-sm p-4">
               <div className="text-sm text-gray-500 flex items-center justify-between gap-2">
                 Status
-                <span className="text-lg">🌱</span>
+                <span className="text-lg"><Sprout className="text-green-600" /></span>
               </div>
               <div className="text-xl font-bold text-gray-800 mt-1">{dashboardData?.Farm_Status}</div>
               {dashboardData?.Farm_Status !== "End Planted" && (
@@ -500,7 +500,7 @@ export default function DashboardPage() {
                     ? `${Math.max(0, Math.ceil(
                       (new Date(dashboardData.planting_date).getTime() + 9 * 30 * 24 * 60 * 60 * 1000 - Date.now())
                       / (1000 * 60 * 60 * 24 * 30)
-                    ) )} more Months to Go!`
+                    ))} more Months to Go!`
                     : "N/A"}
                 </div>
               )}
@@ -508,7 +508,7 @@ export default function DashboardPage() {
             <div className="bg-white border rounded-2xl shadow-sm p-4">
               <div className="text-sm text-gray-500 flex items-center justify-between gap-2">
                 Upcoming Tasks
-                <span className="text-lg">📋</span>
+                <span className="text-lg"><ClipboardList className="text-green-600" /></span>
               </div>
               <div className="text-xl font-bold text-gray-800 mt-1">
                 {dashboardData?.Farm_Status === "Planted" && "Plant"}
@@ -529,49 +529,53 @@ export default function DashboardPage() {
             <div className="lg:col-span-2">
               <ChemicalChart key={batchDocumentID} batchDoucumentId={batchDocumentID ?? undefined} />
             </div>
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <div className="bg-white rounded-2xl p-4 shadow-sm max-h-96 overflow-hidden"> {/* เพิ่ม max-height และ overflow */}
               <div className="text-sm font-semibold text-gray-700 mb-2">
                 Turmeric History – {dashboardData?.batches_id}
               </div>
 
-              <ul className="relative ml-4 pl-4 text-sm">
-                <div
-                  className="absolute left-5.25 w-0.5 bg-gray-300"
-                  style={{ top: '0.75rem', bottom: '3.25rem' }} // Adjust bottom to stop before last dot
-                ></div>
-                {timeline.map((item, i) => {
-                  const ringColorClass = {
-                    green: "ring-green-500",
-                    blue: "ring-blue-500",
-                    gray: "ring-gray-500",
-                  }[item.color] || "ring-gray-500"; // fallback เผื่อไม่มีค่า
+              <div className="max-h-80 overflow-y-auto"> {/* เพิ่ม scrollable container */}
+                <ul className="relative ml-4 pl-4 text-sm">
+                  <div
+                    className="absolute left-5.25 w-0.5 bg-gray-300"
+                    style={{ top: '0.75rem', bottom: '3.25rem' }}
+                  ></div>
+                  {timeline.map((item, i) => {
+                    const ringColorClass = {
+                      green: "ring-green-500",
+                      blue: "ring-blue-500",
+                      gray: "ring-gray-500",
+                    }[item.color] || "ring-gray-500";
 
-                  return (
-                    <li key={i} className="relative pl-6 pb-6">
-                      <span
-                        title={
-                          item.color === "green"
-                            ? "Completed"
-                            : item.color === "blue"
-                              ? "Pending"
-                              : "No Status"
-                        }
-                        className={`absolute left-0 top-1 w-3 h-3 rounded-full border-2 border-white bg-white ring-2 ${ringColorClass}`}
-                      />
-                      <div className="font-medium text-gray-800">{item.status}</div>
-                      <div className="text-xs text-gray-500">{item.date}</div>
-                    </li>
-                  );
-                })}
-              </ul>
+                    return (
+                      <li key={i} className="relative pl-6 pb-4"> {/* ลด padding-bottom */}
+                        <span
+                          title={
+                            item.color === "green"
+                              ? "Completed"
+                              : item.color === "blue"
+                                ? "Pending"
+                                : "No Status"
+                          }
+                          className={`absolute left-0 top-1 w-3 h-3 rounded-full border-2 border-white bg-white ring-2 ${ringColorClass}`}
+                        />
+                        <div className="font-medium text-gray-800 text-xs">{item.status}</div> {/* ลดขนาดฟอนต์ */}
+                        <div className="text-xs text-gray-500">{item.date}</div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
             <div className={`bg-white rounded-2xl shadow-sm p-4 lg:col-span-2`}>
               <div className="flex items-center justify-between mb-2">
-                <div className="text-sm font-bold text-green-700">Recent Activity</div>
-                {/* <button className="text-xs text-green-600 hover:underline">See All</button> */}
+                <div className="flex items-center gap-2">
+                  <History className="text-green-600" size={16} />
+                  <div className="text-sm font-bold text-green-700">Recent Activity</div>
+                </div>
               </div>
 
               <div className="space-y-4">
@@ -613,7 +617,9 @@ export default function DashboardPage() {
               <WeatherCard />
             </div>
           </Card>
-          <NotificationPanel />
+
+          {/* ส่ง batchId ไปยัง NotificationPanel */}
+          <NotificationPanel selectedBatchId={batchId ?? undefined} />
         </div>
       </main>
     ],
