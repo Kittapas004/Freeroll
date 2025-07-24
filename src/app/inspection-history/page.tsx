@@ -39,8 +39,7 @@ export default function InspectionHistory() {
     const [role, setRole] = useState<string | 'loading'>('loading');
 
     const router = useRouter();
-    const resultsPerPage = 10;
-    const totalPages = Math.ceil(totalResults / resultsPerPage);
+    const resultsPerPage = 2;
     const ALLOWED_ROLES = ['Quality Inspection'];
 
     // Fetch inspection history data
@@ -243,6 +242,13 @@ export default function InspectionHistory() {
 
         return matchesSearch && matchesStatus && matchesDate;
     });
+
+    // Calculate pagination AFTER filteredInspections
+    const totalPages = Math.ceil(filteredInspections.length / resultsPerPage);
+    const startIndex = (currentPage - 1) * resultsPerPage;
+    const endIndex = startIndex + resultsPerPage;
+    const currentPageData = filteredInspections.slice(startIndex, endIndex);
+
     // Format date for display
     const formatDate = (dateString: string) => {
         try {
@@ -446,11 +452,10 @@ export default function InspectionHistory() {
                             </div>
                         </div>
 
-
                         {/* Results Summary */}
                         <div className="mb-4">
                             <p className="text-sm text-gray-600">
-                                Showing {filteredInspections.length} of {totalResults} inspections
+                                Showing {startIndex + 1} to {Math.min(endIndex, filteredInspections.length)} of {filteredInspections.length} inspections
                             </p>
                         </div>
 
@@ -487,7 +492,7 @@ export default function InspectionHistory() {
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {filteredInspections.length === 0 ? (
+                                        {currentPageData.length === 0 ? (
                                             <tr>
                                                 <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                                                     <div className="flex flex-col items-center">
@@ -498,7 +503,7 @@ export default function InspectionHistory() {
                                                 </td>
                                             </tr>
                                         ) : (
-                                            filteredInspections.map((inspection) => (
+                                            currentPageData.map((inspection) => (
                                                 <tr key={inspection.id} className="hover:bg-gray-50">
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                                         {inspection.batch_id}
@@ -556,11 +561,11 @@ export default function InspectionHistory() {
                                 </table>
                             </div>
 
-                            {/* Pagination */}
-                            {filteredInspections.length > 0 && (
+                            {/* Pagination - แสดงเฉพาะเมื่อมีมากกว่า 1 หน้า */}
+                            {totalPages > 1 && (
                                 <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200">
                                     <div className="text-sm text-gray-500">
-                                        Showing {Math.min(currentPage * resultsPerPage, filteredInspections.length)} of {filteredInspections.length} results
+                                        Page {currentPage} of {totalPages}
                                     </div>
                                     <div className="flex space-x-1">
                                         <button
@@ -571,16 +576,17 @@ export default function InspectionHistory() {
                                             <ChevronLeft size={16} />
                                         </button>
 
-                                        {[1, 2, 3].map((page) => (
+                                        {Array.from({ length: totalPages }, (_, i) => (
                                             <button
-                                                key={page}
-                                                className={`w-8 h-8 rounded-full flex items-center justify-center ${currentPage === page
+                                                key={i + 1}
+                                                className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                                    currentPage === i + 1
                                                         ? "bg-green-500 text-white"
                                                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                                    }`}
-                                                onClick={() => setCurrentPage(page)}
+                                                }`}
+                                                onClick={() => setCurrentPage(i + 1)}
                                             >
-                                                {page}
+                                                {i + 1}
                                             </button>
                                         ))}
 

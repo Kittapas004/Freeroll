@@ -2287,7 +2287,7 @@ export default function PlantingBatchDetail() {
                                                                     }
                                                                 }}
                                                             >
-                                                                Save KaminCAL 
+                                                                Save KaminCAL
                                                             </Button>
                                                         </div>
                                                     </div>
@@ -2385,7 +2385,7 @@ export default function PlantingBatchDetail() {
                                 </div>
                             )}
                             {isEditing && (
-<div className="flex flex-col gap-6 pt-1">
+                                <div className="flex flex-col gap-6 pt-1">
                                     {/* Harvest Record Form */}
                                     <Card className="p-4 space-y-4 shadow-sm">
                                         {/* Updated Header with Tractor Icon และ KaminCAL */}
@@ -2618,7 +2618,7 @@ export default function PlantingBatchDetail() {
                                                                     }
                                                                 }}
                                                             >
-                                                                Save KaminCAL 
+                                                                Save KaminCAL
                                                             </Button>
                                                         </div>
                                                     </div>
@@ -3099,20 +3099,35 @@ export default function PlantingBatchDetail() {
                                                         </span>
                                                     </TableCell>
                                                     <TableCell>
-                                                        {lab_rec.report ? (
+                                                        {lab_rec.status === 'Completed' ? (
                                                             <Button
                                                                 variant="link"
-                                                                className="text-blue-600 hover:text-blue-800 p-0 h-auto"
+                                                                className="text-blue-600 hover:text-blue-800 p-0 h-auto flex items-center gap-1"
+                                                                onClick={() => {
+                                                                    // เปิดในแท็บเดิม - ใช้ router.push แทน window.open
+                                                                    const reportUrl = `/quality-inspection-report/${lab_rec.documentId}`;
+                                                                    router.push(reportUrl);
+                                                                }}
+                                                            >
+                                                                <FileText size={14} />
+                                                                View Report
+                                                            </Button>
+                                                        ) : lab_rec.report ? (
+                                                            <Button
+                                                                variant="link"
+                                                                className="text-blue-600 hover:text-blue-800 p-0 h-auto flex items-center gap-1"
                                                                 onClick={() => {
                                                                     if (typeof lab_rec.report === "string" && lab_rec.report.startsWith("http")) {
-                                                                        window.open(lab_rec.report, '_blank');
+                                                                        // สำหรับไฟล์ดาวน์โหลด ให้เปิดแท็บใหม่
+                                                                        window.open(lab_rec.report, '_blank', 'noopener,noreferrer');
                                                                     }
                                                                 }}
                                                             >
-                                                                📄 View Report
+                                                                <FileText size={14} />
+                                                                Download Report
                                                             </Button>
                                                         ) : (
-                                                            "-"
+                                                            <span className="text-gray-400 text-sm">No Report</span>
                                                         )}
                                                     </TableCell>
                                                     <TableCell className="flex gap-2">

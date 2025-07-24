@@ -103,7 +103,7 @@ export default function QualityInspectionPage() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const files = e.dataTransfer.files;
     if (files && files[0]) {
       handleFile(files[0]);
@@ -119,7 +119,7 @@ export default function QualityInspectionPage() {
       'application/vnd.ms-excel',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     ];
-    
+
     if (!allowedTypes.includes(file.type) && !file.name.toLowerCase().endsWith('.csv')) {
       alert('Please select a valid file (PNG, JPG, JPEG, GIF, CSV, XLS, XLSX)');
       return;
@@ -186,7 +186,7 @@ export default function QualityInspectionPage() {
             const result = [];
             let current = '';
             let inQuotes = false;
-            
+
             for (let i = 0; i < line.length; i++) {
               const char = line[i];
               if (char === '"') {
@@ -421,43 +421,43 @@ export default function QualityInspectionPage() {
     return true;
   };
 
-// แก้ไขฟังก์ชัน uploadFileToStrapi
-const uploadFileToStrapi = async (file: File): Promise<number | null> => {
-  if (!file) {
-    console.log('No file provided');
-    return null;
-  }
+  // แก้ไขฟังก์ชัน uploadFileToStrapi
+  const uploadFileToStrapi = async (file: File): Promise<number | null> => {
+    if (!file) {
+      console.log('No file provided');
+      return null;
+    }
 
-  try {
-    console.log('🚀 Starting upload process...');
-    console.log('📁 File details:', {
-      name: file.name,
-      size: file.size,
-      type: file.type
-    });
+    try {
+      console.log('🚀 Starting upload process...');
+      console.log('📁 File details:', {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      });
 
-    const formData = new FormData();
-    formData.append("files", file);
+      const formData = new FormData();
+      formData.append("files", file);
 
-    console.log('🌐 Sending upload request to: http://localhost:1337/api/upload');
-    console.log('🔑 Using JWT:', localStorage.getItem("jwt")?.substring(0, 20) + '...');
+      console.log('🌐 Sending upload request to: http://localhost:1337/api/upload');
+      console.log('🔑 Using JWT:', localStorage.getItem("jwt")?.substring(0, 20) + '...');
 
-    const uploadRes = await fetch('http://localhost:1337/api/upload', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('jwt')}`,
-      },
-      body: formData
-    });
+      const uploadRes = await fetch('http://localhost:1337/api/upload', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+        },
+        body: formData
+      });
 
-    console.log("🔁 Upload Response Status:", uploadRes.status);
-    console.log("🔁 Upload Response Headers:", Object.fromEntries(uploadRes.headers.entries()));
+      console.log("🔁 Upload Response Status:", uploadRes.status);
+      console.log("🔁 Upload Response Headers:", Object.fromEntries(uploadRes.headers.entries()));
 
-    if (!uploadRes.ok) {
-      const errorText = await uploadRes.text();
-      console.error("❌ Upload Error Response:", errorText);
-      throw new Error(`Upload failed with status ${uploadRes.status}: ${errorText}`);
-    } else {
+      if (!uploadRes.ok) {
+        const errorText = await uploadRes.text();
+        console.error("❌ Upload Error Response:", errorText);
+        throw new Error(`Upload failed with status ${uploadRes.status}: ${errorText}`);
+      } else {
         console.error('File upload failed:', uploadRes.status);
         const errorText = await uploadRes.text();
         console.error('Upload error details:', errorText);
@@ -507,7 +507,7 @@ const uploadFileToStrapi = async (file: File): Promise<number | null> => {
       });
 
       console.log('Records API Response Status:', recordsRes.status);
-      
+
       if (!recordsRes.ok) {
         const errorText = await recordsRes.text();
         console.error('Records API Error Response:', errorText);
@@ -786,20 +786,20 @@ const uploadFileToStrapi = async (file: File): Promise<number | null> => {
       if (mappedRecord.result_image) {
         console.log('🖼️ Loading existing file preview:', mappedRecord.result_image);
         let fileUrl = '';
-        
+
         if (mappedRecord.result_image.url) {
           fileUrl = `http://localhost:1337${mappedRecord.result_image.url}`;
         } else if (mappedRecord.result_image.attributes?.url) {
           fileUrl = `http://localhost:1337${mappedRecord.result_image.attributes.url}`;
         }
-        
+
         if (fileUrl) {
           // Check if it's an image file
           const fileName = mappedRecord.result_image.name || mappedRecord.result_image.attributes?.name || '';
           const isImage = /\.(jpg|jpeg|png|gif)$/i.test(fileName);
           const isCSV = /\.csv$/i.test(fileName);
           const isExcel = /\.(xls|xlsx)$/i.test(fileName);
-          
+
           if (isImage) {
             setFilePreview({
               type: 'image',
@@ -849,14 +849,14 @@ const uploadFileToStrapi = async (file: File): Promise<number | null> => {
 
       console.log('=== DEBUG SAVE WITH FILE ===');
       console.log('📁 File to upload:', testResults.uploadedFile);
-      
+
       let resultFileId: number | null = null;
 
       // Upload file first if exists
       if (testResults.uploadedFile) {
         console.log('📦 Starting upload process...');
         resultFileId = await uploadFileToStrapi(testResults.uploadedFile);
-        
+
         if (!resultFileId) {
           const shouldContinue = confirm('Warning: File upload failed. Do you want to continue saving without the file?');
           if (!shouldContinue) {
@@ -1011,7 +1011,10 @@ const uploadFileToStrapi = async (file: File): Promise<number | null> => {
         test_date: testResults.testDate || null,
         inspector_notes: testResults.inspectorNotes || null,
         Submission_status: testResults.status,
-        
+
+        // เพิ่ม testing_method ที่ขาดหายไป
+        testing_method: testParameters.testingMethod || null,
+
         // เพิ่มข้อมูล KaminCAL
         kamincal_sample_name: kaminCALData.sample_name || null,
         kamincal_plant_weight: parseFloat(kaminCALData.plant_weight) || null,
@@ -1025,7 +1028,7 @@ const uploadFileToStrapi = async (file: File): Promise<number | null> => {
         kamincal_curcuminoid_content: kaminCALData.curcuminoid_content || null,
         kamincal_curcuminoid_percentage: parseFloat(kaminCALData.curcuminoid_percentage) || null,
         kamincal_third_time: parseFloat(kaminCALData.third_time) || null,
-        
+
         // ลองวิธีการส่ง image แบบต่างๆ
         ...(resultImageId && {
           result_image: resultImageId  // แบบที่ 1: ส่ง ID ตรงๆ
@@ -1068,6 +1071,7 @@ const uploadFileToStrapi = async (file: File): Promise<number | null> => {
         successMessage += `• Moisture Quality: ${updateData.data.moisture_quality}%\n`;
       }
       successMessage += `• Test Date: ${updateData.data.test_date}\n`;
+      successMessage += `• Testing Method: ${updateData.data.testing_method}\n`; // เพิ่มแสดงใน success message
       successMessage += `• Status: ${updateData.data.Submission_status}`;
       if (updateData.data.inspector_notes) {
         successMessage += `\n• Notes: ${updateData.data.inspector_notes.substring(0, 50)}${updateData.data.inspector_notes.length > 50 ? '...' : ''}`;
@@ -1455,200 +1459,200 @@ const uploadFileToStrapi = async (file: File): Promise<number | null> => {
             </CardContent>
           </Card>
 
-{/* KaminCAL Section */}
-<Card className="mb-6">
-  <CardHeader>
-    <CardTitle>KaminCAL</CardTitle>
-  </CardHeader>
-  <CardContent>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* Left Column */}
-      <div className="space-y-4">
-        <div>
-          <Label className="text-sm font-medium">Sample Name</Label>
-          <Input
-            name="sample_name"
-            value={kaminCALData.sample_name}
-            onChange={handleKaminCALChange}
-            placeholder="Name"
-          />
-        </div>
+          {/* KaminCAL Section */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>KaminCAL</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Left Column */}
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Sample Name</Label>
+                    <Input
+                      name="sample_name"
+                      value={kaminCALData.sample_name}
+                      onChange={handleKaminCALChange}
+                      placeholder="Name"
+                    />
+                  </div>
 
-        <div>
-          <Label className="text-sm font-medium">Solvent Volume</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              name="solvent_volume"
-              type="number"
-              step="0.01"
-              value={kaminCALData.solvent_volume}
-              onChange={handleKaminCALChange}
-              placeholder="Enter volume"
-              className="flex-1"
-            />
-            <span className="text-sm text-gray-500 min-w-[30px]">mL</span>
-          </div>
-        </div>
+                  <div>
+                    <Label className="text-sm font-medium">Solvent Volume</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        name="solvent_volume"
+                        type="number"
+                        step="0.01"
+                        value={kaminCALData.solvent_volume}
+                        onChange={handleKaminCALChange}
+                        placeholder="Enter volume"
+                        className="flex-1"
+                      />
+                      <span className="text-sm text-gray-500 min-w-[30px]">mL</span>
+                    </div>
+                  </div>
 
-        <div>
-          <Label className="text-sm font-medium">Concentration</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              name="concentration"
-              type="number"
-              step="0.01"
-              value={kaminCALData.concentration}
-              onChange={handleKaminCALChange}
-              placeholder="Enter concentration"
-              className="flex-1"
-            />
-            <span className="text-sm text-gray-500 min-w-[50px]">mg/mL</span>
-          </div>
-        </div>
+                  <div>
+                    <Label className="text-sm font-medium">Concentration</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        name="concentration"
+                        type="number"
+                        step="0.01"
+                        value={kaminCALData.concentration}
+                        onChange={handleKaminCALChange}
+                        placeholder="Enter concentration"
+                        className="flex-1"
+                      />
+                      <span className="text-sm text-gray-500 min-w-[50px]">mg/mL</span>
+                    </div>
+                  </div>
 
-        <div>
-          <Label className="text-sm font-medium">First Time</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              name="first_time"
-              type="number"
-              step="0.01"
-              value={kaminCALData.first_time}
-              onChange={handleKaminCALChange}
-              placeholder="Enter time"
-              className="flex-1"
-            />
-            <span className="text-sm text-gray-500 min-w-[50px]">mg/mL</span>
-          </div>
-        </div>
+                  <div>
+                    <Label className="text-sm font-medium">First Time</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        name="first_time"
+                        type="number"
+                        step="0.01"
+                        value={kaminCALData.first_time}
+                        onChange={handleKaminCALChange}
+                        placeholder="Enter time"
+                        className="flex-1"
+                      />
+                      <span className="text-sm text-gray-500 min-w-[50px]">mg/mL</span>
+                    </div>
+                  </div>
 
-        <div>
-          <Label className="text-sm font-medium">Second Time</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              name="second_time"
-              type="number"
-              step="0.01"
-              value={kaminCALData.second_time}
-              onChange={handleKaminCALChange}
-              placeholder="Enter time"
-              className="flex-1"
-            />
-            <span className="text-sm text-gray-500 min-w-[50px]">mg/mL</span>
-          </div>
-        </div>
+                  <div>
+                    <Label className="text-sm font-medium">Second Time</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        name="second_time"
+                        type="number"
+                        step="0.01"
+                        value={kaminCALData.second_time}
+                        onChange={handleKaminCALChange}
+                        placeholder="Enter time"
+                        className="flex-1"
+                      />
+                      <span className="text-sm text-gray-500 min-w-[50px]">mg/mL</span>
+                    </div>
+                  </div>
 
-        <div>
-          <Label className="text-sm font-medium">Third Time</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              name="third_time"
-              type="number"
-              step="0.01"
-              value={kaminCALData.third_time}
-              onChange={handleKaminCALChange}
-              placeholder="Enter time"
-              className="flex-1"
-            />
-            <span className="text-sm text-gray-500 min-w-[50px]">mg/mL</span>
-          </div>
-        </div>
-      </div>
+                  <div>
+                    <Label className="text-sm font-medium">Third Time</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        name="third_time"
+                        type="number"
+                        step="0.01"
+                        value={kaminCALData.third_time}
+                        onChange={handleKaminCALChange}
+                        placeholder="Enter time"
+                        className="flex-1"
+                      />
+                      <span className="text-sm text-gray-500 min-w-[50px]">mg/mL</span>
+                    </div>
+                  </div>
+                </div>
 
-      {/* Right Column */}
-      <div className="space-y-4">
-        <div>
-          <Label className="text-sm font-medium">Plant Weight</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              name="plant_weight"
-              type="number"
-              step="0.01"
-              value={kaminCALData.plant_weight}
-              onChange={handleKaminCALChange}
-              placeholder="Enter weight"
-              className="flex-1"
-            />
-            <span className="text-sm text-gray-500 min-w-[30px]">mg</span>
-          </div>
-        </div>
+                {/* Right Column */}
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Plant Weight</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        name="plant_weight"
+                        type="number"
+                        step="0.01"
+                        value={kaminCALData.plant_weight}
+                        onChange={handleKaminCALChange}
+                        placeholder="Enter weight"
+                        className="flex-1"
+                      />
+                      <span className="text-sm text-gray-500 min-w-[30px]">mg</span>
+                    </div>
+                  </div>
 
-        <div>
-          <Label className="text-sm font-medium">Average OD</Label>
-          <Input
-            name="average_od"
-            type="number"
-            step="0.01"
-            value={kaminCALData.average_od}
-            onChange={handleKaminCALChange}
-            placeholder="Enter OD value"
-          />
-        </div>
+                  <div>
+                    <Label className="text-sm font-medium">Average OD</Label>
+                    <Input
+                      name="average_od"
+                      type="number"
+                      step="0.01"
+                      value={kaminCALData.average_od}
+                      onChange={handleKaminCALChange}
+                      placeholder="Enter OD value"
+                    />
+                  </div>
 
-        <div>
-          <Label className="text-sm font-medium">Number of Replications</Label>
-          <Input
-            name="number_of_replications"
-            type="number"
-            value={kaminCALData.number_of_replications}
-            onChange={handleKaminCALChange}
-            placeholder="Enter number"
-          />
-        </div>
+                  <div>
+                    <Label className="text-sm font-medium">Number of Replications</Label>
+                    <Input
+                      name="number_of_replications"
+                      type="number"
+                      value={kaminCALData.number_of_replications}
+                      onChange={handleKaminCALChange}
+                      placeholder="Enter number"
+                    />
+                  </div>
 
-        <div>
-          <Label className="text-sm font-medium">Analytical Instrument</Label>
-          <Select
-            value={kaminCALData.analytical_instrument}
-            onValueChange={(value) =>
-              setKaminCALData({ ...kaminCALData, analytical_instrument: value })
-            }
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="HPLC">HPLC</SelectItem>
-              <SelectItem value="UV-Vis">UV-Vis</SelectItem>
-              <SelectItem value="NIR">NIR</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+                  <div>
+                    <Label className="text-sm font-medium">Analytical Instrument</Label>
+                    <Select
+                      value={kaminCALData.analytical_instrument}
+                      onValueChange={(value) =>
+                        setKaminCALData({ ...kaminCALData, analytical_instrument: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="HPLC">HPLC</SelectItem>
+                        <SelectItem value="UV-Vis">UV-Vis</SelectItem>
+                        <SelectItem value="NIR">NIR</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-        <div>
-          <Label className="text-sm font-medium">Curcuminoid Content (Percentage by weight)</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              name="curcuminoid_percentage"
-              type="number"
-              step="0.01"
-              min="0"
-              max="100"
-              value={kaminCALData.curcuminoid_percentage}
-              onChange={handleKaminCALChange}
-              placeholder="Enter percentage"
-              className="flex-1"
-            />
-            <Select
-              value={kaminCALData.curcuminoid_content}
-              onValueChange={(value) =>
-                setKaminCALData({ ...kaminCALData, curcuminoid_content: value })
-              }
-            >
-              <SelectTrigger className="w-24">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Pass">Pass</SelectItem>
-                <SelectItem value="Fail">Fail</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-    </div>
-  </CardContent>
-</Card>
+                  <div>
+                    <Label className="text-sm font-medium">Curcuminoid Content (Percentage by weight)</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        name="curcuminoid_percentage"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={kaminCALData.curcuminoid_percentage}
+                        onChange={handleKaminCALChange}
+                        placeholder="Enter percentage"
+                        className="flex-1"
+                      />
+                      <Select
+                        value={kaminCALData.curcuminoid_content}
+                        onValueChange={(value) =>
+                          setKaminCALData({ ...kaminCALData, curcuminoid_content: value })
+                        }
+                      >
+                        <SelectTrigger className="w-24">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Pass">Pass</SelectItem>
+                          <SelectItem value="Fail">Fail</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </main>
       </SidebarInset>
     </SidebarProvider>
