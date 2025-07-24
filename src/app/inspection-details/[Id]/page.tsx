@@ -1106,18 +1106,18 @@ export default function QualityInspectionPage() {
     }
   }, [role, recordId]);
 
-  if (role === 'loading' || loading) {
-    return (
-      <div className="flex flex-col items-center justify-center h-screen">
-        <div className="animate-pulse mb-4">
-          <div className="w-8 h-8 bg-blue-500 rounded-full"></div>
-        </div>
-        <p className="text-gray-500">Loading inspection record...</p>
-        {recordId && <p className="text-sm text-gray-400">Record ID: {recordId}</p>}
-        <p className="text-xs text-gray-400 mt-2">Check Console for detailed logs</p>
-      </div>
-    );
-  }
+  // if (role === 'loading' || loading) {
+  //   return (
+  //     <div className="flex flex-col items-center justify-center h-screen">
+  //       <div className="animate-pulse mb-4">
+  //         <div className="w-8 h-8 bg-blue-500 rounded-full"></div>
+  //       </div>
+  //       <p className="text-gray-500">Loading inspection record...</p>
+  //       {recordId && <p className="text-sm text-gray-400">Record ID: {recordId}</p>}
+  //       <p className="text-xs text-gray-400 mt-2">Check Console for detailed logs</p>
+  //     </div>
+  //   );
+  // }
 
   if (error) {
     return (
