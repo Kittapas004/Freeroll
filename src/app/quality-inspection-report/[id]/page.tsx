@@ -1048,6 +1048,82 @@ export default function QualityInspectionReportView() {
                             <CardContent>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div className="space-y-4">
+                                        <h4 className="font-semibold text-gray-800 mb-3 pb-2 border-b border-gray-200">Sample Information</h4>
+                                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg min-h-[50px]">
+                                            <div className="flex items-center gap-2">
+                                                <FileText className="h-4 w-4 text-gray-500" />
+                                                <span className="text-sm font-medium">Sample Name:</span>
+                                            </div>
+                                            <span className="text-sm font-semibold">{reportData.kaminCAL.sample_name || 'N/A'}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg min-h-[50px]">
+                                            <div className="flex items-center gap-2">
+                                                <Scale className="h-4 w-4 text-gray-500" />
+                                                <span className="text-sm font-medium">Plant Weight:</span>
+                                            </div>
+                                            <span className="text-sm font-semibold">
+                                                {reportData.kaminCAL.plant_weight > 0 ? `${reportData.kaminCAL.plant_weight} mg` : 'N/A'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg min-h-[50px]">
+                                            <div className="flex items-center gap-2">
+                                                <Droplets className="h-4 w-4 text-gray-500" />
+                                                <span className="text-sm font-medium">Solvent Volume:</span>
+                                            </div>
+                                            <span className="text-sm font-semibold">
+                                                {reportData.kaminCAL.solvent_volume > 0 ? `${reportData.kaminCAL.solvent_volume} mL` : 'N/A'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg min-h-[50px]">
+                                            <div className="flex items-center gap-2">
+                                                <BarChart3 className="h-4 w-4 text-gray-500" />
+                                                <span className="text-sm font-medium">Average OD:</span>
+                                            </div>
+                                            <span className="text-sm font-semibold">
+                                                {reportData.kaminCAL.average_od > 0 ? reportData.kaminCAL.average_od : 'N/A'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <h4 className="font-semibold text-gray-800 mb-3 pb-2 border-b border-gray-200">Analysis Parameters</h4>
+                                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg min-h-[50px]">
+                                            <div className="flex items-center gap-2">
+                                                <Droplets className="h-4 w-4 text-gray-500" />
+                                                <span className="text-sm font-medium">Concentration:</span>
+                                            </div>
+                                            <span className="text-sm font-semibold">
+                                                {reportData.kaminCAL.concentration > 0 ? `${reportData.kaminCAL.concentration} mg/mL` : 'N/A'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg min-h-[50px]">
+                                            <div className="flex items-center gap-2">
+                                                <Settings className="h-4 w-4 text-gray-500" />
+                                                <span className="text-sm font-medium">Replications:</span>
+                                            </div>
+                                            <span className="text-sm font-semibold">
+                                                {reportData.kaminCAL.number_of_replications > 0 ? reportData.kaminCAL.number_of_replications : 'N/A'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg min-h-[50px]">
+                                            <div className="flex items-center gap-2">
+                                                <Settings className="h-4 w-4 text-gray-500" />
+                                                <span className="text-sm font-medium">Instrument:</span>
+                                            </div>
+                                            <span className="text-sm font-semibold">{reportData.kaminCAL.analytical_instrument}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200 min-h-[50px]">
+                                            <div className="flex items-center gap-2">
+                                                <FlaskConical className="h-4 w-4 text-green-600" />
+                                                <span className="text-sm font-medium">Curcuminoid %:</span>
+                                            </div>
+                                            <span className="text-sm font-bold text-green-700">
+                                                {reportData.kaminCAL.curcuminoid_percentage > 0 ? `${reportData.kaminCAL.curcuminoid_percentage}%` : 'N/A'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
                                         <h4 className="font-semibold text-gray-800 mb-3 pb-2 border-b border-gray-200">Time Measurements</h4>
                                         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg min-h-[50px]">
                                             <div className="flex items-center gap-2">
