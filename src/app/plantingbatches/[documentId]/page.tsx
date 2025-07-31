@@ -4,7 +4,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 import { AppSidebar } from "@/components/app-sidebar";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, Calendar, Sprout, Leaf, Plus, Wrench, FlaskConical, Notebook, Check, ChartSpline, Star, SquarePen, Trash, Circle, ChevronDown, ChevronUp, Pencil, EllipsisVertical, Tractor, Settings, Package, BarChart, FileText, Scale, Beaker, BarChart3, Droplets, RotateCcw, Timer, Repeat, History, ChevronRight, ChevronLeft, SprayCan, Microscope } from "lucide-react";
+import { MapPin, Calendar, Sprout, Leaf, Plus, Wrench, FlaskConical, Notebook, Check, ChartSpline, Star, SquarePen, Trash, Circle, ChevronDown, ChevronUp, Pencil, EllipsisVertical, Tractor, Settings, Package, BarChart, FileText, Scale, Beaker, BarChart3, Droplets, RotateCcw, Timer, Repeat, History, ChevronRight, ChevronLeft, SprayCan, Microscope, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -82,6 +82,9 @@ export default function PlantingBatchDetail() {
             status: string;
             harvest_record: string;
             report: string | null;
+            exported?: boolean; // ⭐ เพิ่มฟิลด์นี้
+            export_status?: string; // ⭐ เพิ่มฟิลด์นี้
+            export_date?: string; // ⭐ เพิ่มฟิลด์นี้
         }[];
     };
 
@@ -174,11 +177,20 @@ export default function PlantingBatchDetail() {
     const fetchPlantingBatches = async () => {
         try {
             console.log("Fetching data for documentId:", documentId);
-            const res = await fetch(`http://localhost:1337/api/batches/${documentId}?populate[Farm][populate]=*&populate[Batch_image][populate]=*&populate[lab_submission_records][populate]=*&populate[harvest_records][populate]=*&populate[fertilizer_records][populate]=*`, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
-                },
-            });
+            const res = await fetch(
+                `http://localhost:1337/api/batches/${documentId}?` +
+                `populate[Farm][populate]=*&` +
+                `populate[Batch_image][populate]=*&` +
+                `populate[lab_submission_records][populate]=*&` + // ⭐ ต้องมี exported fields
+                `populate[harvest_records][populate]=*&` +
+                `populate[fertilizer_records][populate]=*`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                    },
+                }
+            );
+
             if (!res.ok) throw new Error("Failed to fetch data");
 
             const data = await res.json();
@@ -244,6 +256,9 @@ export default function PlantingBatchDetail() {
                     report: record.Report?.[0]?.url
                         ? `http://localhost:1337${record.Report[0].url}`
                         : "",
+                    exported: record.exported || false, // ⭐ เพิ่มฟิลด์นี้
+                    export_status: record.export_status || 'Unknown', // ⭐ เพิ่มฟิลด์นี้
+                    export_date: record.export_date || null, // ⭐ เพิ่มฟิลด์นี้
                 })),
             });
             return data
@@ -3099,36 +3114,60 @@ export default function PlantingBatchDetail() {
                                                         </span>
                                                     </TableCell>
                                                     <TableCell>
-                                                        {lab_rec.status === 'Completed' ? (
-                                                            <Button
-                                                                variant="link"
-                                                                className="text-blue-600 hover:text-blue-800 p-0 h-auto flex items-center gap-1"
-                                                                onClick={() => {
-                                                                    // เปิดในแท็บเดิม - ใช้ router.push แทน window.open
-                                                                    const reportUrl = `/quality-inspection-report/${lab_rec.documentId}`;
-                                                                    router.push(reportUrl);
-                                                                }}
-                                                            >
-                                                                <FileText size={14} />
-                                                                View Report
-                                                            </Button>
-                                                        ) : lab_rec.report ? (
-                                                            <Button
-                                                                variant="link"
-                                                                className="text-blue-600 hover:text-blue-800 p-0 h-auto flex items-center gap-1"
-                                                                onClick={() => {
-                                                                    if (typeof lab_rec.report === "string" && lab_rec.report.startsWith("http")) {
-                                                                        // สำหรับไฟล์ดาวน์โหลด ให้เปิดแท็บใหม่
-                                                                        window.open(lab_rec.report, '_blank', 'noopener,noreferrer');
-                                                                    }
-                                                                }}
-                                                            >
-                                                                <FileText size={14} />
-                                                                Download Report
-                                                            </Button>
-                                                        ) : (
-                                                            <span className="text-gray-400 text-sm">No Report</span>
-                                                        )}
+                                                        {(() => {
+                                                            // ⭐ ตรวจสอบ exported status และ submission status
+                                                            const isCompleted = lab_rec.status === 'Completed';
+                                                            const isExported = lab_rec.exported === true; // ⭐ ใช้ exported field จาก Strapi
+                                                            const exportStatus = lab_rec.export_status || 'Unknown';
+
+                                                            if (isCompleted && isExported) {
+                                                                // ✅ แสดง View Report เมื่อ Completed และ Exported แล้ว
+                                                                return (
+                                                                    <Button
+                                                                        variant="link"
+                                                                        className="text-blue-600 hover:text-blue-800 p-0 h-auto flex items-center gap-1"
+                                                                        onClick={() => {
+                                                                            const reportUrl = `/quality-inspection-report/${lab_rec.documentId}`;
+                                                                            router.push(reportUrl);
+                                                                        }}
+                                                                    >
+                                                                        <FileText size={14} />
+                                                                        View Report
+                                                                    </Button>
+                                                                );
+                                                            } else if (isCompleted && !isExported) {
+                                                                // ⏳ แสดงสถานะรอ Export
+                                                                return (
+                                                                    <div className="flex items-center gap-1 text-orange-600">
+                                                                        <Clock size={14} />
+                                                                        <span className="text-sm">
+                                                                            {exportStatus === 'Pending Export' ? 'Awaiting Export' : exportStatus}
+                                                                        </span>
+                                                                    </div>
+                                                                );
+                                                            } else if (lab_rec.status === 'Pending') {
+                                                                // 🧪 แสดงสถานะกำลังทดสอบ
+                                                                return (
+                                                                    <div className="flex items-center gap-1 text-yellow-600">
+                                                                        <FlaskConical size={14} />
+                                                                        <span className="text-sm">Testing in Progress</span>
+                                                                    </div>
+                                                                );
+                                                            } else if (lab_rec.status === 'Draft') {
+                                                                // 📝 แสดงสถานะ Draft
+                                                                return (
+                                                                    <div className="flex items-center gap-1 text-gray-600">
+                                                                        <Pencil size={14} />
+                                                                        <span className="text-sm">Draft Report</span>
+                                                                    </div>
+                                                                );
+                                                            } else {
+                                                                // ❌ ไม่มี Report
+                                                                return (
+                                                                    <span className="text-gray-400 text-sm">No Report Available</span>
+                                                                );
+                                                            }
+                                                        })()}
                                                     </TableCell>
                                                     <TableCell className="flex gap-2">
                                                         <Button

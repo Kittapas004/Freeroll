@@ -33,6 +33,7 @@ function FileText() {
 
 interface CompletedRecord {
   id: string;
+  documentId?: string | number; // ⭐ เพิ่มฟิลด์นี้สำหรับ API calls
   batchId: string;
   farmName: string;
   testType: string;
@@ -45,6 +46,8 @@ interface CompletedRecord {
   moistureLevel?: number;
   testDate?: string;
   inspectorNotes?: string;
+  exported?: boolean; // ⭐ เพิ่มฟิลด์นี้
+  exportStatus?: string; // ⭐ เพิ่มฟิลด์นี้
 }
 
 interface ExportHistoryItem {
@@ -158,8 +161,7 @@ export default function ReportsPage() {
     fetchLabInfo();
   }, []);
 
-  // Fetch completed lab submission records
-  // แทนที่ฟังก์ชัน fetchCompletedRecords เดิมด้วยโค้ดนี้
+  // แก้ไขการประมวลผลข้อมูลใน fetchCompletedRecords
   const fetchCompletedRecords = async () => {
     try {
       setLoading(true);
@@ -331,6 +333,7 @@ export default function ReportsPage() {
 
         const record: CompletedRecord = {
           id: item.id.toString(),
+          documentId: item.documentId || item.id, // ⭐ เพิ่ม documentId สำหรับ API calls
           batchId,
           farmName,
           testType,
@@ -342,7 +345,9 @@ export default function ReportsPage() {
           curcuminLevel: curcuminQuality || undefined,
           moistureLevel: moistureQuality || undefined,
           testDate: attrs?.test_date || '',
-          inspectorNotes: attrs?.inspector_notes || ''
+          inspectorNotes: attrs?.inspector_notes || '',
+          exported: attrs?.exported || false,
+          exportStatus: attrs?.export_status || 'Pending Export'
         };
 
         console.log('Final processed record:', record);
@@ -370,6 +375,165 @@ export default function ReportsPage() {
       setLoading(false);
     }
   };
+
+  // เพิ่มฟังก์ชันสำหรับ debug API response โดยตรง
+  const debugAPIResponse = async () => {
+    try {
+      console.log('🔍 === DEBUG API RESPONSE ===');
+
+      const response = await fetch(
+        `http://localhost:1337/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&filters[Submission_status][$eq]=Completed`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('🔍 Full API Response:', JSON.stringify(data, null, 2));
+
+        if (data.data && data.data.length > 0) {
+          console.log('🔍 First record structure:');
+          console.log(JSON.stringify(data.data[0], null, 2));
+
+          console.log('🔍 First record batch info:');
+          console.log('batch:', data.data[0]?.attributes?.batch);
+          console.log('harvest_record:', data.data[0]?.attributes?.harvest_record);
+        }
+      } else {
+        console.error('❌ API Error:', response.status, await response.text());
+      }
+    } catch (error) {
+      console.error('❌ Debug API error:', error);
+    }
+  };
+  // // ⭐ 1. ฟังก์ชันล้างข้อมูล localStorage ทั้งหมด
+  // const clearAllLocalData = (): void => {
+  //   const confirmed = confirm(
+  //     '🧹 Clear all local data?\n\n' +
+  //     'This will remove:\n' +
+  //     '• Export history backup\n' +
+  //     '• Exported items list\n' +
+  //     '• Cached data\n\n' +
+  //     'The page will reload to fetch fresh data from server.'
+  //   );
+
+  //   if (confirmed) {
+  //     try {
+  //       // ล้าง localStorage
+  //       localStorage.removeItem('exportHistory');
+  //       localStorage.removeItem('exportHistoryBackup');
+  //       localStorage.removeItem('exportedItems');
+
+  //       // ล้าง sessionStorage
+  //       sessionStorage.removeItem('exportHistory');
+  //       sessionStorage.removeItem('exportHistoryBackup');
+  //       sessionStorage.removeItem('exportedItems');
+
+  //       console.log('✅ All local data cleared');
+
+  //       // Reload page
+  //       window.location.reload();
+  //     } catch (error) {
+  //       console.error('❌ Error clearing local data:', error);
+  //       alert('Failed to clear local data. Please try manually refreshing the page.');
+  //     }
+  //   }
+  // };
+
+  // // ⭐ 2. ฟังก์ชันซิงค์ข้อมูลใหม่จาก API เท่านั้น
+  // const syncWithAPIOnly = async (): Promise<void> => {
+  //   const confirmed = confirm(
+  //     '🔄 Sync with API data only?\n\n' +
+  //     'This will:\n' +
+  //     '• Clear all local cached data\n' +
+  //     '• Fetch fresh data from Strapi API only\n' +
+  //     '• Ignore any localStorage backups'
+  //   );
+
+  //   if (confirmed) {
+  //     try {
+  //       // ล้าง localStorage
+  //       localStorage.removeItem('exportHistory');
+  //       localStorage.removeItem('exportHistoryBackup');
+  //       localStorage.removeItem('exportedItems');
+
+  //       // ล้าง state
+  //       setExportHistory([]);
+  //       setExportedItemIds([]);
+
+  //       console.log('🔄 Syncing with API only...');
+
+  //       // Fetch ข้อมูลใหม่
+  //       await fetchCompletedRecords();
+  //       await fetchExportHistory();
+
+  //       alert('✅ Successfully synced with API data only!');
+  //     } catch (error) {
+  //       console.error('❌ Error syncing with API:', error);
+  //       alert('Failed to sync with API. Please check your connection and try again.');
+  //     }
+  //   }
+  // };
+
+  // // ⭐ 3. ปรับ fetchExportHistory ให้บังคับใช้ API เท่านั้น
+  // const fetchExportHistoryAPIOnly = async (): Promise<void> => {
+  //   try {
+  //     console.log('=== Fetching Export History from API ONLY ===');
+
+  //     const historyRes = await fetch(
+  //       `http://localhost:1337/api/export-histories?sort=createdAt:desc`,
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+  //         },
+  //       }
+  //     );
+
+  //     console.log('Export history API status:', historyRes.status);
+
+  //     if (!historyRes.ok) {
+  //       throw new Error(`API error: ${historyRes.status}`);
+  //     }
+
+  //     const historyData = await historyRes.json();
+  //     console.log('Raw export history data from API:', historyData);
+
+  //     if (!historyData.data || historyData.data.length === 0) {
+  //       console.log('✅ No export history found in API - showing empty state');
+  //       setExportHistory([]);
+  //       return;
+  //     }
+
+  //     // ประมวลผลข้อมูลจาก API (เหมือนเดิม)
+  //     const processedHistory: ExportHistoryItem[] = [];
+
+  //     for (const historyItem of historyData.data as APIExportHistoryItem[]) {
+  //       // ... existing processing logic
+  //     }
+
+  //     console.log('✅ Export history loaded from API only:', processedHistory);
+  //     setExportHistory(processedHistory);
+
+  //     // ⭐ ไม่บันทึกลง localStorage เพื่อป้องกันข้อมูลเก่า
+  //     // localStorage.setItem('exportHistoryBackup', JSON.stringify(processedHistory));
+
+  //   } catch (err) {
+  //     console.error('❌ Error fetching export history from API:', err);
+  //     setExportHistory([]); // ⭐ แสดงข้อมูลว่างแทนการใช้ localStorage
+
+  //     alert(
+  //       'Failed to load export history from server.\n\n' +
+  //       'This might be because:\n' +
+  //       '• No export history exists yet\n' +
+  //       '• Server connection issue\n' +
+  //       '• Data was recently deleted\n\n' +
+  //       'Try exporting some data to create new history.'
+  //     );
+  //   }
+  // };
 
   // เพิ่มฟังก์ชัน debug เพื่อตรวจสอบข้อมูลใน database
   const debugDatabaseRecords = async () => {
@@ -409,196 +573,125 @@ export default function ReportsPage() {
   // เรียกใช้ debug function ใน useEffect
   useEffect(() => {
     const initializeData = async () => {
-      // เรียก debug ก่อน
-      await debugDatabaseRecords();
-
-      // แล้วค่อยดึงข้อมูลจริง
       await fetchCompletedRecords();
 
-      // รอแล้ว fetch export history
+      // รอสักครู่แล้วโหลด export history
       setTimeout(() => {
         fetchExportHistory();
-      }, 1500);
+      }, 1000);
     };
 
     initializeData();
   }, []);
 
-  // อัพเดท fetchExportHistory ให้ใช้ API จริงที่สร้างขึ้นแล้ว
-  const fetchExportHistory = async (): Promise<void> => {
-    try {
-      console.log('=== Fetching Export History from API ===');
+  const clearExportHistory = () => {
+    const confirmed = confirm('Clear all export history?\n\nThis will remove all export history records from local storage.');
 
-      const historyRes = await fetch(
-        `http://localhost:1337/api/export-histories?sort=createdAt:desc`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('jwt')}`,
-          },
-        }
-      );
-
-      console.log('Export history API status:', historyRes.status);
-
-      if (!historyRes.ok) {
-        console.warn(`API error ${historyRes.status}, falling back to localStorage`);
-        loadLocalExportHistory();
-        return;
-      }
-
-      const historyData = await historyRes.json();
-      console.log('Raw export history data from API:', historyData);
-
-      if (!historyData.data || historyData.data.length === 0) {
-        console.log('No export history found in API, checking localStorage');
-        loadLocalExportHistory();
-        return;
-      }
-
-      // ประมวลผลข้อมูลจาก API
-      const processedHistory: ExportHistoryItem[] = [];
-
-      for (const historyItem of historyData.data as APIExportHistoryItem[]) {
-        const attrs = historyItem?.attributes || {};
-
-        // ดึง batch_ids จาก API response
-        let batchIds: string[] = [];
-        if (Array.isArray(attrs.batch_ids)) {
-          batchIds = attrs.batch_ids;
-        } else if (typeof attrs.batch_ids === 'string') {
-          try {
-            // ลองแปลงจาก JSON string
-            const parsed = JSON.parse(attrs.batch_ids);
-            batchIds = Array.isArray(parsed) ? parsed : [attrs.batch_ids];
-          } catch {
-            batchIds = [attrs.batch_ids];
-          }
-        }
-
-        console.log('Processing export history item:', {
-          id: historyItem.id,
-          batchIds: batchIds,
-          exportDate: attrs.export_date || attrs.createdAt
-        });
-
-        // สำหรับแต่ละ batch_id ใน export history
-        for (const batchId of batchIds) {
-          try {
-            console.log(`Fetching lab record for batch ID: ${batchId}`);
-
-            // ดึงข้อมูล Lab Submission Record แต่ละรายการ
-            const recordRes = await fetch(
-              `http://localhost:1337/api/lab-submission-records/${batchId}?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*`,
-              {
-                headers: {
-                  Authorization: `Bearer ${localStorage.getItem('jwt')}`,
-                },
-              }
-            );
-
-            if (!recordRes.ok) {
-              console.warn(`Failed to fetch record ${batchId}:`, recordRes.status);
-              continue;
-            }
-
-            const recordData: LabSubmissionRecordAPI = await recordRes.json();
-            const recordAttrs = recordData.data?.attributes || {};
-
-            console.log(`Record data for batch ${batchId}:`, recordAttrs);
-
-            // ประมวลผลข้อมูล batch
-            let batchIdDisplay = 'N/A';
-            let farmName = 'Unknown Farm';
-            let yield_amount = 0;
-            let yield_unit = 'kg';
-
-            // Extract batch และ farm info
-            if (recordAttrs?.batch?.data?.attributes) {
-              const batch = recordAttrs.batch.data.attributes;
-              batchIdDisplay = batch?.Batch_id || 'N/A';
-
-              if (batch?.Farm?.data?.attributes) {
-                farmName = batch.Farm.data.attributes.Farm_Name || 'Unknown Farm';
-              }
-            }
-
-            // Extract harvest record info
-            if (recordAttrs?.harvest_record?.data?.attributes) {
-              const harvest = recordAttrs.harvest_record.data.attributes;
-              yield_amount = harvest?.yleld || harvest?.yield || 0;
-              yield_unit = harvest?.Yleld_unit || harvest?.yield_unit || 'kg';
-            }
-
-            // กำหนด test type
-            const curcuminQuality = recordAttrs?.curcumin_quality;
-            const moistureQuality = recordAttrs?.moisture_quality;
-            const hasCurcumin = curcuminQuality !== null && curcuminQuality !== undefined && curcuminQuality > 0;
-            const hasMoisture = moistureQuality !== null && moistureQuality !== undefined && moistureQuality > 0;
-
-            let testType = 'No Test Results';
-            if (hasCurcumin && hasMoisture) {
-              testType = 'Curcumin/Moisture';
-            } else if (hasCurcumin) {
-              testType = 'Curcumin';
-            } else if (hasMoisture) {
-              testType = 'Moisture Content';
-            }
-
-            // เพิ่มเข้า processed history
-            processedHistory.push({
-              id: `${historyItem.id}-${batchId}`,
-              batchId: batchIdDisplay,
-              farmName: farmName,
-              testType: testType,
-              qualityGrade: recordAttrs?.Quality_grade || 'Not Graded',
-              yield: yield_amount,
-              yieldUnit: yield_unit,
-              status: attrs.export_status || 'Export Success',
-              exportDate: attrs.export_date || attrs.createdAt || new Date().toISOString(),
-              curcuminLevel: curcuminQuality,
-              moistureLevel: moistureQuality,
-              exportHistoryId: historyItem.id
-            });
-
-          } catch (fetchError) {
-            console.error(`Error fetching record ${batchId}:`, fetchError);
-
-            // ถ้าดึงข้อมูลไม่ได้ ใส่ข้อมูล placeholder
-            processedHistory.push({
-              id: `${historyItem.id}-${batchId}-fallback`,
-              batchId: `Batch-${batchId}`,
-              farmName: 'Unknown Farm',
-              testType: 'Unknown',
-              qualityGrade: 'Unknown',
-              yield: 0,
-              yieldUnit: 'kg',
-              status: attrs.export_status || 'Export Success',
-              exportDate: attrs.export_date || attrs.createdAt || new Date().toISOString(),
-              exportHistoryId: historyItem.id
-            });
-          }
-        }
-      }
-
-      console.log('Final processed export history:', processedHistory);
-
-      if (processedHistory.length > 0) {
-        setExportHistory(processedHistory);
-        // บันทึกลง localStorage เป็น backup
-        localStorage.setItem('exportHistoryBackup', JSON.stringify(processedHistory));
-        console.log('✅ Export history loaded successfully from API');
-      } else {
-        console.warn('No valid export history items processed, falling back to localStorage');
-        loadLocalExportHistory();
-      }
-
-    } catch (err) {
-      console.error('Error fetching export history from API:', err);
-      // ถ้า API error ให้ใช้ localStorage
-      loadLocalExportHistory();
+    if (confirmed) {
+      localStorage.removeItem('exportHistory');
+      localStorage.removeItem('exportedItemIds');
+      setExportHistory([]);
+      setExportedItemIds([]);
+      console.log('✅ Export history cleared');
     }
   };
-  // อัพเดท useEffect
+
+  const fetchExportHistory = async (): Promise<void> => {
+    try {
+      console.log('=== Loading Export History ===');
+
+      // ลองโหลดจาก localStorage ก่อน
+      const savedHistory = localStorage.getItem('exportHistory');
+      if (savedHistory) {
+        try {
+          const parsedHistory = JSON.parse(savedHistory);
+          if (parsedHistory.length > 0) {
+            console.log(`✅ Loaded ${parsedHistory.length} items from localStorage`);
+            setExportHistory(parsedHistory);
+            return;
+          }
+        } catch (error) {
+          console.error('Error parsing saved history:', error);
+        }
+      }
+
+      // ถ้าไม่มีใน localStorage หรือมีปัญหา ให้สร้างจาก completedData
+      const exportedItems = completedData.filter(item =>
+        item.exported === true || exportedItemIds.includes(item.id)
+      );
+
+      console.log(`Found ${exportedItems.length} exported items`);
+
+      if (exportedItems.length === 0) {
+        console.log('No exported items found - checking localStorage...');
+        // ถ้าไม่มี exported items ใน completedData แต่มีใน localStorage
+        if (savedHistory) {
+          const parsedHistory = JSON.parse(savedHistory);
+          setExportHistory(parsedHistory);
+          return;
+        }
+        setExportHistory([]);
+        return;
+      }
+
+      // สร้าง export history
+      const exportHistory: ExportHistoryItem[] = exportedItems.map((item, index) => ({
+        id: `persistent-${Date.now()}-${index}`,
+        batchId: item.batchId,
+        farmName: item.farmName,
+        testType: item.testType,
+        qualityGrade: item.qualityGrade,
+        yield: item.yield,
+        yieldUnit: item.yieldUnit,
+        status: 'Export Success',
+        exportDate: new Date().toISOString(),
+        curcuminLevel: item.curcuminLevel,
+        moistureLevel: item.moistureLevel,
+        exportHistoryId: `persistent-${index}`
+      }));
+
+      console.log(`✅ Created export history with ${exportHistory.length} items`);
+
+      // บันทึกลง localStorage
+      localStorage.setItem('exportHistory', JSON.stringify(exportHistory));
+
+      setExportHistory(exportHistory);
+
+    } catch (err) {
+      console.error('❌ Error loading export history:', err);
+
+      // ลองโหลดจาก localStorage เป็น fallback
+      const savedHistory = localStorage.getItem('exportHistory');
+      if (savedHistory) {
+        try {
+          const parsedHistory = JSON.parse(savedHistory);
+          setExportHistory(parsedHistory);
+          console.log('Used localStorage as fallback');
+        } catch (error) {
+          setExportHistory([]);
+        }
+      } else {
+        setExportHistory([]);
+      }
+    }
+  };
+
+  const showExportedFromCompletedData = () => {
+    console.log('🔍 === EXPORTED ITEMS IN COMPLETED DATA ===');
+    const exportedItems = completedData.filter(item => item.exported === true);
+    console.log(`Found ${exportedItems.length} exported items:`);
+
+    exportedItems.forEach((item, index) => {
+      console.log(`${index + 1}. ${item.batchId} from ${item.farmName} (exported: ${item.exported})`);
+    });
+
+    if (exportedItems.length > 0) {
+      console.log('✅ These items can be used as export history');
+    } else {
+      console.log('❌ No exported items found in completedData');
+    }
+  };
+
   useEffect(() => {
     const initializeData = async () => {
       await fetchCompletedRecords();
@@ -611,6 +704,13 @@ export default function ReportsPage() {
     initializeData();
   }, []);
 
+  useEffect(() => {
+    // เมื่อ completedData เปลี่ยนแปลง ให้ refresh export history
+    if (completedData.length > 0) {
+      fetchExportHistory();
+    }
+  }, [completedData]);
+
   // Filter completed data based on search criteria
   const filteredData = completedData.filter((item: CompletedRecord) => {
     const batchMatch = item.batchId.toLowerCase().includes(batchIdFilter.toLowerCase());
@@ -618,8 +718,8 @@ export default function ReportsPage() {
     const testMatch = selectedTest === "All Tests" || item.testType.includes(selectedTest);
     const dateMatch = !dateFilter || item.dateOfResult.includes(dateFilter);
 
-    // ไม่แสดงรายการที่ export แล้ว
-    const notExported = !exportedItemIds.includes(item.id);
+    // ⭐ ไม่แสดงรายการที่ export แล้ว (ทั้งจาก exported field และ exportedItemIds)
+    const notExported = !item.exported && !exportedItemIds.includes(item.id);
 
     return batchMatch && farmMatch && testMatch && dateMatch && notExported;
   });
@@ -680,50 +780,61 @@ export default function ReportsPage() {
     setSelectAll(!selectAll);
   };
 
-  // Handle export data
   const handleExportData = async (): Promise<void> => {
     if (selectedItems.length === 0) {
       alert('Please select at least one item to export.');
       return;
     }
 
-    // ตรวจสอบว่ามีรายการที่ export แล้วหรือไม่
-    const alreadyExportedItems = selectedItems.filter(id => exportedItemIds.includes(id));
-    if (alreadyExportedItems.length > 0) {
-      const alreadyExportedNames = completedData
-        .filter((item: CompletedRecord) => alreadyExportedItems.includes(item.id))
-        .map((item: CompletedRecord) => item.batchId)
-        .join(', ');
+    const selectedBatchesData = completedData.filter((item: CompletedRecord) => selectedItems.includes(item.id));
 
-      alert(`The following items have already been exported:\n${alreadyExportedNames}\n\nPlease select different items.`);
+    if (selectedBatchesData.length === 0) {
+      alert('Error: No matching records found for selected items. Please refresh and try again.');
       return;
     }
 
-    const selectedBatchesData = completedData.filter((item: CompletedRecord) => selectedItems.includes(item.id));
+    const idMapping = selectedBatchesData.map(item => ({
+      frontendId: item.id,
+      apiId: item.documentId || item.id,
+      batchId: item.batchId
+    }));
+
     const batchNames = selectedBatchesData.map((item: CompletedRecord) => item.batchId).join(', ');
 
-    const confirmed = confirm(`Export the following batches?\n\n${batchNames}\n\nNote: These items will be removed from the "Ready to Send" list after export.`);
+    const confirmed = confirm(
+      `Export the following batches?\n\n${batchNames}\n\n` +
+      `⚠️ Note: After export, these results will become available to farmers.`
+    );
 
     if (confirmed) {
       try {
         console.log('🚀 Starting export process...');
 
-        // ตรวจสอบซ้ำอีกครั้งก่อน export
-        const doubleCheckExported = selectedItems.filter(id => exportedItemIds.includes(id));
-        if (doubleCheckExported.length > 0) {
-          alert('Some items were already exported by another process. Please refresh and try again.');
-          return;
+        // Step 1: Update exported status
+        for (const mapping of idMapping) {
+          const updateRes = await fetch(`http://localhost:1337/api/lab-submission-records/${mapping.apiId}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+            },
+            body: JSON.stringify({
+              data: {
+                exported: true,
+                export_status: 'Exported',
+                export_date: new Date().toISOString()
+              }
+            }),
+          });
+
+          if (!updateRes.ok) {
+            throw new Error(`Failed to update export status for record ${mapping.apiId}`);
+          }
         }
 
-        // อัพเดต exported items ทันที
-        const newExportedItems = [...exportedItemIds, ...selectedItems];
-        setExportedItemIds(newExportedItems);
-        localStorage.setItem('exportedItems', JSON.stringify(newExportedItems));
-
-        console.log('Updated exported items:', newExportedItems);
-
-        // บันทึก Export History ใน API
-        const exportResponse = await fetch('http://localhost:1337/api/export-histories', {
+        // Step 2: Create Export History in database
+        const apiIds = idMapping.map(mapping => mapping.apiId);
+        await fetch('http://localhost:1337/api/export-histories', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -731,97 +842,22 @@ export default function ReportsPage() {
           },
           body: JSON.stringify({
             data: {
-              batch_ids: selectedItems,
+              batch_ids: apiIds,
               export_date: new Date().toISOString(),
               export_status: 'completed'
             }
           }),
         });
 
-        console.log('Export API response status:', exportResponse.status);
+        // ⭐ Step 3: บันทึก exported IDs ลง localStorage
+        const newExportedIds = [...exportedItemIds, ...selectedItems];
+        const uniqueExportedIds = [...new Set(newExportedIds)];
+        setExportedItemIds(uniqueExportedIds);
+        localStorage.setItem('exportedItemIds', JSON.stringify(uniqueExportedIds));
 
-        if (!exportResponse.ok) {
-          // Rollback exported items ถ้า API error
-          setExportedItemIds(exportedItemIds);
-          localStorage.setItem('exportedItems', JSON.stringify(exportedItemIds));
-
-          const errorData = await exportResponse.text();
-          console.error('Export API error:', errorData);
-          throw new Error(`Export failed: ${exportResponse.status} - ${errorData}`);
-        }
-
-        const exportResult = await exportResponse.json();
-        console.log('✅ Export API success:', exportResult);
-
-        // สร้าง Notifications สำหรับ Farmers ของแต่ละ batch
-        console.log('🔔 Creating farmer notifications...');
-
-        for (const batchData of selectedBatchesData) {
-          try {
-            // ดึงข้อมูล batch เพื่อหา user_documentId ของ farmer
-            const batchRes = await fetch(
-              `http://localhost:1337/api/batches?filters[Batch_id][$eq]=${batchData.batchId}&populate=*`,
-              {
-                headers: {
-                  Authorization: `Bearer ${localStorage.getItem('jwt')}`,
-                },
-              }
-            );
-
-            if (!batchRes.ok) {
-              console.warn(`Could not fetch batch ${batchData.batchId} for notification`);
-              continue;
-            }
-
-            const batchInfo = await batchRes.json();
-            const batch = batchInfo.data?.[0];
-
-            if (!batch) {
-              console.warn(`Batch ${batchData.batchId} not found for notification`);
-              continue;
-            }
-
-            const farmerUserId = batch.attributes?.user_documentId || batch.user_documentId;
-
-            if (!farmerUserId) {
-              console.warn(`No farmer user ID found for batch ${batchData.batchId}`);
-              continue;
-            }
-
-            console.log(`Creating notification for farmer ${farmerUserId}, batch ${batchData.batchId}`);
-
-            // สร้าง notification
-            const notificationRes = await fetch('http://localhost:1337/api/notifications', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${localStorage.getItem('jwt')}`,
-              },
-              body: JSON.stringify({
-                data: {
-                  Text: `Lab test results are ready for batch ${batchData.batchId}. Curcumin: ${batchData.curcuminLevel || 'N/A'}%, Moisture: ${batchData.moistureLevel || 'N/A'}%, Grade: ${batchData.qualityGrade}`,
-                  Date: new Date().toISOString(),
-                  Notification_status: 'Lab Results Ready',
-                  batch: batch.documentId || batch.id,
-                  user_documentId: farmerUserId,
-                }
-              })
-            });
-
-            if (notificationRes.ok) {
-              console.log(`✅ Notification created for farmer ${farmerUserId}, batch ${batchData.batchId}`);
-            } else {
-              console.warn(`❌ Failed to create notification for batch ${batchData.batchId}:`, notificationRes.status);
-            }
-
-          } catch (notificationError) {
-            console.error(`Error creating notification for batch ${batchData.batchId}:`, notificationError);
-          }
-        }
-
-        // บันทึกลง localStorage backup
-        const backupHistoryItem: ExportHistoryItem[] = selectedBatchesData.map((item: CompletedRecord) => ({
-          id: `api-${exportResult.data?.id || Date.now()}-${item.id}`,
+        // ⭐ Step 4: สร้าง export history items ใหม่
+        const newExportHistoryItems: ExportHistoryItem[] = selectedBatchesData.map((item, index) => ({
+          id: `export-${Date.now()}-${index}`,
           batchId: item.batchId,
           farmName: item.farmName,
           testType: item.testType,
@@ -832,168 +868,71 @@ export default function ReportsPage() {
           exportDate: new Date().toISOString(),
           curcuminLevel: item.curcuminLevel,
           moistureLevel: item.moistureLevel,
-          exportHistoryId: exportResult.data?.id
+          exportHistoryId: `new-${index}`
         }));
 
-        // อัพเดต localStorage backup (ไม่ให้ซ้ำ)
-        const currentBackup: ExportHistoryItem[] = JSON.parse(localStorage.getItem('exportHistoryBackup') || '[]');
+        // ⭐ Step 5: เพิ่มเข้า export history และบันทึกลง localStorage
+        const updatedHistory = [...newExportHistoryItems, ...exportHistory];
+        setExportHistory(updatedHistory);
+        localStorage.setItem('exportHistory', JSON.stringify(updatedHistory));
 
-        // กรองข้อมูลซ้ำออก
-        const filteredBackup = currentBackup.filter((existingItem: ExportHistoryItem) =>
-          !backupHistoryItem.some((newItem: ExportHistoryItem) =>
-            existingItem.batchId === newItem.batchId &&
-            new Date(existingItem.exportDate).toDateString() === new Date(newItem.exportDate).toDateString()
+        alert(
+          `🎉 Successfully exported ${selectedItems.length} batch(es)!\n\n` +
+          `Batches: ${batchNames}\n\n` +
+          `✅ These results are now available to farmers.`
+        );
+
+        // Reset selection
+        setSelectedItems([]);
+        setSelectAll(false);
+
+        // อัพเดต completedData
+        setCompletedData(prev =>
+          prev.map(item =>
+            selectedItems.includes(item.id)
+              ? { ...item, exported: true, exportStatus: 'Exported' }
+              : item
           )
         );
 
-        const updatedBackup = [...backupHistoryItem, ...filteredBackup].slice(0, 50);
-        localStorage.setItem('exportHistoryBackup', JSON.stringify(updatedBackup));
-
-        // อัพเดท export history state (ไม่ให้ซ้ำ)
-        setExportHistory((prev: ExportHistoryItem[]) => {
-          const filteredPrev = prev.filter((existingItem: ExportHistoryItem) =>
-            !backupHistoryItem.some((newItem: ExportHistoryItem) =>
-              existingItem.batchId === newItem.batchId &&
-              new Date(existingItem.exportDate).toDateString() === new Date(newItem.exportDate).toDateString()
-            )
-          );
-          return [...backupHistoryItem, ...filteredPrev];
-        });
-
-        alert(`Successfully exported ${selectedItems.length} batch(es)!\n\nBatches: ${batchNames}\n\nThese items have been moved to Export History.`);
-
-        // Reset selection
-        setSelectedItems([]);
-        setSelectAll(false);
-
-        // รอแล้ว refresh export history
-        setTimeout(async () => {
-          console.log('🔄 Delayed refresh export history...');
-          await fetchExportHistory();
-        }, 2000);
+        console.log('✅ Export completed and saved to localStorage');
 
       } catch (err: unknown) {
-        console.error('Export error:', err);
-
-        // Rollback exported items ถ้า error
-        setExportedItemIds(exportedItemIds);
-        localStorage.setItem('exportedItems', JSON.stringify(exportedItemIds));
-
+        console.error('❌ Export error:', err);
         const errorMessage = err instanceof Error ? err.message : String(err);
-        alert(`Export failed: ${errorMessage}\n\nPlease try again.`);
-
-        // Reset selection
+        alert(`❌ Export failed: ${errorMessage}`);
         setSelectedItems([]);
         setSelectAll(false);
       }
     }
   };
 
-  const resetExportedItems = (): void => {
-    const confirmed = confirm('Reset all exported items?\n\nThis will make all previously exported items available for export again.\n\nThis action should only be used for testing.');
-
-    if (confirmed) {
-      setExportedItemIds([]);
-      localStorage.removeItem('exportedItems');
-      console.log('✅ Exported items reset');
-      alert('Exported items have been reset. Previously exported items will now appear in the "Ready to Send" list again.');
+  // ⭐ โหลด exported items จาก localStorage เมื่อเริ่มต้น
+  useEffect(() => {
+    const savedExportedIds = localStorage.getItem('exportedItemIds');
+    if (savedExportedIds) {
+      try {
+        const parsedIds = JSON.parse(savedExportedIds);
+        setExportedItemIds(parsedIds);
+        console.log('Loaded exported IDs from localStorage:', parsedIds);
+      } catch (error) {
+        console.error('Error parsing exported IDs:', error);
+      }
     }
-  };
 
-  const clearExportHistory = (): void => {
-    const confirmed = confirm('Clear all export history?\n\nThis will remove all export history records.\n\nThis action should only be used for testing.');
-
-    if (confirmed) {
-      setExportHistory([]);
-      localStorage.removeItem('exportHistory');
-      localStorage.removeItem('exportHistoryBackup');
-      console.log('✅ Export history cleared');
-      alert('Export history has been cleared.');
+    const savedExportHistory = localStorage.getItem('exportHistory');
+    if (savedExportHistory) {
+      try {
+        const parsedHistory = JSON.parse(savedExportHistory);
+        setExportHistory(parsedHistory);
+        console.log('Loaded export history from localStorage:', parsedHistory.length, 'items');
+      } catch (error) {
+        console.error('Error parsing export history:', error);
+      }
     }
-  };
+  }, []);
 
   const hiddenItemsCount = completedData.length - filteredData.length;
-
-  // เพิ่มฟังก์ชันเพื่อ manual refresh export history
-  const manualRefreshExportHistory = async (): Promise<void> => {
-    console.log('🔄 Manual refresh export history...');
-    setExportHistory([]); // ล้างก่อน
-
-    try {
-      await fetchExportHistory();
-      console.log('✅ Manual refresh completed');
-    } catch (error: unknown) {
-      console.error('❌ Manual refresh failed:', error);
-      // ถ้าไม่ได้ ลองใช้ backup
-      loadLocalExportHistory();
-    }
-  };
-
-  // เพิ่มฟังก์ชัน debug เพื่อตรวจสอบ API
-  const debugCurrentExportHistory = async (): Promise<void> => {
-    console.log('🔍 Debug: Checking current export history in API...');
-
-    try {
-      const response = await fetch(
-        'http://localhost:1337/api/export-histories?sort=createdAt:desc',
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('jwt')}`,
-          },
-        }
-      );
-
-      console.log('API Status:', response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('API Data:', data);
-        console.log('Number of items:', data.data?.length || 0);
-
-        data.data?.forEach((item: any, index: number) => {
-          console.log(`Item ${index + 1}:`, {
-            id: item.id,
-            batch_ids: item.attributes?.batch_ids,
-            created: item.attributes?.createdAt
-          });
-        });
-      } else {
-        console.error('API Error:', await response.text());
-      }
-    } catch (error: unknown) {
-      console.error('Debug error:', error);
-    }
-  };
-
-
-  const loadLocalExportHistory = (): void => {
-    try {
-      console.log('🔄 Loading export history from localStorage...');
-
-      // ลองโหลดจาก backup ก่อน
-      const backupHistory = localStorage.getItem('exportHistoryBackup');
-      if (backupHistory) {
-        const parsed: ExportHistoryItem[] = JSON.parse(backupHistory);
-        console.log('✅ Loaded export history from backup:', parsed);
-        setExportHistory(parsed);
-        return;
-      }
-
-      // ถ้าไม่มี backup ใช้ local history เก่า
-      const localHistory = localStorage.getItem('exportHistory');
-      if (localHistory) {
-        const parsed: ExportHistoryItem[] = JSON.parse(localHistory);
-        console.log('✅ Loaded export history from local storage:', parsed);
-        setExportHistory(parsed);
-      } else {
-        console.log('ℹ️ No export history found in localStorage');
-        setExportHistory([]);
-      }
-    } catch (error) {
-      console.error('❌ Error loading local export history:', error);
-      setExportHistory([]);
-    }
-  };
 
   const saveToLocalExportHistory = (newExportItems: CompletedRecord[]): void => {
     try {
@@ -1054,43 +993,6 @@ export default function ReportsPage() {
   const handleSearch = () => {
     setCurrentPage(1);
     // Search logic is handled by filteredData
-  };
-
-
-  const createTestExportHistory = () => {
-    console.log('🧪 Creating test export history...');
-
-    const testHistory = [
-      {
-        id: 'test-1',
-        batchId: 'T-Batch-001',
-        farmName: 'MFU Farm',
-        testType: 'Curcumin/Moisture',
-        qualityGrade: 'B',
-        yield: 1000,
-        yieldUnit: 'kg',
-        status: 'Export Success',
-        exportDate: new Date().toISOString(),
-        curcuminLevel: 10,
-        moistureLevel: 20
-      },
-      {
-        id: 'test-2',
-        batchId: 'T-Batch-002',
-        farmName: 'Test Farm',
-        testType: 'Curcumin',
-        qualityGrade: 'A',
-        yield: 500,
-        yieldUnit: 'kg',
-        status: 'Export Success',
-        exportDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // เมื่อวาน
-        curcuminLevel: 50
-      }
-    ];
-
-    setExportHistory(testHistory);
-    localStorage.setItem('exportHistory', JSON.stringify(testHistory));
-    console.log('✅ Test export history created');
   };
 
 
@@ -1227,9 +1129,6 @@ export default function ReportsPage() {
               Reports & Data Export
             </h1>
           </div>
-          <div className="text-sm text-gray-600">
-            Completed Results: {totalItems} items
-          </div>
         </header>
         <main className="flex-1 p-6 bg-gray-50 overflow-auto">
           {/* Search Form */}
@@ -1254,7 +1153,7 @@ export default function ReportsPage() {
                     onChange={(e) => setDateFilter(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   />
-                  <Calendar className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
+                  {/* <Calendar className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" /> */}
                 </div>
               </div>
               <div>
@@ -1316,11 +1215,11 @@ export default function ReportsPage() {
                 <h2 className="text-lg font-medium">Completed Test Results - Ready to Send</h2>
                 <p className="text-sm text-gray-600 mt-1">
                   Showing {Math.min(currentData.length, itemsPerPage)} of {filteredData.length} available results
-                  {hiddenItemsCount > 0 && (
+                  {/* {hiddenItemsCount > 0 && (
                     <span className="text-blue-600 ml-2">
                       ({hiddenItemsCount} items already exported and hidden)
                     </span>
-                  )}
+                  )} */}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -1472,11 +1371,30 @@ export default function ReportsPage() {
             )}
           </div>
 
+
           {/* Recent Export History */}
           <div className="bg-white rounded-md shadow-sm p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-medium">Recent Export History</h2>
               <div className="flex gap-2">
+                {/* <button
+                  onClick={fetchExportHistory}
+                  className="px-3 py-1 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600 flex items-center"
+                >
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh
+                </button> */}
+                {/* ปุ่มล้าง history - เฉพาะ development */}
+                {/* {process.env.NODE_ENV === 'development' && exportHistory.length > 0 && (
+                  <button
+                    onClick={clearExportHistory}
+                    className="px-3 py-1 bg-red-500 text-white rounded-md text-sm hover:bg-red-600"
+                  >
+                    Clear History
+                  </button>
+                )} */}
                 <div className="relative">
                   <input
                     type="text"
@@ -1497,13 +1415,11 @@ export default function ReportsPage() {
                   <th className="pb-2">Quality Grade</th>
                   <th className="pb-2">Yield</th>
                   <th className="pb-2">Status</th>
-                  <th className="pb-2">Action</th>
+                  <th className="pb-2">Export Date</th>
                 </tr>
               </thead>
               <tbody>
                 {exportHistory.length === 0 ? (
-                  // แทนที่จะแสดง "No export history available" 
-                  // ให้แสดงข้อมูล mock หรือคำแนะนำ
                   <tr>
                     <td colSpan={7} className="py-8 text-center">
                       <div className="text-gray-500">
@@ -1516,29 +1432,29 @@ export default function ReportsPage() {
                   </tr>
                 ) : (
                   exportHistory.slice(0, 10).map((history, index) => (
-                    <tr key={history.exportId || history.id || index} className="text-sm border-b hover:bg-gray-50">
+                    <tr key={history.id || index} className="text-sm border-b hover:bg-gray-50">
                       <td className="py-3 font-medium">{history.batchId}</td>
                       <td className="py-3">{history.farmName}</td>
                       <td className="py-3">{history.testType}</td>
                       <td className="py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${history.qualityGrade === 'A'
-                          ? 'bg-green-100 text-green-800'
-                          : history.qualityGrade === 'B'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-gray-100 text-gray-800'
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${history.qualityGrade === 'A' || history.qualityGrade === 'Grade A'
+                            ? 'bg-green-100 text-green-800'
+                            : history.qualityGrade === 'B' || history.qualityGrade === 'Grade B'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : 'bg-gray-100 text-gray-800'
                           }`}>
-                          Grade {history.qualityGrade}
+                          {history.qualityGrade}
                         </span>
                       </td>
                       <td className="py-3">{history.yield} {history.yieldUnit}</td>
                       <td className="py-3">
                         <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          {history.status || 'Export Success'}
+                          {history.status}
                         </span>
                       </td>
                       <td className="py-3">
                         <span className="text-gray-500 text-xs">
-                          {history.exportDate ? formatDate(history.exportDate) : 'N/A'}
+                          {formatDate(history.exportDate)}
                         </span>
                       </td>
                     </tr>
@@ -1546,6 +1462,16 @@ export default function ReportsPage() {
                 )}
               </tbody>
             </table>
+
+            {/* Debug info - ใช้เฉพาะตอน development
+            {process.env.NODE_ENV === 'development' && exportHistory.length > 0 && (
+              <div className="mt-4 p-3 bg-gray-50 rounded text-xs text-gray-600">
+                <p>Debug: Found {exportHistory.length} export history items</p>
+                {exportHistory.slice(0, 3).map((item, i) => (
+                  <div key={i}>• {item.batchId} from {item.farmName}</div>
+                ))}
+              </div>
+            )} */}
           </div>
         </main>
       </SidebarInset>

@@ -372,14 +372,14 @@ export default function InspectionHistory() {
                         <div className="flex items-center gap-2 mb-6">
                             <SidebarTrigger onClick={() => setIsSidebarOpen(!isSidebarOpen)} />
                             <h1 className="text-2xl font-semibold text-gray-800">Quality Inspection History</h1>
-                            <Button
+                            {/* <Button
                                 onClick={fetchInspectionHistory}
                                 variant="outline"
                                 size="sm"
                                 className="ml-auto"
                             >
                                 Refresh
-                            </Button>
+                            </Button> */}
                         </div>
 
                         {/* Search and Filters */}
