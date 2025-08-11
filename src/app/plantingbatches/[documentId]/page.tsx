@@ -3138,7 +3138,7 @@ export default function PlantingBatchDetail() {
                                                             } else if (isCompleted && !isExported) {
                                                                 // ⏳ แสดงสถานะรอ Export
                                                                 return (
-                                                                    <div className="flex items-center gap-1 text-orange-600">
+                                                                    <div className="flex items-center gap-1 text-orange-600 ">
                                                                         <Clock size={14} />
                                                                         <span className="text-sm">
                                                                             {exportStatus === 'Pending Export' ? 'Awaiting Export' : exportStatus}
