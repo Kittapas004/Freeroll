@@ -85,6 +85,7 @@ export default function PlantingBatchDetail() {
             exported?: boolean; // ⭐ เพิ่มฟิลด์นี้
             export_status?: string; // ⭐ เพิ่มฟิลด์นี้
             export_date?: string; // ⭐ เพิ่มฟิลด์นี้
+            testing_method?: string; // ⭐ เพิ่มฟิลด์นี้
         }[];
     };
 
@@ -256,9 +257,10 @@ export default function PlantingBatchDetail() {
                     report: record.Report?.[0]?.url
                         ? `http://localhost:1337${record.Report[0].url}`
                         : "",
-                    exported: record.exported || false, // ⭐ เพิ่มฟิลด์นี้
-                    export_status: record.export_status || 'Unknown', // ⭐ เพิ่มฟิลด์นี้
-                    export_date: record.export_date || null, // ⭐ เพิ่มฟิลด์นี้
+                    exported: record.exported || false,
+                    export_status: record.export_status || 'Unknown', 
+                    export_date: record.export_date || null, 
+                    testing_method: record.testing_method
                 })),
             });
             return data
@@ -3117,8 +3119,9 @@ export default function PlantingBatchDetail() {
                                                         {(() => {
                                                             // ⭐ ตรวจสอบ exported status และ submission status
                                                             const isCompleted = lab_rec.status === 'Completed';
-                                                            const isExported = lab_rec.exported === true; // ⭐ ใช้ exported field จาก Strapi
+                                                            const isExported = lab_rec.exported === true; 
                                                             const exportStatus = lab_rec.export_status || 'Unknown';
+                                                            const testingMethod = lab_rec.testing_method || 'NIR Spectroscopy'; 
 
                                                             if (isCompleted && isExported) {
                                                                 // ✅ แสดง View Report เมื่อ Completed และ Exported แล้ว
@@ -3127,12 +3130,20 @@ export default function PlantingBatchDetail() {
                                                                         variant="link"
                                                                         className="text-blue-600 hover:text-blue-800 p-0 h-auto flex items-center gap-1"
                                                                         onClick={() => {
-                                                                            const reportUrl = `/quality-inspection-report/${lab_rec.documentId}`;
+                                                                            // 🔍 เลือกหน้า report ตาม testing method
+                                                                            let reportUrl;
+                                                                            if (testingMethod === 'HPLC') {
+                                                                                // HPLC = หน้า Word format
+                                                                                reportUrl = `/quality-inspection-report/${lab_rec.documentId}`;
+                                                                            } else {
+                                                                                // NIR/UV-Vis = หน้าโค้ดเดิม
+                                                                                reportUrl = `/standard-quality-report/${lab_rec.documentId}`;
+                                                                            }
                                                                             router.push(reportUrl);
                                                                         }}
                                                                     >
                                                                         <FileText size={14} />
-                                                                        View Report
+                                                                        View Report ({testingMethod})
                                                                     </Button>
                                                                 );
                                                             } else if (isCompleted && !isExported) {
@@ -3143,6 +3154,8 @@ export default function PlantingBatchDetail() {
                                                                         <span className="text-sm">
                                                                             {exportStatus === 'Pending Export' ? 'Awaiting Export' : exportStatus}
                                                                         </span>
+                                                                        {/* 💡 แสดง testing method เพื่อให้รู้ว่าจะได้ report แบบไหน */}
+                                                                        <span className="text-xs text-gray-500 ml-1">({testingMethod})</span>
                                                                     </div>
                                                                 );
                                                             } else if (lab_rec.status === 'Pending') {
@@ -3151,6 +3164,7 @@ export default function PlantingBatchDetail() {
                                                                     <div className="flex items-center gap-1 text-yellow-600">
                                                                         <FlaskConical size={14} />
                                                                         <span className="text-sm">Testing in Progress</span>
+                                                                        <span className="text-xs text-gray-500 ml-1">({testingMethod})</span>
                                                                     </div>
                                                                 );
                                                             } else if (lab_rec.status === 'Draft') {
@@ -3159,6 +3173,7 @@ export default function PlantingBatchDetail() {
                                                                     <div className="flex items-center gap-1 text-gray-600">
                                                                         <Pencil size={14} />
                                                                         <span className="text-sm">Draft Report</span>
+                                                                        <span className="text-xs text-gray-500 ml-1">({testingMethod})</span>
                                                                     </div>
                                                                 );
                                                             } else {

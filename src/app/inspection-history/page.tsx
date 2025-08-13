@@ -20,6 +20,11 @@ interface InspectionRecord {
     test_date?: string;
     inspector_notes?: string;
     harvest_date?: string;
+    testing_method?: string;
+    test_results_display?: {
+        curcuminoids?: string | null;
+        moisture?: string | null;
+    };
 }
 
 export default function InspectionHistory() {
@@ -93,8 +98,7 @@ export default function InspectionHistory() {
                 setTotalResults(0);
                 return;
             }
-
-            // Process and map the records
+            // Process and map the records - อัพเดทเพื่อรองรับ HPLC
             const mappedInspections: InspectionRecord[] = await Promise.all(recordsData.data.map(async (record: any) => {
                 const attrs = record.attributes || record;
 
@@ -110,11 +114,9 @@ export default function InspectionHistory() {
                         farmName = batchData.Farm.data.attributes.Farm_Name || 'Unknown Farm';
                     }
                 } else if (attrs?.batch?.data) {
-                    // Alternative structure
                     batchId = attrs.batch.data?.Batch_id || 'N/A';
                     farmName = attrs.batch.data?.Farm?.Farm_Name || 'Unknown Farm';
                 } else if (record?.batch) {
-                    // Direct access
                     batchId = record.batch?.Batch_id || 'N/A';
                     farmName = record.batch?.Farm?.Farm_Name || 'Unknown Farm';
                 }
@@ -143,24 +145,94 @@ export default function InspectionHistory() {
                     }
                 }
 
-                // Determine status based on test results - only show Passed/Failed for completed inspections
-                let status = 'Failed'; // Default to Failed for completed inspections
+                // ตรวจสอบ testing method และผลการทดสอบ
                 const submissionStatus = attrs?.Submission_status || record?.Submission_status || 'Draft';
-                const curcuminQuality = attrs?.curcumin_quality || record?.curcumin_quality;
-                const moistureQuality = attrs?.moisture_quality || record?.moisture_quality;
+                const testingMethod = attrs?.testing_method || record?.testing_method || 'NIR Spectroscopy';
 
-                // Only process records that are completed with test results
-                if (submissionStatus === 'Completed' && (curcuminQuality !== null || moistureQuality !== null)) {
-                    // Define quality thresholds
+                console.log(`Processing record ${record.id}:`, {
+                    submissionStatus,
+                    testingMethod,
+                    hplc_total_curcuminoids: attrs?.hplc_total_curcuminoids,
+                    curcumin_quality: attrs?.curcumin_quality
+                });
+
+                // ดึงข้อมูลผลการทดสอบตาม testing method
+                let hasTestResults = false;
+                let curcuminValue = null;
+                let moistureValue = null;
+                let testResultsDisplay = null;
+                let status = 'Failed'; // Default
+
+                if (testingMethod === 'HPLC') {
+                    // สำหรับ HPLC ใช้ข้อมูลจาก total_curcuminoids และ moisture_quantity
+                    const hplcTotalCurcuminoids = attrs?.hplc_total_curcuminoids || record?.hplc_total_curcuminoids;
+                    const hplcMoisture = attrs?.hplc_moisture_quantity || record?.hplc_moisture_quantity;
+
+                    console.log(`HPLC Data for record ${record.id}:`, {
+                        hplcTotalCurcuminoids,
+                        hplcMoisture
+                    });
+
+                    if (hplcTotalCurcuminoids || hplcMoisture) {
+                        hasTestResults = true;
+
+                        // แปลงค่า total curcuminoids จาก mg/g เป็น % สำหรับการเปรียบเทียบ
+                        if (hplcTotalCurcuminoids) {
+                            curcuminValue = parseFloat(hplcTotalCurcuminoids) / 10; // mg/g to %
+                        }
+
+                        if (hplcMoisture) {
+                            moistureValue = parseFloat(hplcMoisture);
+                        }
+
+                        // สร้าง display text สำหรับ HPLC
+                        testResultsDisplay = {
+                            curcuminoids: hplcTotalCurcuminoids ? `${hplcTotalCurcuminoids} mg/g` : null,
+                            moisture: hplcMoisture ? `${hplcMoisture}%` : null
+                        };
+                    }
+                } else {
+                    // สำหรับ NIR/UV-Vis ใช้ข้อมูลเดิม
+                    const standardCurcumin = attrs?.curcumin_quality || record?.curcumin_quality;
+                    const standardMoisture = attrs?.moisture_quality || record?.moisture_quality;
+
+                    if (standardCurcumin !== null || standardMoisture !== null) {
+                        hasTestResults = true;
+                        curcuminValue = standardCurcumin;
+                        moistureValue = standardMoisture;
+
+                        testResultsDisplay = {
+                            curcuminoids: standardCurcumin ? `${standardCurcumin}%` : null,
+                            moisture: standardMoisture ? `${standardMoisture}%` : null
+                        };
+                    }
+                }
+
+                // เฉพาะรายการที่เสร็จสิ้นและมีผลการทดสอบ
+                if (submissionStatus === 'Completed' && hasTestResults) {
+                    // กำหนดเกณฑ์การผ่าน
                     const curcuminThreshold = 3.0; // minimum 3% curcumin
                     const moistureThreshold = 15.0; // maximum 15% moisture
 
-                    const curcuminPass = curcuminQuality === null || curcuminQuality >= curcuminThreshold;
-                    const moisturePass = moistureQuality === null || moistureQuality <= moistureThreshold;
+                    const curcuminPass = curcuminValue === null || curcuminValue >= curcuminThreshold;
+                    const moisturePass = moistureValue === null || moistureValue <= moistureThreshold;
 
                     status = (curcuminPass && moisturePass) ? 'Passed' : 'Failed';
+
+                    console.log(`Quality assessment for record ${record.id}:`, {
+                        curcuminValue,
+                        moistureValue,
+                        curcuminPass,
+                        moisturePass,
+                        finalStatus: status
+                    });
                 } else {
-                    // Skip records that are not completed or don't have test results
+                    // ข้ามรายการที่ไม่เสร็จสิ้นหรือไม่มีผลการทดสอบ
+                    console.log(`Skipping record ${record.id}:`, {
+                        reason: !hasTestResults ? 'No test results' : 'Not completed',
+                        submissionStatus,
+                        hasTestResults
+                    });
                     return null;
                 }
 
@@ -174,13 +246,16 @@ export default function InspectionHistory() {
                     date: attrs?.test_date || record?.test_date || attrs?.createdAt || attrs?.Date || record?.createdAt,
                     status: status,
                     inspector: inspector,
-                    curcumin_quality: curcuminQuality,
-                    moisture_quality: moistureQuality,
+                    curcumin_quality: curcuminValue,
+                    moisture_quality: moistureValue,
                     test_date: attrs?.test_date || record?.test_date,
                     inspector_notes: attrs?.inspector_notes || record?.inspector_notes,
-                    harvest_date: attrs?.harvest_record?.data?.attributes?.harvest_date || ''
+                    harvest_date: attrs?.harvest_record?.data?.attributes?.harvest_date || '',
+                    testing_method: testingMethod,
+                    test_results_display: testResultsDisplay
                 };
             }));
+
 
             // Remove nulls from skipped records
             const filteredMappedInspections = mappedInspections.filter(Boolean) as InspectionRecord[];
@@ -530,13 +605,30 @@ export default function InspectionHistory() {
                                                         {inspection.inspector}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                        {inspection.curcumin_quality !== null || inspection.moisture_quality !== null ? (
+                                                        {inspection.test_results_display ? (
                                                             <div className={inspection.status === "Failed" ? "text-red-600" : "text-gray-900"}>
-                                                                {inspection.curcumin_quality !== null && (
-                                                                    <div>Curcumin: {inspection.curcumin_quality}%</div>
-                                                                )}
-                                                                {inspection.moisture_quality !== null && (
-                                                                    <div>Moisture: {inspection.moisture_quality}%</div>
+                                                                {inspection.testing_method === 'HPLC' ? (
+                                                                    // แสดงผลสำหรับ HPLC
+                                                                    <>
+                                                                        {inspection.test_results_display.curcuminoids && (
+                                                                            <div>Curcuminoids: {inspection.test_results_display.curcuminoids}</div>
+                                                                        )}
+                                                                        {inspection.test_results_display.moisture && (
+                                                                            <div>Moisture: {inspection.test_results_display.moisture}</div>
+                                                                        )}
+                                                                        <div className="text-xs text-gray-500 mt-1">Method: HPLC</div>
+                                                                    </>
+                                                                ) : (
+                                                                    // แสดงผลสำหรับ NIR/UV-Vis
+                                                                    <>
+                                                                        {inspection.test_results_display.curcuminoids && (
+                                                                            <div>Curcumin: {inspection.test_results_display.curcuminoids}</div>
+                                                                        )}
+                                                                        {inspection.test_results_display.moisture && (
+                                                                            <div>Moisture: {inspection.test_results_display.moisture}</div>
+                                                                        )}
+                                                                        <div className="text-xs text-gray-500 mt-1">Method: {inspection.testing_method}</div>
+                                                                    </>
                                                                 )}
                                                             </div>
                                                         ) : (
@@ -579,11 +671,10 @@ export default function InspectionHistory() {
                                         {Array.from({ length: totalPages }, (_, i) => (
                                             <button
                                                 key={i + 1}
-                                                className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                                    currentPage === i + 1
-                                                        ? "bg-green-500 text-white"
-                                                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                                }`}
+                                                className={`w-8 h-8 rounded-full flex items-center justify-center ${currentPage === i + 1
+                                                    ? "bg-green-500 text-white"
+                                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                                    }`}
                                                 onClick={() => setCurrentPage(i + 1)}
                                             >
                                                 {i + 1}

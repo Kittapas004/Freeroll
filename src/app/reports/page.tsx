@@ -166,10 +166,10 @@ export default function ReportsPage() {
     try {
       setLoading(true);
       setError(null);
-      console.log('=== Fetching Quality Inspection Completed Records ===');
+      console.log('=== Fetching Quality Inspection Completed Records (Updated for HPLC) ===');
 
-      // Step 1: ลองดึงข้อมูลทั้งหมดก่อน แล้วกรองในฝั่ง client
-      console.log('Step 1: Fetching all lab submission records...');
+      // Step 1: ดึงข้อมูลทั้งหมดที่ Completed
+      console.log('Step 1: Fetching all completed lab submission records...');
 
       const response = await fetch(
         `http://localhost:1337/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&filters[Submission_status][$eq]=Completed`,
@@ -205,8 +205,13 @@ export default function ReportsPage() {
         console.log(`Record ${index + 1} (ID: ${item.id}):`, {
           id: item.id,
           submission_status: attrs?.Submission_status,
+          testing_method: attrs?.testing_method,
+          // Standard test results
           curcumin_quality: attrs?.curcumin_quality,
           moisture_quality: attrs?.moisture_quality,
+          // HPLC test results
+          hplc_total_curcuminoids: attrs?.hplc_total_curcuminoids,
+          hplc_moisture_quantity: attrs?.hplc_moisture_quantity,
           test_date: attrs?.test_date,
           quality_grade: attrs?.Quality_grade,
           batch_info: attrs?.batch?.data?.attributes?.Batch_id,
@@ -214,8 +219,8 @@ export default function ReportsPage() {
         });
       });
 
-      // Step 3: Process และกรองข้อมูล
-      console.log('=== Processing records ===');
+      // Step 3: Process และกรองข้อมูล (รองรับ HPLC)
+      console.log('=== Processing records (with HPLC support) ===');
 
       const processedRecords: CompletedRecord[] = [];
 
@@ -227,31 +232,112 @@ export default function ReportsPage() {
         console.log('Item:', item);
         console.log('Attributes:', attrs);
 
-        // ตรวจสอบเงื่อนไขการกรอง
-        const hasCurcumin = attrs?.curcumin_quality !== null &&
-          attrs?.curcumin_quality !== undefined &&
-          attrs?.curcumin_quality > 0;
+        // ตรวจสอบ testing method
+        const testingMethod = attrs?.testing_method || 'NIR Spectroscopy';
+        console.log('Testing method:', testingMethod);
 
-        const hasMoisture = attrs?.moisture_quality !== null &&
-          attrs?.moisture_quality !== undefined &&
-          attrs?.moisture_quality > 0;
+        // ตรวจสอบเงื่อนไขการกรองแยกตาม testing method
+        let hasTestResults = false;
+        let curcuminValue = null;
+        let moistureValue = null;
+        let testType = 'Unknown';
+
+        if (testingMethod === 'HPLC') {
+          // สำหรับ HPLC
+          const hplcCurcuminoids = attrs?.hplc_total_curcuminoids;
+          const hplcMoisture = attrs?.hplc_moisture_quantity;
+
+          const hasHPLCCurcuminoids = hplcCurcuminoids !== null &&
+            hplcCurcuminoids !== undefined &&
+            hplcCurcuminoids !== '';
+
+          const hasHPLCMoisture = hplcMoisture !== null &&
+            hplcMoisture !== undefined &&
+            hplcMoisture !== '';
+
+          hasTestResults = hasHPLCCurcuminoids || hasHPLCMoisture;
+
+          if (hasTestResults) {
+            // แปลงค่า HPLC เพื่อแสดงผล
+            if (hasHPLCCurcuminoids) {
+              curcuminValue = parseFloat(hplcCurcuminoids) / 10; // mg/g to % for comparison
+            }
+            if (hasHPLCMoisture) {
+              moistureValue = parseFloat(hplcMoisture);
+            }
+
+            // กำหนด test type สำหรับ HPLC
+            if (hasHPLCCurcuminoids && hasHPLCMoisture) {
+              testType = 'HPLC - Curcuminoids/Moisture';
+            } else if (hasHPLCCurcuminoids) {
+              testType = 'HPLC - Curcuminoids';
+            } else if (hasHPLCMoisture) {
+              testType = 'HPLC - Moisture Content';
+            }
+          }
+
+          console.log('HPLC test results:', {
+            hplcCurcuminoids,
+            hplcMoisture,
+            hasHPLCCurcuminoids,
+            hasHPLCMoisture,
+            curcuminValue,
+            moistureValue,
+            testType
+          });
+
+        } else {
+          // สำหรับ NIR/UV-Vis (เดิม)
+          const standardCurcumin = attrs?.curcumin_quality;
+          const standardMoisture = attrs?.moisture_quality;
+
+          const hasCurcumin = standardCurcumin !== null &&
+            standardCurcumin !== undefined &&
+            standardCurcumin > 0;
+
+          const hasMoisture = standardMoisture !== null &&
+            standardMoisture !== undefined &&
+            standardMoisture > 0;
+
+          hasTestResults = hasCurcumin || hasMoisture;
+
+          if (hasTestResults) {
+            curcuminValue = standardCurcumin;
+            moistureValue = standardMoisture;
+
+            // กำหนด test type สำหรับ standard methods
+            if (hasCurcumin && hasMoisture) {
+              testType = 'Curcuminoids/Moisture';
+            } else if (hasCurcumin) {
+              testType = 'Curcuminoids';
+            } else if (hasMoisture) {
+              testType = 'Moisture';
+            }
+          }
+
+          console.log('Standard test results:', {
+            standardCurcumin,
+            standardMoisture,
+            hasCurcumin,
+            hasMoisture,
+            curcuminValue,
+            moistureValue,
+            testType
+          });
+        }
 
         const hasTestDate = attrs?.test_date && attrs.test_date !== '';
-
         const isCompleted = attrs?.Submission_status === 'Completed';
 
         console.log('Filter conditions:', {
-          hasCurcumin,
-          hasMoisture,
+          hasTestResults,
           hasTestDate,
           isCompleted,
-          curcumin_value: attrs?.curcumin_quality,
-          moisture_value: attrs?.moisture_quality,
-          test_date_value: attrs?.test_date
+          testingMethod
         });
 
-        // เงื่อนไขการผ่าน: ต้องเป็น Completed และมี test results อย่างน้อย 1 อย่าง
-        const passesFilter = isCompleted && (hasCurcumin || hasMoisture);
+        // เงื่อนไขการผ่าน: ต้องเป็น Completed และมี test results
+        const passesFilter = isCompleted && hasTestResults;
 
         console.log('Passes filter:', passesFilter);
 
@@ -262,7 +348,7 @@ export default function ReportsPage() {
 
         console.log('✅ Record passes filter, processing...');
 
-        // Extract batch and farm info
+        // Extract batch and farm info (เหมือนเดิม)
         let batchId = 'N/A';
         let farmName = 'Unknown Farm';
 
@@ -288,7 +374,7 @@ export default function ReportsPage() {
           }
         }
 
-        // Extract harvest record info 
+        // Extract harvest record info (เหมือนเดิม)
         let yield_amount = 0;
         let yield_unit = 'kg';
 
@@ -296,19 +382,16 @@ export default function ReportsPage() {
         console.log('Harvest data structure:', attrs?.harvest_record);
 
         if (attrs?.harvest_record?.data?.attributes) {
-          // Structure: harvest_record.data.attributes
           const harvestData = attrs.harvest_record.data.attributes;
           yield_amount = harvestData?.yleld || harvestData?.yield || 0;
           yield_unit = harvestData?.Yleld_unit || harvestData?.yield_unit || 'kg';
           console.log('Method 1 - Found yield from data.attributes:', yield_amount, yield_unit);
         } else if (attrs?.harvest_record?.data) {
-          // Structure: harvest_record.data (direct)
           const harvestData = attrs.harvest_record.data;
           yield_amount = harvestData?.yleld || harvestData?.yield || 0;
           yield_unit = harvestData?.Yleld_unit || harvestData?.yield_unit || 'kg';
           console.log('Method 2 - Found yield from data:', yield_amount, yield_unit);
         } else if (attrs?.harvest_record) {
-          // Structure: harvest_record (direct attributes)
           const harvestData = attrs.harvest_record;
           yield_amount = harvestData?.yleld || harvestData?.yield || 0;
           yield_unit = harvestData?.Yleld_unit || harvestData?.yield_unit || 'kg';
@@ -317,23 +400,9 @@ export default function ReportsPage() {
           console.log('No harvest record found');
         }
 
-        // Extract test results
-        const curcuminQuality = attrs?.curcumin_quality;
-        const moistureQuality = attrs?.moisture_quality;
-
-        // Determine test type
-        let testType = 'Unknown';
-        if (hasCurcumin && hasMoisture) {
-          testType = 'Curcumin/Moisture';
-        } else if (hasCurcumin) {
-          testType = 'Curcumin';
-        } else if (hasMoisture) {
-          testType = 'Moisture Content';
-        }
-
         const record: CompletedRecord = {
           id: item.id.toString(),
-          documentId: item.documentId || item.id, // ⭐ เพิ่ม documentId สำหรับ API calls
+          documentId: item.documentId || item.id,
           batchId,
           farmName,
           testType,
@@ -342,8 +411,8 @@ export default function ReportsPage() {
           yieldUnit: yield_unit,
           dateOfResult: attrs?.test_date || attrs?.Date || attrs?.createdAt || '',
           status: 'Completed',
-          curcuminLevel: curcuminQuality || undefined,
-          moistureLevel: moistureQuality || undefined,
+          curcuminLevel: curcuminValue || undefined,
+          moistureLevel: moistureValue || undefined,
           testDate: attrs?.test_date || '',
           inspectorNotes: attrs?.inspector_notes || '',
           exported: attrs?.exported || false,
@@ -362,7 +431,7 @@ export default function ReportsPage() {
         console.warn('⚠️ No records passed the filter criteria');
         console.log('This could mean:');
         console.log('1. No lab submission records have Submission_status = "Completed"');
-        console.log('2. No completed records have curcumin_quality or moisture_quality values');
+        console.log('2. No completed records have test results (standard or HPLC)');
         console.log('3. The data structure is different than expected');
       }
 
@@ -1183,9 +1252,9 @@ export default function ReportsPage() {
                     onChange={(e) => setSelectedTest(e.target.value)}
                   >
                     <option>All Tests</option>
-                    <option>Curcumin</option>
-                    <option>Moisture Content</option>
-                    <option>Curcumin/Moisture</option>
+                    <option>Curcuminoids</option>
+                    <option>Moisture</option>
+                    <option>Curcuminoids/Moisture</option>
                   </select>
                   <ChevronDown className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
                 </div>
@@ -1300,7 +1369,7 @@ export default function ReportsPage() {
                         <td className="py-3">
                           <div className={`text-xs ${testStatus === 'Failed' ? 'text-red-600' : 'text-gray-900'}`}>
                             {result.curcuminLevel && (
-                              <div>Curcumin: {result.curcuminLevel}%</div>
+                              <div>Curcuminoids: {result.curcuminLevel}%</div>
                             )}
                             {result.moistureLevel && (
                               <div>Moisture: {result.moistureLevel}%</div>
@@ -1387,14 +1456,14 @@ export default function ReportsPage() {
                   Refresh
                 </button> */}
                 {/* ปุ่มล้าง history - เฉพาะ development */}
-                {/* {process.env.NODE_ENV === 'development' && exportHistory.length > 0 && (
+                {process.env.NODE_ENV === 'development' && exportHistory.length > 0 && (
                   <button
                     onClick={clearExportHistory}
                     className="px-3 py-1 bg-red-500 text-white rounded-md text-sm hover:bg-red-600"
                   >
                     Clear History
                   </button>
-                )} */}
+                )}
                 <div className="relative">
                   <input
                     type="text"
@@ -1438,10 +1507,10 @@ export default function ReportsPage() {
                       <td className="py-3">{history.testType}</td>
                       <td className="py-3">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${history.qualityGrade === 'A' || history.qualityGrade === 'Grade A'
-                            ? 'bg-green-100 text-green-800'
-                            : history.qualityGrade === 'B' || history.qualityGrade === 'Grade B'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-gray-100 text-gray-800'
+                          ? 'bg-green-100 text-green-800'
+                          : history.qualityGrade === 'B' || history.qualityGrade === 'Grade B'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
                           }`}>
                           {history.qualityGrade}
                         </span>

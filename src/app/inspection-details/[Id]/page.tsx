@@ -42,6 +42,274 @@ interface FilePreview {
   size: number;
 }
 
+const generateReportNumber = async () => {
+  try {
+    console.log('🔢 Generating report number...');
+    const currentYear = new Date().getFullYear();
+
+    // ดึงข้อมูล Lab ID ก่อน
+    const labRes = await fetch(`http://localhost:1337/api/labs?documentId=${localStorage.getItem("userId")}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+      },
+    });
+
+    if (!labRes.ok) {
+      throw new Error('Cannot get lab information');
+    }
+
+    const labData = await labRes.json();
+    const labId = labData.data[0]?.documentId;
+
+    if (!labId) {
+      throw new Error('Lab ID not found');
+    }
+
+    // ดึงจำนวน reports ที่มีอยู่ในปีปัจจุบันสำหรับ lab นี้
+    const reportsCountUrl = `http://localhost:1337/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_report_code][$startsWith]=RP ${currentYear}-&pagination[pageSize]=1000`;
+
+    console.log('📊 Fetching existing reports:', reportsCountUrl);
+
+    const reportsRes = await fetch(reportsCountUrl, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+      },
+    });
+
+    if (reportsRes.ok) {
+      const reportsData = await reportsRes.json();
+      console.log('📋 Existing reports data:', reportsData);
+
+      // นับจำนวน reports ที่มีอยู่และหาหมายเลขสูงสุด
+      const existingReports = reportsData.data || [];
+      let maxNumber = 0;
+
+      existingReports.forEach((report: any) => {
+        const reportCode = report.attributes?.hplc_report_code || report.hplc_report_code;
+        if (reportCode) {
+          const match = reportCode.match(new RegExp(`RP ${currentYear}-(\\d+)`));
+          if (match) {
+            const number = parseInt(match[1]);
+            if (number > maxNumber) {
+              maxNumber = number;
+            }
+          }
+        }
+      });
+
+      const nextNumber = maxNumber + 1;
+      const newReportNumber = `RP ${currentYear}-${nextNumber}`;
+
+      console.log('✅ Generated report number:', newReportNumber);
+      return newReportNumber;
+    } else {
+      console.warn('⚠️ Cannot fetch existing reports, using fallback');
+      return `RP ${currentYear}-1`;
+    }
+  } catch (error) {
+    console.error('❌ Error generating report number:', error);
+    const currentYear = new Date().getFullYear();
+    return `RP ${currentYear}-1`;
+  }
+};
+
+const generateRequestNumber = async () => {
+  try {
+    console.log('🔢 Generating request number...');
+    const currentYear = new Date().getFullYear().toString().slice(-2); // ปี 2 หลัก
+
+    const labRes = await fetch(`http://localhost:1337/api/labs?documentId=${localStorage.getItem("userId")}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+      },
+    });
+
+    if (!labRes.ok) {
+      throw new Error('Cannot get lab information');
+    }
+
+    const labData = await labRes.json();
+    const labId = labData.data[0]?.documentId;
+
+    if (!labId) {
+      throw new Error('Lab ID not found');
+    }
+
+    // ดึงจำนวน requests ที่มีอยู่ในปีปัจจุบัน
+    const requestsCountUrl = `http://localhost:1337/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_testing_no][$startsWith]=MPIC006-ACK${currentYear}-&pagination[pageSize]=1000`;
+
+    const requestsRes = await fetch(requestsCountUrl, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+      },
+    });
+
+    if (requestsRes.ok) {
+      const requestsData = await requestsRes.json();
+      const existingRequests = requestsData.data || [];
+      let maxNumber = 0;
+
+      existingRequests.forEach((request: any) => {
+        const requestCode = request.attributes?.hplc_testing_no || request.hplc_testing_no;
+        if (requestCode) {
+          const match = requestCode.match(new RegExp(`MPIC006-ACK${currentYear}-(\\d+)`));
+          if (match) {
+            const number = parseInt(match[1]);
+            if (number > maxNumber) {
+              maxNumber = number;
+            }
+          }
+        }
+      });
+
+      const nextNumber = maxNumber + 1;
+      const newRequestNumber = `MPIC006-ACK${currentYear}-${nextNumber.toString().padStart(3, '0')}`;
+
+      console.log('✅ Generated request number:', newRequestNumber);
+      return newRequestNumber;
+    } else {
+      return `MPIC006-ACK${currentYear}-001`;
+    }
+  } catch (error) {
+    console.error('❌ Error generating request number:', error);
+    const currentYear = new Date().getFullYear().toString().slice(-2);
+    return `MPIC006-ACK${currentYear}-001`;
+  }
+};
+
+// ฟังก์ชันสร้าง Sample ID อัตโนมัติ
+const generateSampleId = async () => {
+  try {
+    console.log('🔢 Generating sample ID...');
+    const currentYear = new Date().getFullYear().toString().slice(-2); // ปี 2 หลัก
+
+    const labRes = await fetch(`http://localhost:1337/api/labs?documentId=${localStorage.getItem("userId")}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+      },
+    });
+
+    if (!labRes.ok) {
+      throw new Error('Cannot get lab information');
+    }
+
+    const labData = await labRes.json();
+    const labId = labData.data[0]?.documentId;
+
+    if (!labId) {
+      throw new Error('Lab ID not found');
+    }
+
+    // ดึงจำนวน samples ที่มีอยู่ในปีปัจจุบัน
+    const samplesCountUrl = `http://localhost:1337/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_sample_code][$startsWith]=MPIC-TS${currentYear}-&pagination[pageSize]=1000`;
+
+    const samplesRes = await fetch(samplesCountUrl, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+      },
+    });
+
+    if (samplesRes.ok) {
+      const samplesData = await samplesRes.json();
+      const existingSamples = samplesData.data || [];
+      let maxNumber = 0;
+
+      existingSamples.forEach((sample: any) => {
+        const sampleCode = sample.attributes?.hplc_sample_code || sample.hplc_sample_code;
+        if (sampleCode) {
+          const match = sampleCode.match(new RegExp(`MPIC-TS${currentYear}-(\\d+)`));
+          if (match) {
+            const number = parseInt(match[1]);
+            if (number > maxNumber) {
+              maxNumber = number;
+            }
+          }
+        }
+      });
+
+      const nextNumber = maxNumber + 1;
+      const newSampleId = `MPIC-TS${currentYear}-${nextNumber.toString().padStart(3, '0')}`;
+
+      console.log('✅ Generated sample ID:', newSampleId);
+      return newSampleId;
+    } else {
+      return `MPIC-TS${currentYear}-001`;
+    }
+  } catch (error) {
+    console.error('❌ Error generating sample ID:', error);
+    const currentYear = new Date().getFullYear().toString().slice(-2);
+    return `MPIC-TS${currentYear}-001`;
+  }
+};
+
+// ฟังก์ชันสร้าง Sample Code อัตโนมัติ
+const generateSampleCode = async () => {
+  try {
+    console.log('🔢 Generating sample code...');
+    const currentYear = new Date().getFullYear().toString().slice(-2); // ปี 2 หลัก
+
+    const labRes = await fetch(`http://localhost:1337/api/labs?documentId=${localStorage.getItem("userId")}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+      },
+    });
+
+    if (!labRes.ok) {
+      throw new Error('Cannot get lab information');
+    }
+
+    const labData = await labRes.json();
+    const labId = labData.data[0]?.documentId;
+
+    if (!labId) {
+      throw new Error('Lab ID not found');
+    }
+
+    // ดึงจำนวน sample codes ที่มีอยู่ในปีปัจจุบัน
+    const codesCountUrl = `http://localhost:1337/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_sample_preparation][$startsWith]=T${currentYear}-&pagination[pageSize]=1000`;
+
+    const codesRes = await fetch(codesCountUrl, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+      },
+    });
+
+    if (codesRes.ok) {
+      const codesData = await codesRes.json();
+      const existingCodes = codesData.data || [];
+      let maxNumber = 0;
+
+      existingCodes.forEach((code: any) => {
+        const sampleCode = code.attributes?.hplc_sample_preparation || code.hplc_sample_preparation;
+        if (sampleCode) {
+          const match = sampleCode.match(new RegExp(`T${currentYear}-([A-Z]{3})-(\\d+)`));
+          if (match) {
+            const number = parseInt(match[2]);
+            if (number > maxNumber) {
+              maxNumber = number;
+            }
+          }
+        }
+      });
+
+      const nextNumber = maxNumber + 1;
+      const randomChars = Math.random().toString(36).substring(2, 5).toUpperCase(); // สุ่ม 3 ตัวอักษร
+      const newSampleCode = `T${currentYear}-${randomChars}-${nextNumber.toString().padStart(2, '0')}`;
+
+      console.log('✅ Generated sample code:', newSampleCode);
+      return newSampleCode;
+    } else {
+      const randomChars = Math.random().toString(36).substring(2, 5).toUpperCase();
+      return `T${currentYear}-${randomChars}-01`;
+    }
+  } catch (error) {
+    console.error('❌ Error generating sample code:', error);
+    const currentYear = new Date().getFullYear().toString().slice(-2);
+    const randomChars = Math.random().toString(36).substring(2, 5).toUpperCase();
+    return `T${currentYear}-${randomChars}-01`;
+  }
+};
+
 
 export default function QualityInspectionPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -88,6 +356,131 @@ export default function QualityInspectionPage() {
     third_time: ''
   });
 
+  const handleHPLCChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+
+    // Helper function to extract numeric value
+    const extractNumericValue = (str: string): number => {
+      if (!str || str.trim() === '') return 0;
+      const matchWithDeviation = str.match(/^(\d+\.?\d*)\s*[±]\s*(\d+\.?\d*)/);
+      if (matchWithDeviation) {
+        return parseFloat(matchWithDeviation[1]) || 0;
+      }
+      const matchSimple = str.match(/^(\d+\.?\d*)/);
+      if (matchSimple) {
+        return parseFloat(matchSimple[1]) || 0;
+      }
+      return 0;
+    };
+
+    // 🔥 แปลง field name จาก hplc_xxx เป็น xxx เพื่อให้ตรงกับ state
+    const cleanFieldName = name.startsWith('hplc_') ? name.replace('hplc_', '') : name;
+
+    // Update the specific field first
+    const updatedData = { ...hplcData, [cleanFieldName]: value };
+
+    // Calculate total curcuminoids when any of the curcuminoid results change
+    if (cleanFieldName === 'bdmc_result' || cleanFieldName === 'dmc_result' || cleanFieldName === 'cur_result') {
+      const bdmc = extractNumericValue(updatedData.bdmc_result);
+      const dmc = extractNumericValue(updatedData.dmc_result);
+      const cur = extractNumericValue(updatedData.cur_result);
+      const total = bdmc + dmc + cur;
+
+      updatedData.total_curcuminoids = total > 0 ? total.toFixed(1) : '';
+      console.log('🧮 Total calculated:', total);
+    }
+
+    setHplcData(updatedData);
+  };
+
+  const [hplcData, setHplcData] = useState({
+    report_code: '',
+    testing_no: '',
+    sample_code: '',
+    sample_name: '',
+    scientific_name: '',
+    sample_preparation: '',
+    sample_condition: '',
+    quantity: '',        // เพิ่มใหม่
+    sample_amount: '',
+    temperature: '',     // เพิ่มใหม่
+    bdmc_result: '',
+    dmc_result: '',
+    cur_result: '',
+    total_curcuminoids: '',
+    moisture_quantity: '',
+    test_date: '',
+    method_reference: 'In-house Method: WI 702 – 204.01 based on Journal AOAC International',
+    method_details: 'Vol.101, No.4, 2018, pages 1232 – 1234',
+    quality_assessment: '',
+    analyst_name: '',
+    reviewer_name: '',
+    laboratory: 'ศูนย์นวัตกรรมยาสมุนไพรภาคเหนือ มหาวิทยาลัยแม่ฟ้าหลวง',
+    laboratory_address: '333 หมู่ 1 ต.ท่าสุด อ.เมือง จ.เชียงราย 57100',
+    laboratory_phone: 'โทรศัพท์ 053917416',
+    certificate_number: ''
+  });
+
+  const TotalCurcuminoidsDisplay = () => {
+    const extractNumericValue = (str: string): number => {
+      if (!str || str.trim() === '') return 0;
+      const matchWithDeviation = str.match(/^(\d+\.?\d*)\s*[±]\s*(\d+\.?\d*)/);
+      if (matchWithDeviation) {
+        return parseFloat(matchWithDeviation[1]) || 0;
+      }
+      const matchSimple = str.match(/^(\d+\.?\d*)/);
+      if (matchSimple) {
+        return parseFloat(matchSimple[1]) || 0;
+      }
+      return 0;
+    };
+
+    const bdmc = extractNumericValue(hplcData.bdmc_result);
+    const dmc = extractNumericValue(hplcData.dmc_result);
+    const cur = extractNumericValue(hplcData.cur_result);
+    const total = bdmc + dmc + cur;
+
+    return (
+      <div className="bg-green-100 border border-green-300 rounded-lg p-4">
+        <div className="flex justify-between items-center">
+          <span className="font-semibold text-green-800">Total Curcuminoids:</span>
+          <span className="text-2xl font-bold text-green-800">
+            {total > 0 ? total.toFixed(1) : '0.0'} mg/g
+          </span>
+        </div>
+        <p className="text-xs text-green-600 mt-1">
+          Note: Can be converted to %w/w by dividing by 10, at 95% confidence level k = 2
+        </p>
+        {total > 0 && (
+          <div className="text-xs text-gray-600 mt-2">
+            Calculation: {bdmc.toFixed(1)} + {dmc.toFixed(1)} + {cur.toFixed(1)} = {total.toFixed(1)} mg/g
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const handleTestingMethodChange = async (newMethod: string) => {
+    setTestParameters({ ...testParameters, testingMethod: newMethod });
+
+    if (newMethod === 'HPLC') {
+      // สร้างรหัสต่างๆ อัตโนมัติ
+      const [autoReportNumber, autoRequestNumber, autoSampleId, autoSampleCode] = await Promise.all([
+        generateReportNumber(),
+        generateRequestNumber(),
+        generateSampleId(),
+        generateSampleCode()
+      ]);
+
+      setHplcData(prev => ({
+        ...prev,
+        report_code: autoReportNumber,
+        testing_no: autoRequestNumber,
+        sample_code: autoSampleId,
+        sample_preparation: autoSampleCode
+      }));
+    }
+  };
   const router = useRouter();
   const params = useParams();
   const recordId = params.id as string;
@@ -368,57 +761,68 @@ export default function QualityInspectionPage() {
 
   // Form validation function
   const validateForm = (): boolean => {
-    // Check if at least one test is selected
-    if (!testParameters.curcuminoidTest && !testParameters.moistureContent) {
-      alert('Please select at least one test parameter (Curcuminoid Test or Moisture Content)');
-      return false;
-    }
-
-    // Validate curcuminoid quality if test is selected
-    if (testParameters.curcuminoidTest) {
-      if (!testResults.curcuminoidQuality || testResults.curcuminoidQuality.trim() === '') {
-        alert('Please enter Curcuminoid Quality value');
+    if (testParameters.testingMethod === 'HPLC') {
+      // HPLC validation
+      if (!hplcData.test_date) {
+        alert('Please select Test Date for HPLC analysis');
         return false;
       }
 
-      const curcuminValue = parseFloat(testResults.curcuminoidQuality);
-      if (isNaN(curcuminValue) || curcuminValue < 0 || curcuminValue > 100) {
-        alert('Curcuminoid Quality must be a number between 0 and 100');
-        return false;
-      }
-    }
-
-    // Validate moisture quality if test is selected
-    if (testParameters.moistureContent) {
-      if (!testResults.moistureQuality || testResults.moistureQuality.trim() === '') {
-        alert('Please enter Moisture Quality value');
+      if (!hplcData.bdmc_result && !hplcData.dmc_result && !hplcData.cur_result) {
+        alert('Please enter at least one curcuminoid result for HPLC analysis');
         return false;
       }
 
-      const moistureValue = parseFloat(testResults.moistureQuality);
-      if (isNaN(moistureValue) || moistureValue < 0 || moistureValue > 100) {
-        alert('Moisture Quality must be a number between 0 and 100');
+      return true;
+    } else {
+      // Standard validation for NIR/UV-Vis
+      if (!testParameters.curcuminoidTest && !testParameters.moistureContent) {
+        alert('Please select at least one test parameter (Curcuminoid Test or Moisture Content)');
         return false;
       }
+
+      if (testParameters.curcuminoidTest) {
+        if (!testResults.curcuminoidQuality || testResults.curcuminoidQuality.trim() === '') {
+          alert('Please enter Curcuminoid Quality value');
+          return false;
+        }
+
+        const curcuminValue = parseFloat(testResults.curcuminoidQuality);
+        if (isNaN(curcuminValue) || curcuminValue < 0 || curcuminValue > 100) {
+          alert('Curcuminoid Quality must be a number between 0 and 100');
+          return false;
+        }
+      }
+
+      if (testParameters.moistureContent) {
+        if (!testResults.moistureQuality || testResults.moistureQuality.trim() === '') {
+          alert('Please enter Moisture Quality value');
+          return false;
+        }
+
+        const moistureValue = parseFloat(testResults.moistureQuality);
+        if (isNaN(moistureValue) || moistureValue < 0 || moistureValue > 100) {
+          alert('Moisture Quality must be a number between 0 and 100');
+          return false;
+        }
+      }
+
+      if (!testResults.testDate) {
+        alert('Please select Test Date');
+        return false;
+      }
+
+      const selectedDate = new Date(testResults.testDate);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+
+      if (selectedDate > today) {
+        alert('Test Date cannot be in the future');
+        return false;
+      }
+
+      return true;
     }
-
-    // Validate test date
-    if (!testResults.testDate) {
-      alert('Please select Test Date');
-      return false;
-    }
-
-    // Validate test date is not in the future
-    const selectedDate = new Date(testResults.testDate);
-    const today = new Date();
-    today.setHours(23, 59, 59, 999); // Set to end of today
-
-    if (selectedDate > today) {
-      alert('Test Date cannot be in the future');
-      return false;
-    }
-
-    return true;
   };
 
   // แก้ไขฟังก์ชัน uploadFileToStrapi
@@ -468,6 +872,7 @@ export default function QualityInspectionPage() {
       return null;
     }
   };
+
 
   const fetchRecord = async () => {
     try {
@@ -708,6 +1113,7 @@ export default function QualityInspectionPage() {
       console.log('Quality Grade from data:', attrs?.Quality_grade || targetRecord?.Quality_grade);
       console.log('Submission Status from data:', attrs?.Submission_status || targetRecord?.Submission_status);
 
+
       const mappedRecord: InspectionRecord = {
         id: targetRecord.id.toString(),
         batch_id: batchId,
@@ -744,43 +1150,114 @@ export default function QualityInspectionPage() {
       console.log('Final mapped record:', mappedRecord);
       setRecord(mappedRecord);
 
-      // Pre-fill form
-      if (mappedRecord.curcumin_quality || mappedRecord.moisture_quality) {
+      const testingMethod = attrs?.testing_method || targetRecord?.testing_method || 'NIR Spectroscopy';
+
+      if (testingMethod === 'HPLC') {
+        // Load HPLC data
+        console.log('Loading HPLC data...');
+
         setTestParameters({
-          curcuminoidTest: !!mappedRecord.curcumin_quality,
-          moistureContent: !!mappedRecord.moisture_quality,
-          testingMethod: 'NIR Spectroscopy'
+          curcuminoidTest: false, // Hidden for HPLC
+          moistureContent: false, // Hidden for HPLC
+          testingMethod: 'HPLC'
         });
 
-        setTestResults({
-          curcuminoidQuality: mappedRecord.curcumin_quality?.toString() || '',
-          moistureQuality: mappedRecord.moisture_quality?.toString() || '',
-          testDate: mappedRecord.test_date || new Date().toISOString().split('T')[0],
+        setHplcData({
+          // Basic Information
+          report_code: attrs?.hplc_report_code || targetRecord?.hplc_report_code || '',
+          testing_no: attrs?.hplc_testing_no || targetRecord?.hplc_testing_no || '',
+          sample_code: attrs?.hplc_sample_code || targetRecord?.hplc_sample_code || '',
+          sample_name: attrs?.hplc_sample_name || targetRecord?.hplc_sample_name || '',
+          scientific_name: attrs?.hplc_scientific_name || targetRecord?.hplc_scientific_name || 'Curcuma longa',
+          sample_preparation: attrs?.hplc_sample_preparation || targetRecord?.hplc_sample_preparation || '',
+          sample_condition: attrs?.hplc_sample_condition || targetRecord?.hplc_sample_condition || '',
+          quantity: attrs?.hplc_quantity || targetRecord?.hplc_quantity || '',
+          sample_amount: attrs?.hplc_sample_amount?.toString() || targetRecord?.hplc_sample_amount?.toString() || '',
+          temperature: attrs?.hplc_temperature || targetRecord?.hplc_temperature || '',
+
+          // HPLC Results
+          bdmc_result: attrs?.hplc_bdmc_result || targetRecord?.hplc_bdmc_result || '',
+          dmc_result: attrs?.hplc_dmc_result || targetRecord?.hplc_dmc_result || '',
+          cur_result: attrs?.hplc_cur_result || targetRecord?.hplc_cur_result || '',
+          total_curcuminoids: attrs?.hplc_total_curcuminoids || targetRecord?.hplc_total_curcuminoids || '',
+          moisture_quantity: attrs?.hplc_moisture_quantity || targetRecord?.hplc_moisture_quantity || '',
+          test_date: attrs?.test_date || targetRecord?.test_date || new Date().toISOString().split('T')[0],
+
+          // Method Information
+          method_reference: attrs?.hplc_method_reference || targetRecord?.hplc_method_reference || 'In-house Method: WI 702 – 204.01 based on Journal AOAC International',
+          method_details: attrs?.hplc_method_details || targetRecord?.hplc_method_details || 'Vol.101, No.4, 2018, pages 1232 – 1234',
+
+          // Quality Assessment
+          quality_assessment: attrs?.hplc_quality_assessment || targetRecord?.hplc_quality_assessment || 'Pass',
+          analyst_name: attrs?.hplc_analyst_name || targetRecord?.hplc_analyst_name || '',
+          reviewer_name: attrs?.hplc_reviewer_name || targetRecord?.hplc_reviewer_name || '',
+
+          // Certificate Information
+          laboratory: attrs?.hplc_laboratory || targetRecord?.hplc_laboratory || 'ศูนย์นวัตกรรมยาสมุนไพรภาคเหนือ มหาวิทยาลัยแม่ฟ้าหลวง',
+          laboratory_address: attrs?.hplc_laboratory_address || targetRecord?.hplc_laboratory_address || '333 หมู่ 1 ต.ท่าสุด อ.เมือง จ.เชียงราย 57100',
+          laboratory_phone: attrs?.hplc_laboratory_phone || targetRecord?.hplc_laboratory_phone || 'โทรศัพท์ 053917416',
+          certificate_number: attrs?.hplc_certificate_number || targetRecord?.hplc_certificate_number || ''
+        });
+
+        setTestResults(prev => ({
+          ...prev,
+          testDate: attrs?.test_date || targetRecord?.test_date || new Date().toISOString().split('T')[0],
           status: mappedRecord.Submission_status,
           inspectorNotes: mappedRecord.inspector_notes || '',
           uploadedFile: null
-        });
-
-        // Pre-fill KaminCAL data if available
-        setKaminCALData({
-          sample_name: attrs?.kamincal_sample_name || targetRecord?.kamincal_sample_name || '',
-          plant_weight: attrs?.kamincal_plant_weight?.toString() || targetRecord?.kamincal_plant_weight?.toString() || '',
-          solvent_volume: attrs?.kamincal_solvent_volume?.toString() || targetRecord?.kamincal_solvent_volume?.toString() || '',
-          average_od: attrs?.kamincal_average_od?.toString() || targetRecord?.kamincal_average_od?.toString() || '',
-          concentration: attrs?.kamincal_concentration?.toString() || targetRecord?.kamincal_concentration?.toString() || '',
-          number_of_replications: attrs?.kamincal_number_of_replications?.toString() || targetRecord?.kamincal_number_of_replications?.toString() || '',
-          first_time: attrs?.kamincal_first_time?.toString() || targetRecord?.kamincal_first_time?.toString() || '',
-          analytical_instrument: attrs?.kamincal_analytical_instrument || targetRecord?.kamincal_analytical_instrument || 'HPLC',
-          second_time: attrs?.kamincal_second_time?.toString() || targetRecord?.kamincal_second_time?.toString() || '',
-          curcuminoid_content: attrs?.kamincal_curcuminoid_content || targetRecord?.kamincal_curcuminoid_content || 'Pass',
-          curcuminoid_percentage: attrs?.kamincal_curcuminoid_percentage?.toString() || targetRecord?.kamincal_curcuminoid_percentage?.toString() || '',
-          third_time: attrs?.kamincal_third_time?.toString() || targetRecord?.kamincal_third_time?.toString() || ''
-        });
-      } else {
-        setTestResults(prev => ({
-          ...prev,
-          testDate: new Date().toISOString().split('T')[0]
         }));
+
+        console.log('HPLC data loaded successfully');
+
+      } else {
+        // Load standard NIR/UV-Vis data
+        console.log('Loading standard test data...');
+
+        if (mappedRecord.curcumin_quality || mappedRecord.moisture_quality) {
+          setTestParameters({
+            curcuminoidTest: !!mappedRecord.curcumin_quality,
+            moistureContent: !!mappedRecord.moisture_quality,
+            testingMethod: testingMethod
+          });
+
+          setTestResults({
+            curcuminoidQuality: mappedRecord.curcumin_quality?.toString() || '',
+            moistureQuality: mappedRecord.moisture_quality?.toString() || '',
+            testDate: mappedRecord.test_date || new Date().toISOString().split('T')[0],
+            status: mappedRecord.Submission_status,
+            inspectorNotes: mappedRecord.inspector_notes || '',
+            uploadedFile: null
+          });
+
+          // Pre-fill KaminCAL data
+          setKaminCALData({
+            sample_name: attrs?.kamincal_sample_name || targetRecord?.kamincal_sample_name || '',
+            plant_weight: attrs?.kamincal_plant_weight?.toString() || targetRecord?.kamincal_plant_weight?.toString() || '',
+            solvent_volume: attrs?.kamincal_solvent_volume?.toString() || targetRecord?.kamincal_solvent_volume?.toString() || '',
+            average_od: attrs?.kamincal_average_od?.toString() || targetRecord?.kamincal_average_od?.toString() || '',
+            concentration: attrs?.kamincal_concentration?.toString() || targetRecord?.kamincal_concentration?.toString() || '',
+            number_of_replications: attrs?.kamincal_number_of_replications?.toString() || targetRecord?.kamincal_number_of_replications?.toString() || '',
+            first_time: attrs?.kamincal_first_time?.toString() || targetRecord?.kamincal_first_time?.toString() || '',
+            analytical_instrument: attrs?.kamincal_analytical_instrument || targetRecord?.kamincal_analytical_instrument || 'HPLC',
+            second_time: attrs?.kamincal_second_time?.toString() || targetRecord?.kamincal_second_time?.toString() || '',
+            curcuminoid_content: attrs?.kamincal_curcuminoid_content || targetRecord?.kamincal_curcuminoid_content || 'Pass',
+            curcuminoid_percentage: attrs?.kamincal_curcuminoid_percentage?.toString() || targetRecord?.kamincal_curcuminoid_percentage?.toString() || '',
+            third_time: attrs?.kamincal_third_time?.toString() || targetRecord?.kamincal_third_time?.toString() || ''
+          });
+        } else {
+          setTestParameters(prev => ({
+            ...prev,
+            testingMethod: testingMethod
+          }));
+
+          setTestResults(prev => ({
+            ...prev,
+            testDate: new Date().toISOString().split('T')[0],
+            status: mappedRecord.Submission_status
+          }));
+        }
+
+        console.log('Standard test data loaded successfully');
       }
       // Load existing file preview if available - อัพเดทการตรวจสอบประเภทไฟล์
       if (mappedRecord.result_image) {
@@ -951,26 +1428,11 @@ export default function QualityInspectionPage() {
     }
   };
 
-  interface PerformSaveUpdateData {
-    data: {
-      curcumin_quality: number | null;
-      moisture_quality: number | null;
-      test_date: string | null;
-      inspector_notes: string | null;
-      Submission_status: string;
-    };
-  }
-
-  interface PerformSaveResponse {
-    [key: string]: any;
-  }
-
   const performSave = async (saveId: string | number): Promise<void> => {
     let resultImageId: number | null = null;
 
     // Upload file first if exists
     if (testResults.uploadedFile) {
-      console.log('📦 Starting upload process...');
 
       try {
         const formData = new FormData();
@@ -1004,39 +1466,103 @@ export default function QualityInspectionPage() {
       }
     }
 
-    const updateData = {
-      data: {
-        curcumin_quality: testParameters.curcuminoidTest ? parseFloat(testResults.curcuminoidQuality) || null : null,
-        moisture_quality: testParameters.moistureContent ? parseFloat(testResults.moistureQuality) || null : null,
-        test_date: testResults.testDate || null,
-        inspector_notes: testResults.inspectorNotes || null,
-        Submission_status: testResults.status,
+    let updateData;
 
-        // เพิ่ม testing_method ที่ขาดหายไป
-        testing_method: testParameters.testingMethod || null,
+    if (testParameters.testingMethod === 'HPLC') {
+      // HPLC data structure
+      updateData = {
+        data: {
+          testing_method: 'HPLC',
+          test_date: hplcData.test_date || null,
+          inspector_notes: testResults.inspectorNotes || null,
+          Submission_status: testResults.status || 'Draft',
 
-        // เพิ่มข้อมูล KaminCAL
-        kamincal_sample_name: kaminCALData.sample_name || null,
-        kamincal_plant_weight: parseFloat(kaminCALData.plant_weight) || null,
-        kamincal_solvent_volume: parseFloat(kaminCALData.solvent_volume) || null,
-        kamincal_average_od: parseFloat(kaminCALData.average_od) || null,
-        kamincal_concentration: parseFloat(kaminCALData.concentration) || null,
-        kamincal_number_of_replications: parseInt(kaminCALData.number_of_replications) || null,
-        kamincal_first_time: parseFloat(kaminCALData.first_time) || null,
-        kamincal_analytical_instrument: kaminCALData.analytical_instrument || null,
-        kamincal_second_time: parseFloat(kaminCALData.second_time) || null,
-        kamincal_curcuminoid_content: kaminCALData.curcuminoid_content || null,
-        kamincal_curcuminoid_percentage: parseFloat(kaminCALData.curcuminoid_percentage) || null,
-        kamincal_third_time: parseFloat(kaminCALData.third_time) || null,
+          // HPLC specific data
+          hplc_report_code: hplcData.report_code || null,
+          hplc_testing_no: hplcData.testing_no || null,
+          hplc_sample_code: hplcData.sample_code || null,
+          hplc_sample_name: hplcData.sample_name || null,
+          hplc_scientific_name: hplcData.scientific_name || null,
+          hplc_sample_preparation: hplcData.sample_preparation || null,
+          hplc_sample_condition: hplcData.sample_condition || null,
+          hplc_quantity: hplcData.quantity || null,
+          hplc_sample_amount: hplcData.sample_amount || null,
+          hplc_temperature: hplcData.temperature || null,
 
-        // ลองวิธีการส่ง image แบบต่างๆ
-        ...(resultImageId && {
-          result_image: resultImageId  // แบบที่ 1: ส่ง ID ตรงๆ
-          // result_image: [resultImageId]  // แบบที่ 2: ส่งเป็น array
-          // result_image: { connect: [resultImageId] }  // แบบที่ 3: ใช้ connect syntax
-        })
-      }
-    };
+          // HPLC Results (store as text with ± values)
+          hplc_bdmc_result: hplcData.bdmc_result || null,
+          hplc_dmc_result: hplcData.dmc_result || null,
+          hplc_cur_result: hplcData.cur_result || null,
+          hplc_total_curcuminoids: hplcData.total_curcuminoids || null,
+          hplc_moisture_quantity: hplcData.moisture_quantity || null,
+
+          // Method Information
+          hplc_method_reference: hplcData.method_reference || null,
+          hplc_method_details: hplcData.method_details || null,
+
+          // Quality Assessment
+          hplc_quality_assessment: hplcData.quality_assessment || null,
+          hplc_analyst_name: hplcData.analyst_name || null,
+          hplc_reviewer_name: hplcData.reviewer_name || null,
+
+          // Certificate Information
+          hplc_laboratory: hplcData.laboratory || null,
+          hplc_laboratory_address: hplcData.laboratory_address || null,
+          hplc_laboratory_phone: hplcData.laboratory_phone || null,
+          hplc_certificate_number: hplcData.certificate_number || null,
+
+          // Clear standard test results when using HPLC
+          curcumin_quality: null,
+          moisture_quality: null,
+
+          // Result file
+          ...(resultImageId && {
+            result_image: resultImageId
+          })
+        }
+      };
+    } else {
+      // Standard NIR/UV-Vis data structure
+      updateData = {
+        data: {
+          curcumin_quality: testParameters.curcuminoidTest ? parseFloat(testResults.curcuminoidQuality) || null : null,
+          moisture_quality: testParameters.moistureContent ? parseFloat(testResults.moistureQuality) || null : null,
+          test_date: testResults.testDate || null,
+          inspector_notes: testResults.inspectorNotes || null,
+          Submission_status: testResults.status,
+          testing_method: testParameters.testingMethod || null,
+
+          // KaminCAL data (only for standard methods)
+          kamincal_sample_name: kaminCALData.sample_name || null,
+          kamincal_plant_weight: parseFloat(kaminCALData.plant_weight) || null,
+          kamincal_solvent_volume: parseFloat(kaminCALData.solvent_volume) || null,
+          kamincal_average_od: parseFloat(kaminCALData.average_od) || null,
+          kamincal_concentration: parseFloat(kaminCALData.concentration) || null,
+          kamincal_number_of_replications: parseInt(kaminCALData.number_of_replications) || null,
+          kamincal_first_time: parseFloat(kaminCALData.first_time) || null,
+          kamincal_analytical_instrument: kaminCALData.analytical_instrument || null,
+          kamincal_second_time: parseFloat(kaminCALData.second_time) || null,
+          kamincal_curcuminoid_content: kaminCALData.curcuminoid_content || null,
+          kamincal_curcuminoid_percentage: parseFloat(kaminCALData.curcuminoid_percentage) || null,
+          kamincal_third_time: parseFloat(kaminCALData.third_time) || null,
+
+          // Clear HPLC data when using standard methods
+          hplc_report_code: null,
+          hplc_testing_no: null,
+          hplc_sample_code: null,
+          hplc_sample_name: null,
+          hplc_bdmc_result: null,
+          hplc_dmc_result: null,
+          hplc_cur_result: null,
+          hplc_total_curcuminoids: null,
+
+          // Result file
+          ...(resultImageId && {
+            result_image: resultImageId
+          })
+        }
+      };
+    }
 
     console.log('📤 Update data to send:', updateData);
 
@@ -1056,28 +1582,42 @@ export default function QualityInspectionPage() {
       const saveResponse = await res.json();
       console.log('✅ Save API Response:', saveResponse);
 
-      // ตรวจสอบว่ารูปถูกเชื่อมโยงไหม
-      if (saveResponse.data?.result_image) {
-        console.log('🖼️ Image successfully linked:', saveResponse.data.result_image);
+      let successMessage = 'Quality inspection results saved successfully!\n\nSaved data:\n';
+
+      if (testParameters.testingMethod === 'HPLC') {
+        // HPLC success message
+        successMessage += `• Testing Method: HPLC\n`;
+        if (updateData.data.hplc_report_code) {
+          successMessage += `• Report Code: ${updateData.data.hplc_report_code}\n`;
+        }
+        if (updateData.data.hplc_sample_code) {
+          successMessage += `• Sample Code: ${updateData.data.hplc_sample_code}\n`;
+        }
+        if (updateData.data.hplc_total_curcuminoids) {
+          successMessage += `• Total Curcuminoids: ${updateData.data.hplc_total_curcuminoids} mg/g\n`;
+        }
+        if (updateData.data.hplc_quality_assessment) {
+          successMessage += `• Quality Assessment: ${updateData.data.hplc_quality_assessment}\n`;
+        }
       } else {
-        console.warn('⚠️ Image may not be linked properly');
+        // Standard test success message
+        if (updateData.data.curcumin_quality !== null) {
+          successMessage += `• Curcumin Quality: ${updateData.data.curcumin_quality}%\n`;
+        }
+        if (updateData.data.moisture_quality !== null) {
+          successMessage += `• Moisture Quality: ${updateData.data.moisture_quality}%\n`;
+        }
+        successMessage += `• Testing Method: ${updateData.data.testing_method}\n`;
       }
 
-      let successMessage = 'Inspection results saved successfully!\n\nSaved data:\n';
-      if (updateData.data.curcumin_quality !== null) {
-        successMessage += `• Curcumin Quality: ${updateData.data.curcumin_quality}%\n`;
-      }
-      if (updateData.data.moisture_quality !== null) {
-        successMessage += `• Moisture Quality: ${updateData.data.moisture_quality}%\n`;
-      }
       successMessage += `• Test Date: ${updateData.data.test_date}\n`;
-      successMessage += `• Testing Method: ${updateData.data.testing_method}\n`; // เพิ่มแสดงใน success message
       successMessage += `• Status: ${updateData.data.Submission_status}`;
+
       if (updateData.data.inspector_notes) {
         successMessage += `\n• Notes: ${updateData.data.inspector_notes.substring(0, 50)}${updateData.data.inspector_notes.length > 50 ? '...' : ''}`;
       }
       if (resultImageId) {
-        successMessage += `\n• Result Image: Uploaded successfully (ID: ${resultImageId})`;
+        successMessage += `\n• Result File: Uploaded successfully (ID: ${resultImageId})`;
       }
 
       alert(successMessage);
@@ -1105,6 +1645,29 @@ export default function QualityInspectionPage() {
       fetchRecord();
     }
   }, [role, recordId]);
+
+  useEffect(() => {
+    const initializeHPLCData = async () => {
+      if (testParameters.testingMethod === 'HPLC' && !hplcData.report_code) {
+        const [autoReportNumber, autoRequestNumber, autoSampleId, autoSampleCode] = await Promise.all([
+          generateReportNumber(),
+          generateRequestNumber(),
+          generateSampleId(),
+          generateSampleCode()
+        ]);
+
+        setHplcData(prev => ({
+          ...prev,
+          report_code: autoReportNumber,
+          testing_no: autoRequestNumber,
+          sample_code: autoSampleId,
+          sample_preparation: autoSampleCode
+        }));
+      }
+    };
+
+    initializeHPLCData();
+  }, [testParameters.testingMethod]);
 
   // if (role === 'loading' || loading) {
   //   return (
@@ -1238,6 +1801,24 @@ export default function QualityInspectionPage() {
                   )}
                 </div>
               </div>
+              <div>
+                <Label className="text-sm font-medium">Select Status</Label>
+                <Select
+                  value={testResults.status}
+                  onValueChange={(value) =>
+                    setTestResults({ ...testResults, status: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Draft">Draft</SelectItem>
+                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="Completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </CardContent>
           </Card>
 
@@ -1249,41 +1830,10 @@ export default function QualityInspectionPage() {
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <Label className="text-sm font-medium mb-3 block">Select Test Parameters</Label>
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="curcuminoid"
-                        checked={testParameters.curcuminoidTest}
-                        onCheckedChange={(checked) =>
-                          setTestParameters({ ...testParameters, curcuminoidTest: !!checked })
-                        }
-                      />
-                      <Label htmlFor="curcuminoid" className="text-sm">
-                        Curcuminoid Test
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="moisture"
-                        checked={testParameters.moistureContent}
-                        onCheckedChange={(checked) =>
-                          setTestParameters({ ...testParameters, moistureContent: !!checked })
-                        }
-                      />
-                      <Label htmlFor="moisture" className="text-sm">
-                        Moisture Content
-                      </Label>
-                    </div>
-                  </div>
-                </div>
-                <div>
                   <Label className="text-sm font-medium">Testing Method</Label>
                   <Select
                     value={testParameters.testingMethod}
-                    onValueChange={(value) =>
-                      setTestParameters({ ...testParameters, testingMethod: value })
-                    }
+                    onValueChange={handleTestingMethodChange}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -1295,169 +1845,489 @@ export default function QualityInspectionPage() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Conditional Test Parameters - only show for non-HPLC methods */}
+                {testParameters.testingMethod !== 'HPLC' && (
+                  <div>
+                    <Label className="text-sm font-medium mb-3 block">Select Test Parameters</Label>
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="curcuminoid"
+                          checked={testParameters.curcuminoidTest}
+                          onCheckedChange={(checked) =>
+                            setTestParameters({ ...testParameters, curcuminoidTest: !!checked })
+                          }
+                        />
+                        <Label htmlFor="curcuminoid" className="text-sm">
+                          Curcuminoid Test
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="moisture"
+                          checked={testParameters.moistureContent}
+                          onCheckedChange={(checked) =>
+                            setTestParameters({ ...testParameters, moistureContent: !!checked })
+                          }
+                        />
+                        <Label htmlFor="moisture" className="text-sm">
+                          Moisture Content
+                        </Label>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Test Results */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Test Results</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  {testParameters.curcuminoidTest && (
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <Label className="text-sm font-medium">Curcuminoid Quality</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="100"
-                          value={testResults.curcuminoidQuality}
-                          onChange={(e) =>
-                            setTestResults({ ...testResults, curcuminoidQuality: e.target.value })
-                          }
-                          placeholder="Enter percentage"
-                        />
-                      </div>
-                      <div className="mt-6">
-                        <span className="text-sm text-gray-500">%</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {testParameters.moistureContent && (
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <Label className="text-sm font-medium">Moisture Quality</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max="100"
-                          value={testResults.moistureQuality}
-                          onChange={(e) =>
-                            setTestResults({ ...testResults, moistureQuality: e.target.value })
-                          }
-                          placeholder="Enter percentage"
-                        />
-                      </div>
-                      <div className="mt-6">
-                        <span className="text-sm text-gray-500">%</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <Label className="text-sm font-medium">Test Date</Label>
-                    <Input
-                      type="date"
-                      value={testResults.testDate}
-                      onChange={(e) =>
-                        setTestResults({ ...testResults, testDate: e.target.value })
-                      }
-                    />
-                  </div>
-
-                  <div>
-                    <Label className="text-sm font-medium">Select Status</Label>
-                    <Select
-                      value={testResults.status}
-                      onValueChange={(value) =>
-                        setTestResults({ ...testResults, status: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Draft">Draft</SelectItem>
-                        <SelectItem value="Pending">Pending</SelectItem>
-                        <SelectItem value="Completed">Completed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <Label className="text-sm font-medium mb-2 block">Upload Results File</Label>
-                    <div
-                      className="w-full min-h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-blue-500 transition cursor-pointer bg-gray-50 relative p-4"
-                      onClick={() => !processingFile && fileInputRef.current?.click()}
-                      onDrop={handleDrop}
-                      onDragOver={handleDragOver}
-                    >
-                      {processingFile ? (
-                        <div className="flex flex-col items-center gap-2">
-                          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                          <p className="text-sm">Processing file...</p>
-                        </div>
-                      ) : filePreview ? (
-                        renderFilePreview()
-                      ) : (
-                        <div className="flex flex-col items-center gap-2 text-center">
-                          <Upload className="h-12 w-12 text-gray-400" />
-                          <p className="text-sm font-medium">Drag & drop a file here</p>
-                          <p className="text-xs text-gray-400">or click to browse</p>
-                          <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                            <div className="flex items-center gap-1">
-                              <ImageIcon size={12} />
-                              <span>Images</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Table size={12} />
-                              <span>CSV</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <FileText size={12} />
-                              <span>Excel</span>
-                            </div>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-1">
-                            PNG, JPG, GIF, CSV, XLS, XLSX up to 10MB
-                          </p>
-                        </div>
-                      )}
-                      <input
-                        type="file"
-                        accept="image/png,image/jpeg,image/jpg,image/gif,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        ref={fileInputRef}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            handleFile(file);
-                          }
-                        }}
-                        className="hidden"
-                        disabled={processingFile}
+          {/* Conditional Test Results */}
+          {testParameters.testingMethod === 'HPLC' ? (
+            /* HPLC Test Results */
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-green-600">📊</span>
+                  Test Result
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Basic Information Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">
+                        Report No.
+                        <span className="text-xs text-green-600 ml-1">(Auto-generated)</span>
+                      </Label>
+                      <Input
+                        name="hplc_report_code"
+                        value={hplcData.report_code}
+                        readOnly
+                        className="bg-gray-100 cursor-not-allowed"
+                        placeholder="RP 2025-1"
                       />
                     </div>
-                    {testResults.uploadedFile && (
-                      <p className="text-sm text-green-600 mt-2">
-                        File selected: {testResults.uploadedFile.name}
-                      </p>
-                    )}
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">
+                        Request No.
+                        <span className="text-xs text-green-600 ml-1">(Auto-generated)</span>
+                      </Label>
+                      <Input
+                        name="hplc_testing_no"
+                        value={hplcData.testing_no}
+                        readOnly
+                        className="bg-gray-100 cursor-not-allowed"
+                        placeholder="MPIC006-ACK25-245"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">
+                        Sample ID
+                        <span className="text-xs text-green-600 ml-1">(Auto-generated)</span>
+                      </Label>
+                      <Input
+                        name="hplc_sample_code"
+                        value={hplcData.sample_code}
+                        readOnly
+                        className="bg-gray-100 cursor-not-allowed"
+                        placeholder="MPIC-TS25-597"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Sample Name</Label>
+                      <Input
+                        name="hplc_sample_name"
+                        value={hplcData.sample_name}
+                        onChange={handleHPLCChange}
+                        placeholder="Turmeric"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Scientific Name</Label>
+                      <Input
+                        name="hplc_scientific_name"
+                        value={hplcData.scientific_name}
+                        onChange={handleHPLCChange}
+                        placeholder="Curcuma longa"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">
+                        Sample Code
+                        <span className="text-xs text-green-600 ml-1">(Auto-generated)</span>
+                      </Label>
+                      <Input
+                        name="hplc_sample_preparation"
+                        value={hplcData.sample_preparation}
+                        readOnly
+                        className="bg-gray-100 cursor-not-allowed"
+                        placeholder="T68-AJL-01"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Sample Type</Label>
+                      <Input
+                        name="hplc_sample_condition"
+                        value={hplcData.sample_condition}
+                        onChange={handleHPLCChange}
+                        placeholder="Powder/Dry"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Quantity</Label>
+                      <Input
+                        name="hplc_quantity"
+                        value={hplcData.quantity}
+                        onChange={handleHPLCChange}
+                        placeholder="1 Bag"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Weight/Volume</Label>
+                      <Input
+                        name="hplc_sample_amount"
+                        value={hplcData.sample_amount}
+                        onChange={handleHPLCChange}
+                        placeholder="10 g"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Temperature Upon Receipt</Label>
+                      <Input
+                        name="hplc_temperature"
+                        value={hplcData.temperature}
+                        onChange={handleHPLCChange}
+                        placeholder="Room Temperature, Normal Condition"
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <Label className="text-sm font-medium">Inspector Notes</Label>
-                    <Textarea
-                      placeholder="Add your comments here..."
-                      value={testResults.inspectorNotes}
-                      onChange={(e) =>
-                        setTestResults({ ...testResults, inspectorNotes: e.target.value })
-                      }
-                      rows={4}
-                    />
+                  {/* Curcuminoid Quantity Section */}
+                  <div className="border rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-yellow-600">⚗️</span>
+                      <h3 className="text-lg font-semibold text-gray-800">Curcuminoid Quantity (mg/g)</h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-600">Bisdemethoxycurcumin (BDMC)</Label>
+                        <Input
+                          name="hplc_bdmc_result"
+                          type="text"
+                          value={hplcData.bdmc_result}
+                          onChange={handleHPLCChange}
+                          placeholder="12.3 ± 1.8"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-600">Demethoxycurcumin (DMC)</Label>
+                        <Input
+                          name="hplc_dmc_result"
+                          type="text"
+                          value={hplcData.dmc_result}
+                          onChange={handleHPLCChange}
+                          placeholder="10.4 ± 3.5"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-600">Curcumin (CUR)</Label>
+                        <Input
+                          name="hplc_cur_result"
+                          type="text"
+                          value={hplcData.cur_result}
+                          onChange={handleHPLCChange}
+                          placeholder="27.2 ± 8.4"
+                        />
+                      </div>
+                    </div>
+
+
+                    {/* Use the new component */}
+                    <TotalCurcuminoidsDisplay />
+                  </div>
+
+                  {/* Bottom Section */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Moisture Quantity</Label>
+                      <Input
+                        name="hplc_moisture_quantity"
+                        value={hplcData.moisture_quantity}
+                        onChange={handleHPLCChange}
+                        placeholder="Enter moisture content..."
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-600">Test Date</Label>
+                      <Input
+                        name="hplc_test_date"
+                        type="date"
+                        value={hplcData.test_date}
+                        onChange={handleHPLCChange}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ) : (
+            /* Standard Test Results for NIR/UV-Vis */
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>Test Results</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    {testParameters.curcuminoidTest && (
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <Label className="text-sm font-medium">Curcuminoid Quality</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            value={testResults.curcuminoidQuality}
+                            onChange={(e) =>
+                              setTestResults({ ...testResults, curcuminoidQuality: e.target.value })
+                            }
+                            placeholder="Enter percentage"
+                          />
+                        </div>
+                        <div className="mt-6">
+                          <span className="text-sm text-gray-500">%</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {testParameters.moistureContent && (
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <Label className="text-sm font-medium">Moisture Quality</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            value={testResults.moistureQuality}
+                            onChange={(e) =>
+                              setTestResults({ ...testResults, moistureQuality: e.target.value })
+                            }
+                            placeholder="Enter percentage"
+                          />
+                        </div>
+                        <div className="mt-6">
+                          <span className="text-sm text-gray-500">%</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div>
+                      <Label className="text-sm font-medium">Test Date</Label>
+                      <Input
+                        type="date"
+                        value={testResults.testDate}
+                        onChange={(e) =>
+                          setTestResults({ ...testResults, testDate: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    {/* <div>
+                      <Label className="text-sm font-medium">Select Status</Label>
+                      <Select
+                        value={testResults.status}
+                        onValueChange={(value) =>
+                          setTestResults({ ...testResults, status: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Draft">Draft</SelectItem>
+                          <SelectItem value="Pending">Pending</SelectItem>
+                          <SelectItem value="Completed">Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div> */}
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-sm font-medium mb-2 block">Upload Results File</Label>
+                      <div
+                        className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-blue-500 transition cursor-pointer bg-gray-50 relative p-4"
+                        onClick={() => !processingFile && fileInputRef.current?.click()}
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                      >
+                        {processingFile ? (
+                          <div className="flex flex-col items-center gap-2">
+                            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                            <p className="text-sm">Processing file...</p>
+                          </div>
+                        ) : filePreview ? (
+                          renderFilePreview()
+                        ) : (
+                          <div className="flex flex-col items-center gap-2 text-center">
+                            <Upload className="h-12 w-12 text-gray-400" />
+                            <p className="text-sm font-medium">Drag & drop a file here</p>
+                            <p className="text-xs text-gray-400">or click to browse</p>
+                            <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                              <div className="flex items-center gap-1">
+                                <ImageIcon size={12} />
+                                <span>Images</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Table size={12} />
+                                <span>CSV</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <FileText size={12} />
+                                <span>Excel</span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              PNG, JPG, GIF, CSV, XLS, XLSX up to 10MB
+                            </p>
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg,image/gif,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                          ref={fileInputRef}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              handleFile(file);
+                            }
+                          }}
+                          className="hidden"
+                          disabled={processingFile}
+                        />
+                      </div>
+                      {testResults.uploadedFile && (
+                        <p className="text-sm text-green-600 mt-2">
+                          File selected: {testResults.uploadedFile.name}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label className="text-sm font-medium">Inspector Notes</Label>
+                      <Textarea
+                        placeholder="Add your comments here..."
+                        value={testResults.inspectorNotes}
+                        onChange={(e) =>
+                          setTestResults({ ...testResults, inspectorNotes: e.target.value })
+                        }
+                        rows={4}
+                        className="min-h-[100px] max-h-[100px]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Inspector Notes Section - only for HPLC */}
+          {testParameters.testingMethod === 'HPLC' && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-green-600">📝</span>
+                  Inspector Notes
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  placeholder="Add your comments here..."
+                  value={testResults.inspectorNotes}
+                  onChange={(e) =>
+                    setTestResults({ ...testResults, inspectorNotes: e.target.value })
+                  }
+                  rows={4}
+                  
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Updated Upload Results File Section for HPLC - fixed height */}
+          {testParameters.testingMethod === 'HPLC' && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <span className="text-green-600">📤</span>
+                  Upload Results File
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div
+                  className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-blue-500 transition cursor-pointer bg-gray-50 relative p-4"
+                  onClick={() => !processingFile && fileInputRef.current?.click()}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                >
+                  {processingFile ? (
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      <p className="text-sm">Processing file...</p>
+                    </div>
+                  ) : filePreview ? (
+                    renderFilePreview()
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 text-center">
+                      <Upload className="h-12 w-12 text-gray-400" />
+                      <p className="text-sm font-medium">Drag & drop a file here</p>
+                      <p className="text-xs text-gray-400">or click to browse</p>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                        <div className="flex items-center gap-1">
+                          <ImageIcon size={12} />
+                          <span>Images</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Table size={12} />
+                          <span>CSV</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <FileText size={12} />
+                          <span>Excel</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        PNG, JPG, GIF, CSV, XLS, XLSX up to 10MB
+                      </p>
+                    </div>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/gif,.csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    ref={fileInputRef}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleFile(file);
+                      }
+                    }}
+                    className="hidden"
+                    disabled={processingFile}
+                  />
+                </div>
+                {testResults.uploadedFile && (
+                  <p className="text-sm text-green-600 mt-2">
+                    File selected: {testResults.uploadedFile.name}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* KaminCAL Section */}
           <Card className="mb-6">
