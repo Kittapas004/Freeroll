@@ -129,7 +129,7 @@ export default function QualityDashboard() {
   const [recentBatches, setRecentBatches] = useState<RecentBatch[]>([]);
   const [latestResults, setLatestResults] = useState<LatestResult[]>([]);
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
-  
+
   // ✅ Updated notifications state
   const [labNotifications, setLabNotifications] = useState<LabNotification[]>([]);
   const [loading, setLoading] = useState(true);
@@ -163,18 +163,89 @@ export default function QualityDashboard() {
   };
 
   // Quality assessment function
-  const determineTestStatus = (curcuminLevel?: number, moistureLevel?: number): 'Passed' | 'Failed' => {
+  const determineTestStatusEnhanced = (record: any): 'Passed' | 'Failed' => {
+    console.log('🔍 === DEBUG QUALITY ASSESSMENT ===');
+    console.log('Input record:', {
+      id: record.id,
+      batchId: record.batchId,
+      testing_method: record.testing_method,
+      curcumin_quality: record.curcuminQuality,
+      moisture_quality: record.moistureQuality,
+      hplc_total_curcuminoids: record.hplc_total_curcuminoids,
+      hplc_moisture_quantity: record.hplc_moisture_quantity
+    });
+
     const curcuminThreshold = 3.0; // minimum 3% curcumin
     const moistureThreshold = 15.0; // maximum 15% moisture
 
-    const curcuminPass = curcuminLevel === undefined || curcuminLevel >= curcuminThreshold;
-    const moisturePass = moistureLevel === undefined || moistureLevel <= moistureThreshold;
+    // ตรวจสอบ testing method
+    const testingMethod = record.testing_method || 'NIR Spectroscopy';
+    console.log('Testing Method:', testingMethod);
 
-    return (curcuminPass && moisturePass) ? 'Passed' : 'Failed';
+    let curcuminValue = null;
+    let moistureValue = null;
+
+    if (testingMethod === 'HPLC') {
+      // สำหรับ HPLC ใช้ hplc_total_curcuminoids และแปลงจาก mg/g เป็น %
+      const hplcTotalCurcuminoids = record.hplc_total_curcuminoids;
+      const hplcMoisture = record.hplc_moisture_quantity;
+
+      if (hplcTotalCurcuminoids) {
+        curcuminValue = parseFloat(hplcTotalCurcuminoids) / 10; // mg/g to %
+        console.log('HPLC Curcumin conversion:', `${hplcTotalCurcuminoids} mg/g → ${curcuminValue}%`);
+      }
+
+      if (hplcMoisture) {
+        moistureValue = parseFloat(hplcMoisture);
+        console.log('HPLC Moisture:', `${moistureValue}%`);
+      }
+    } else {
+      // สำหรับ NIR/UV-Vis ใช้ข้อมูลเดิม
+      curcuminValue = record.curcuminQuality;
+      moistureValue = record.moistureQuality;
+      console.log('Standard Method - Curcumin:', `${curcuminValue}%`);
+      console.log('Standard Method - Moisture:', `${moistureValue}%`);
+    }
+
+    // ✅ เพิ่ม debug logs
+    console.log('Final values for assessment:');
+    console.log('- Curcumin Value:', curcuminValue);
+    console.log('- Moisture Value:', moistureValue);
+    console.log('- Curcumin Threshold: ≥', curcuminThreshold, '%');
+    console.log('- Moisture Threshold: ≤', moistureThreshold, '%');
+
+    // ✅ เพิ่ม step-by-step logic check
+    let curcuminPass = true;
+    let moisturePass = true;
+
+    if (curcuminValue !== null && curcuminValue !== undefined) {
+      curcuminPass = curcuminValue >= curcuminThreshold;
+      console.log(`Curcumin Check: ${curcuminValue}% >= ${curcuminThreshold}% = ${curcuminPass ? 'PASS' : 'FAIL'}`);
+    } else {
+      console.log('Curcumin Check: No data available = PASS (default)');
+    }
+
+    if (moistureValue !== null && moistureValue !== undefined) {
+      moisturePass = moistureValue <= moistureThreshold;
+      console.log(`Moisture Check: ${moistureValue}% <= ${moistureThreshold}% = ${moisturePass ? 'PASS' : 'FAIL'}`);
+    } else {
+      console.log('Moisture Check: No data available = PASS (default)');
+    }
+
+    const finalResult = curcuminPass && moisturePass ? 'Passed' : 'Failed';
+
+    console.log('=== ASSESSMENT RESULT ===');
+    console.log('Curcumin:', curcuminPass ? '✅ PASS' : '❌ FAIL');
+    console.log('Moisture:', moisturePass ? '✅ PASS' : '❌ FAIL');
+    console.log('FINAL RESULT:', finalResult);
+    console.log('==============================\n');
+
+    return finalResult;
   };
 
+
   // ✅ ULTRA SIMPLIFIED: Lab Notifications without complex filters
-// ✅ Lab Notifications with TypeScript fixes
+  // ✅ Lab Notifications with TypeScript fixes
   const fetchLabNotifications = async () => {
     try {
       console.log('=== 🎯 FETCHING Lab Notifications ===');
@@ -215,7 +286,7 @@ export default function QualityDashboard() {
       // Process records using EXACT SAME LOGIC as fetchDashboardData
       const notifications: LabNotification[] = recordsData.data.slice(0, 10).map((record: any, index: number) => {
         console.log(`\n=== Processing Record ${index + 1} (ID: ${record.id}) ===`);
-        
+
         const attrs = record.attributes || record;
         console.log('Record attributes keys:', Object.keys(attrs));
 
@@ -229,7 +300,7 @@ export default function QualityDashboard() {
         if (attrs?.batch?.data?.attributes) {
           const batchData = attrs.batch.data.attributes;
           console.log('📋 Found batch data:', batchData);
-          
+
           batchId = batchData?.Batch_id || batchData?.batch_id || 'N/A';
           console.log('✅ Batch ID from method 1:', batchId);
 
@@ -248,12 +319,12 @@ export default function QualityDashboard() {
           console.log('🔍 Trying method 2: Direct batch access...');
           if (attrs?.batch) {
             console.log('📋 Direct batch object:', attrs.batch);
-            
+
             if (batchId === 'N/A') {
               batchId = attrs.batch?.Batch_id || attrs.batch?.batch_id || 'N/A';
               console.log('✅ Batch ID from method 2:', batchId);
             }
-            
+
             if (farmName === 'Unknown Farm') {
               farmName = attrs.batch?.Farm?.Farm_Name || attrs.batch?.Farm?.farm_name || 'Unknown Farm';
               console.log('✅ Farm Name from method 2:', farmName);
@@ -281,7 +352,7 @@ export default function QualityDashboard() {
         // Determine notification type
         let notificationType: 'new_submission' | 'pending' | 'completed' = 'new_submission';
         let title = 'New Sample Received';
-        
+
         if (submissionStatus === 'Pending') {
           notificationType = 'pending';
           title = 'Inspection Pending';
@@ -389,7 +460,7 @@ export default function QualityDashboard() {
         let farmName = 'Unknown Farm';
         let harvestDate = '';
 
-        // Extract batch and farm info
+        // Extract batch and farm info (ใช้ logic เดิม)
         if (attrs?.batch?.data?.attributes) {
           const batchData = attrs.batch.data.attributes;
           batchId = batchData?.Batch_id || batchData?.batch_id || 'N/A';
@@ -404,26 +475,37 @@ export default function QualityDashboard() {
           if (attrs?.batch) {
             batchId = attrs.batch?.Batch_id || attrs.batch?.batch_id || 'N/A';
             farmName = attrs.batch?.Farm?.Farm_Name || attrs.batch?.Farm?.farm_name || 'Unknown Farm';
-            console.log('Found from Method 3 - Batch ID:', batchId, 'Farm Name:', farmName);
           }
         }
 
-
-        // Extract harvest date
+        // Extract harvest date (ใช้ logic เดิม)
         if (attrs?.harvest_record?.data?.attributes) {
           harvestDate = attrs.harvest_record.data.attributes.harvest_date ||
             attrs.harvest_record.data.attributes.Date ||
             attrs.harvest_record.data.attributes.createdAt || '';
         }
 
+        // ✅ เพิ่ม: รองรับ HPLC data
+        const testingMethod = attrs?.testing_method || record?.testing_method || 'NIR Spectroscopy';
+
+        // ✅ เพิ่ม: ดึงข้อมูล HPLC ถ้ามี
         const finalRecord = {
           id: record.id.toString(),
           batchId,
           farmName,
           submissionStatus: attrs?.Submission_status || 'Draft',
           qualityGrade: attrs?.Quality_grade || 'Not Graded',
+
+          // ✅ Standard test data
           curcuminQuality: attrs?.curcumin_quality,
           moistureQuality: attrs?.moisture_quality,
+
+          // ✅ HPLC test data
+          testing_method: testingMethod,
+          hplc_total_curcuminoids: attrs?.hplc_total_curcuminoids,
+          hplc_moisture_quantity: attrs?.hplc_moisture_quantity,
+          hplc_quality_assessment: attrs?.hplc_quality_assessment,
+
           testDate: attrs?.test_date || attrs?.createdAt,
           harvestDate: harvestDate || attrs?.createdAt,
           inspectorNotes: attrs?.inspector_notes || ''
@@ -442,12 +524,12 @@ export default function QualityDashboard() {
       const pendingRecords = processedRecords.filter(r => r.submissionStatus === 'Pending' || r.submissionStatus === 'Draft');
 
       const passedRecords = completedRecords.filter(r => {
-        const status = determineTestStatus(r.curcuminQuality, r.moistureQuality);
+        const status = determineTestStatusEnhanced(r);
         return status === 'Passed';
       });
 
       const failedRecords = completedRecords.filter(r => {
-        const status = determineTestStatus(r.curcuminQuality, r.moistureQuality);
+        const status = determineTestStatusEnhanced(r);
         return status === 'Failed';
       });
 
@@ -464,7 +546,23 @@ export default function QualityDashboard() {
       const recentCompletedBatches: RecentBatch[] = completedRecords
         .slice(0, 10)
         .map(record => {
-          const status = determineTestStatus(record.curcuminQuality, record.moistureQuality);
+          // ✅ ใช้ enhanced status determination
+          const status = determineTestStatusEnhanced(record);
+
+          // ✅ ดึงค่าที่ถูกต้องตาม testing method
+          let curcuminLevel = record.curcuminQuality;
+          let moistureLevel = record.moistureQuality;
+
+          if (record.testing_method === 'HPLC') {
+            // แปลง HPLC values สำหรับการแสดงผล
+            if (record.hplc_total_curcuminoids) {
+              curcuminLevel = parseFloat(record.hplc_total_curcuminoids) / 10;
+            }
+            if (record.hplc_moisture_quantity) {
+              moistureLevel = parseFloat(record.hplc_moisture_quantity);
+            }
+          }
+
           return {
             id: record.id,
             batchId: record.batchId,
@@ -473,24 +571,49 @@ export default function QualityDashboard() {
             grade: record.qualityGrade,
             status: status,
             testDate: record.testDate,
-            curcuminLevel: record.curcuminQuality,
-            moistureLevel: record.moistureQuality
+            curcuminLevel: curcuminLevel,
+            moistureLevel: moistureLevel
           };
         });
-
       setRecentBatches(recentCompletedBatches);
 
       // Prepare latest results
       const latestTestResults: LatestResult[] = completedRecords
-        .filter(r => r.curcuminQuality || r.moistureQuality)
+        .filter(r => {
+          // ✅ เช็คทั้ง standard และ HPLC results
+          const hasStandardResults = r.curcuminQuality || r.moistureQuality;
+          const hasHPLCResults = r.hplc_total_curcuminoids || r.hplc_moisture_quantity;
+          return hasStandardResults || hasHPLCResults;
+        })
         .slice(0, 6)
         .map(record => {
-          const status = determineTestStatus(record.curcuminQuality, record.moistureQuality);
+          const status = determineTestStatusEnhanced(record);
+
+          // ✅ แสดงผลตาม testing method
+          let moistureDisplay = 'N/A';
+          let curcuminDisplay = 'N/A';
+
+          if (record.testing_method === 'HPLC') {
+            if (record.hplc_total_curcuminoids) {
+              curcuminDisplay = `${record.hplc_total_curcuminoids} mg/g`;
+            }
+            if (record.hplc_moisture_quantity) {
+              moistureDisplay = `${record.hplc_moisture_quantity}%`;
+            }
+          } else {
+            if (record.curcuminQuality) {
+              curcuminDisplay = `${record.curcuminQuality}%`;
+            }
+            if (record.moistureQuality) {
+              moistureDisplay = `${record.moistureQuality}%`;
+            }
+          }
+
           return {
             id: record.id,
             batchId: record.batchId,
-            moisture: record.moistureQuality ? `${record.moistureQuality}%` : 'N/A',
-            curcumin: record.curcuminQuality ? `${record.curcuminQuality}%` : 'N/A',
+            moisture: moistureDisplay,
+            curcumin: curcuminDisplay,
             status: status,
             testDate: record.testDate
           };
@@ -513,13 +636,36 @@ export default function QualityDashboard() {
           return recordDate.toDateString() === date.toDateString();
         });
 
-        const avgCurcumin = dayRecords.length > 0
-          ? dayRecords.reduce((sum, r) => sum + (r.curcuminQuality || 0), 0) / dayRecords.length
-          : 0;
+        // ✅ คำนวณค่าเฉลี่ยโดยรองรับ HPLC
+        let totalCurcumin = 0;
+        let totalMoisture = 0;
+        let curcuminCount = 0;
+        let moistureCount = 0;
 
-        const avgMoisture = dayRecords.length > 0
-          ? dayRecords.reduce((sum, r) => sum + (r.moistureQuality || 0), 0) / dayRecords.length
-          : 0;
+        dayRecords.forEach(record => {
+          if (record.testing_method === 'HPLC') {
+            if (record.hplc_total_curcuminoids) {
+              totalCurcumin += parseFloat(record.hplc_total_curcuminoids) / 10; // แปลงเป็น %
+              curcuminCount++;
+            }
+            if (record.hplc_moisture_quantity) {
+              totalMoisture += parseFloat(record.hplc_moisture_quantity);
+              moistureCount++;
+            }
+          } else {
+            if (record.curcuminQuality) {
+              totalCurcumin += record.curcuminQuality;
+              curcuminCount++;
+            }
+            if (record.moistureQuality) {
+              totalMoisture += record.moistureQuality;
+              moistureCount++;
+            }
+          }
+        });
+
+        const avgCurcumin = curcuminCount > 0 ? totalCurcumin / curcuminCount : 0;
+        const avgMoisture = moistureCount > 0 ? totalMoisture / moistureCount : 0;
 
         chartDataPoints.push({
           day: dayName,
@@ -533,20 +679,25 @@ export default function QualityDashboard() {
 
       // Generate recent activities
       const activities: RecentActivity[] = [
-        ...completedRecords.slice(0, 3).map((record, index) => ({
-          id: `activity-${record.id}`,
-          type: 'Quality Inspection Completed',
-          description: `Batch ${record.batchId} inspection completed`,
-          date: record.testDate || record.harvestDate,
-          batchId: record.batchId,
-          icon: <Activity size={18} className="text-blue-500" />,
-          details: {
-            batch: record.batchId,
-            farm: record.farmName,
-            grade: record.qualityGrade,
-            status: determineTestStatus(record.curcuminQuality, record.moistureQuality)
-          }
-        })),
+        ...completedRecords.slice(0, 3).map((record, index) => {
+          const status = determineTestStatusEnhanced(record); // ✅ ใช้ enhanced function
+
+          return {
+            id: `activity-${record.id}`,
+            type: 'Quality Inspection Completed',
+            description: `Batch ${record.batchId} inspection completed`,
+            date: record.testDate || record.harvestDate,
+            batchId: record.batchId,
+            icon: <Activity size={18} className="text-blue-500" />,
+            details: {
+              batch: record.batchId,
+              farm: record.farmName,
+              grade: record.qualityGrade,
+              status: status,
+              method: record.testing_method // ✅ เพิ่ม testing method
+            }
+          };
+        }),
         ...processedRecords.filter(r => r.submissionStatus === 'Pending').slice(0, 2).map((record, index) => ({
           id: `pending-${record.id}`,
           type: 'Pending Inspection',
@@ -835,8 +986,8 @@ export default function QualityDashboard() {
           <div className="bg-white rounded-2xl p-4 shadow-sm">
             <div className="flex justify-between items-center mb-2">
               <div className="flex items-center gap-2">
-              <FlaskConical className="text-green-600" size={16} />
-              <div className="text-sm font-medium text-gray-600">Curcumin % Trend</div>
+                <FlaskConical className="text-green-600" size={16} />
+                <div className="text-sm font-medium text-gray-600">Curcumin % Trend</div>
               </div>
               <div className="text-xs text-gray-400 flex items-center">
                 Last 7 days <ChevronRight size={16} />
@@ -868,8 +1019,8 @@ export default function QualityDashboard() {
           <div className="bg-white rounded-2xl p-4 shadow-sm">
             <div className="flex justify-between items-center mb-2">
               <div className="flex items-center gap-2">
-              <FlaskConical className="text-green-600" size={16} />
-              <div className="text-sm font-medium text-gray-600">Moisture % Trend</div>
+                <FlaskConical className="text-green-600" size={16} />
+                <div className="text-sm font-medium text-gray-600">Moisture % Trend</div>
               </div>
               <div className="text-xs text-gray-400 flex items-center">
                 Last 7 days <ChevronRight size={16} />
@@ -1024,8 +1175,8 @@ export default function QualityDashboard() {
         <div className="bg-white rounded-2xl p-4 shadow-sm border">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-            <History className="text-green-600" size={16} />
-            <h2 className="text-lg font-semibold">Latest Lab Results</h2>
+              <History className="text-green-600" size={16} />
+              <h2 className="text-lg font-semibold">Latest Lab Results</h2>
             </div>
           </div>
 
@@ -1181,10 +1332,9 @@ export default function QualityDashboard() {
                           Farm: <span className="font-medium text-green-600">{notification.farmName}</span>
                         </div>
                         <div className="text-xs text-gray-600">
-                          Status: <span className={`font-medium ${
-                            notification.submissionStatus === 'Completed' ? 'text-green-600' :
+                          Status: <span className={`font-medium ${notification.submissionStatus === 'Completed' ? 'text-green-600' :
                             notification.submissionStatus === 'Pending' ? 'text-orange-600' : 'text-gray-600'
-                          }`}>{notification.submissionStatus}</span>
+                            }`}>{notification.submissionStatus}</span>
                         </div>
                         <div className="flex items-center justify-between mt-2">
                           <span className="text-xs text-gray-400">

@@ -412,7 +412,7 @@ export default function QualityInspectionPage() {
     test_date: '',
     method_reference: 'In-house Method: WI 702 – 204.01 based on Journal AOAC International',
     method_details: 'Vol.101, No.4, 2018, pages 1232 – 1234',
-    quality_assessment: '',
+    quality_assessment: 'Pass',
     analyst_name: '',
     reviewer_name: '',
     laboratory: 'ศูนย์นวัตกรรมยาสมุนไพรภาคเหนือ มหาวิทยาลัยแม่ฟ้าหลวง',
@@ -459,6 +459,8 @@ export default function QualityInspectionPage() {
       </div>
     );
   };
+
+
 
   const handleTestingMethodChange = async (newMethod: string) => {
     setTestParameters({ ...testParameters, testingMethod: newMethod });
@@ -1596,8 +1598,16 @@ export default function QualityInspectionPage() {
         if (updateData.data.hplc_total_curcuminoids) {
           successMessage += `• Total Curcuminoids: ${updateData.data.hplc_total_curcuminoids} mg/g\n`;
         }
-        if (updateData.data.hplc_quality_assessment) {
-          successMessage += `• Quality Assessment: ${updateData.data.hplc_quality_assessment}\n`;
+
+        // ✅ แก้ไขด้วยการเช็คจาก hplcData โดยตรง
+        if (hplcData.quality_assessment) {
+          successMessage += `• Quality Assessment: ${hplcData.quality_assessment}\n`;
+        }
+        if (hplcData.analyst_name) {
+          successMessage += `• Analyst: ${hplcData.analyst_name}\n`;
+        }
+        if (hplcData.reviewer_name) {
+          successMessage += `• Reviewer: ${hplcData.reviewer_name}\n`;
         }
       } else {
         // Standard test success message
@@ -2044,10 +2054,73 @@ export default function QualityInspectionPage() {
                       </div>
                     </div>
 
-
-                    {/* Use the new component */}
+                    {/* Total Curcuminoids Display */}
                     <TotalCurcuminoidsDisplay />
+
+                    {/* ✅ Quality Assessment - วางใต้ Total Curcuminoids */}
+                    <div className="border rounded-lg p-4 mt-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <span className="text-blue-800">📋</span>
+                        <h4 className="text-lg font-semibold ">Quality Assessment</h4>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium text-gray-600">Overall Assessment</Label>
+                          <Select
+                            value={hplcData.quality_assessment}
+                            onValueChange={(value) => setHplcData({ ...hplcData, quality_assessment: value })}
+                          >
+                            <SelectTrigger className="bg-white ">
+                              <SelectValue placeholder="Select assessment" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Pass">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-600"></span>
+                                  <span>Pass</span>
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="Fail">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-red-600"></span>
+                                  <span>Fail</span>
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label className="text-sm font-medium text-gray-600">Analyst Name</Label>
+                          <Input
+                            name="hplc_analyst_name"
+                            value={hplcData.analyst_name}
+                            onChange={handleHPLCChange}
+                            placeholder="Enter analyst name"
+                            className="bg-white "
+                          />
+                        </div>
+
+                        <div>
+                          <Label className="text-sm font-medium text-gray-600">Reviewer Name</Label>
+                          <Input
+                            name="hplc_reviewer_name"
+                            value={hplcData.reviewer_name}
+                            onChange={handleHPLCChange}
+                            placeholder="Enter reviewer name"
+                            className="bg-white "
+                          />
+                        </div>
+                      </div>
+
+                      {/* Note เหมือน Total Curcuminoids */}
+                      <p className="text-xs text-gray-600 mt-2">
+                        Assessment based on laboratory standards and curcuminoid content analysis
+                      </p>
+                    </div>
                   </div>
+
 
                   {/* Bottom Section */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2253,7 +2326,7 @@ export default function QualityInspectionPage() {
                     setTestResults({ ...testResults, inspectorNotes: e.target.value })
                   }
                   rows={4}
-                  
+
                 />
               </CardContent>
             </Card>

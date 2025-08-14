@@ -119,7 +119,7 @@ export default function QualityInspectionReportPage() {
 
       // ดึงข้อมูล record โดยตรงก่อน
       const recordUrl = `http://localhost:1337/api/lab-submission-records/${recordId}?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&populate[result_image][populate]=*&populate[Report][populate]=*`;
-      
+
       const recordRes = await fetch(recordUrl, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -128,10 +128,10 @@ export default function QualityInspectionReportPage() {
 
       if (!recordRes.ok) {
         console.log('🔄 Direct fetch failed, trying alternative approach...');
-        
+
         // Alternative: ดึงข้อมูลทั้งหมดแล้วค้นหา
         const allRecordsUrl = `http://localhost:1337/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&populate[result_image][populate]=*&populate[Report][populate]=*`;
-        
+
         const allRecordsRes = await fetch(allRecordsUrl, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -149,7 +149,7 @@ export default function QualityInspectionReportPage() {
 
           if (targetRecord) {
             console.log('✅ Found target record:', targetRecord);
-            
+
             // สำหรับ Farmer ต้องตรวจสอบสิทธิ์เข้าถึง
             if (role === 'Farmer') {
               const farmRes = await fetch(`http://localhost:1337/api/farms?documentId=${localStorage.getItem("userId")}`, {
@@ -163,14 +163,14 @@ export default function QualityInspectionReportPage() {
                 const farmData = await farmRes.json();
                 userFarmId = farmData.data[0]?.documentId || '';
               }
-              
+
               // ตรวจสอบว่า record นี้เป็นของ Farm ที่ user สามารถเข้าถึงได้หรือไม่
               const recordFarmId = targetRecord.attributes?.batch?.data?.attributes?.Farm?.data?.documentId;
               if (userFarmId && recordFarmId && recordFarmId !== userFarmId) {
                 throw new Error('This record does not belong to your farm');
               }
             }
-            
+
             processRecordData(targetRecord);
             return;
           }
@@ -181,7 +181,7 @@ export default function QualityInspectionReportPage() {
 
       const recordResponse = await recordRes.json();
       const record = recordResponse.data;
-      
+
       console.log('Record data:', record);
 
       // สำหรับ Farmer ต้องตรวจสอบสิทธิ์เข้าถึง
@@ -217,9 +217,9 @@ export default function QualityInspectionReportPage() {
 
   const processRecordData = (record: any) => {
     console.log('🔄 Processing record data:', record);
-    
+
     const attrs = record.attributes || record;
-    
+
     // Extract batch and farm info
     let batchId = 'N/A';
     let farmName = 'Unknown Farm';
@@ -231,7 +231,7 @@ export default function QualityInspectionReportPage() {
     if (attrs?.batch?.data?.attributes) {
       const batchData = attrs.batch.data.attributes;
       batchId = batchData?.Batch_id || batchData?.batch_id || batchData?.Batch_Id || `Batch-${record.id}`;
-      
+
       if (batchData?.Farm?.data?.attributes) {
         const farmData = batchData.Farm.data.attributes;
         farmName = farmData?.Farm_Name || farmData?.farm_name || farmData?.Farm_name || 'Unknown Farm';
@@ -239,7 +239,7 @@ export default function QualityInspectionReportPage() {
     } else if (attrs?.batch?.data) {
       const batchData = attrs.batch.data;
       batchId = batchData?.Batch_id || batchData?.batch_id || batchData?.Batch_Id || batchData?.attributes?.Batch_id || `Batch-${record.id}`;
-      
+
       if (batchData?.Farm?.data?.attributes) {
         const farmData = batchData.Farm.data.attributes;
         farmName = farmData?.Farm_Name || farmData?.farm_name || farmData?.Farm_name || 'Unknown Farm';
@@ -247,7 +247,7 @@ export default function QualityInspectionReportPage() {
     } else if (attrs?.batch) {
       const batchData = attrs.batch;
       batchId = batchData?.Batch_id || batchData?.batch_id || batchData?.Batch_Id || `Batch-${record.id}`;
-      
+
       if (batchData?.Farm?.Farm_Name) {
         farmName = batchData.Farm.Farm_Name;
       }
@@ -376,11 +376,100 @@ export default function QualityInspectionReportPage() {
 
   useEffect(() => {
     if (role === 'loading') return;
-    
+
     if (recordId) {
       fetchReportData();
     }
   }, [recordId, role]);
+
+  const determineTestResultEnhanced = (reportData: ReportData): { status: 'PASSED' | 'FAILED'; details: string[] } => {
+    console.log('🔍 === REPORT QUALITY ASSESSMENT ===');
+    console.log('Report Data for Assessment:', {
+      batchId: reportData.batchId,
+      testingMethod: reportData.testingMethod,
+      curcuminQuality: reportData.curcuminQuality,
+      moistureQuality: reportData.moistureQuality,
+      totalCurcuminoids: reportData.totalCurcuminoids,
+      moistureQuantity: reportData.moistureQuantity
+    });
+
+    const curcuminThreshold = 3.0; // minimum 3% curcumin
+    const moistureThreshold = 15.0; // maximum 15% moisture
+
+    let curcuminValue: number | null = null;
+    let moistureValue: number | null = null;
+    const details: string[] = [];
+
+    // ✅ ตรวจสอบตาม testing method
+    if (reportData.testingMethod === 'HPLC') {
+      console.log('📊 Using HPLC assessment...');
+
+      // สำหรับ HPLC ใช้ total curcuminoids แปลงจาก mg/g เป็น %
+      if (reportData.totalCurcuminoids) {
+        curcuminValue = parseFloat(reportData.totalCurcuminoids) / 10; // mg/g to %
+        console.log(`HPLC Curcumin: ${reportData.totalCurcuminoids} mg/g → ${curcuminValue}%`);
+        details.push(`Total Curcuminoids: ${reportData.totalCurcuminoids} mg/g (${curcuminValue.toFixed(1)}%)`);
+      }
+
+      if (reportData.moistureQuantity) {
+        moistureValue = parseFloat(reportData.moistureQuantity);
+        console.log(`HPLC Moisture: ${moistureValue}%`);
+        details.push(`Moisture: ${moistureValue}%`);
+      }
+    } else {
+      console.log('📊 Using standard (NIR/UV-Vis) assessment...');
+
+      // สำหรับ NIR/UV-Vis ใช้ข้อมูลเดิม
+      curcuminValue = reportData.curcuminQuality || null;
+      moistureValue = reportData.moistureQuality || null;
+
+      if (curcuminValue) {
+        console.log(`Standard Curcumin: ${curcuminValue}%`);
+        details.push(`Curcumin: ${curcuminValue}%`);
+      }
+
+      if (moistureValue) {
+        console.log(`Standard Moisture: ${moistureValue}%`);
+        details.push(`Moisture: ${moistureValue}%`);
+      }
+    }
+
+    // ✅ ตรวจสอบเกณฑ์
+    console.log('=== CRITERIA CHECK ===');
+    console.log(`Curcumin threshold: ≥ ${curcuminThreshold}%`);
+    console.log(`Moisture threshold: ≤ ${moistureThreshold}%`);
+
+    let curcuminPass = true;
+    let moisturePass = true;
+
+    if (curcuminValue !== null) {
+      curcuminPass = curcuminValue >= curcuminThreshold;
+      console.log(`Curcumin: ${curcuminValue}% ${curcuminPass ? '≥' : '<'} ${curcuminThreshold}% = ${curcuminPass ? 'PASS' : 'FAIL'}`);
+      details.push(`Curcumin requirement (≥${curcuminThreshold}%): ${curcuminPass ? 'PASSED' : 'FAILED'}`);
+    } else {
+      console.log('Curcumin: No data available = PASS (default)');
+      details.push('Curcumin: No data available');
+    }
+
+    if (moistureValue !== null) {
+      moisturePass = moistureValue <= moistureThreshold;
+      console.log(`Moisture: ${moistureValue}% ${moisturePass ? '≤' : '>'} ${moistureThreshold}% = ${moisturePass ? 'PASS' : 'FAIL'}`);
+      details.push(`Moisture requirement (≤${moistureThreshold}%): ${moisturePass ? 'PASSED' : 'FAILED'}`);
+    } else {
+      console.log('Moisture: No data available = PASS (default)');
+      details.push('Moisture: No data available');
+    }
+
+    const finalStatus = curcuminPass && moisturePass ? 'PASSED' : 'FAILED';
+
+    console.log('=== FINAL RESULT ===');
+    console.log(`Curcumin: ${curcuminPass ? '✅ PASS' : '❌ FAIL'}`);
+    console.log(`Moisture: ${moisturePass ? '✅ PASS' : '❌ FAIL'}`);
+    console.log(`OVERALL: ${finalStatus}`);
+    console.log('========================\n');
+
+    return { status: finalStatus, details };
+  };
 
   const determineTestResult = (curcumin?: number, moisture?: number) => {
     const curcuminThreshold = 3.0;
@@ -885,41 +974,65 @@ export default function QualityInspectionReportPage() {
 
       {/* Final Result Summary */}
       <div className="mb-8">
-        <table className="w-full border-collapse border border-gray-400">
-          <thead>
-            <tr>
-              <th className={`border border-gray-400 p-3 font-bold text-center ${determineTestResult(reportData.curcuminQuality, reportData.moistureQuality) === 'PASSED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                สรุปผลการทดสอบ
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td className="border border-gray-400 p-6 text-center">
-                <div className="mb-4">
-                  <h2 className={`text-2xl font-bold ${determineTestResult(reportData.curcuminQuality, reportData.moistureQuality) === 'PASSED' ? 'text-green-600' : 'text-red-600'}`}>
-                    {determineTestResult(reportData.curcuminQuality, reportData.moistureQuality) === 'PASSED' ? 'ผ่านเกณฑ์' : 'ไม่ผ่านเกณฑ์'}
-                  </h2>
-                </div>
-                <p className="text-sm text-gray-700">
-                  {determineTestResult(reportData.curcuminQuality, reportData.moistureQuality) === 'PASSED'
-                    ? 'ตัวอย่างขมิ้นชันนี้ผ่านเกณฑ์มาตรฐานคุณภาพทุกด้าน'
-                    : 'ตัวอย่างขมิ้นชันนี้ไม่ผ่านเกณฑ์มาตรฐานคุณภาพที่กำหนด'}
-                </p>
-                <div className="mt-4 text-xs text-gray-600">
-                  <p>วิธีการทดสอบ: {reportData.testingMethod}</p>
-                  <p>วันที่ทดสอบ: {reportData.testDate ? new Date(reportData.testDate).toLocaleDateString('th-TH') : 'N/A'}</p>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        {(() => {
+          // ✅ ใช้ enhanced assessment function
+          const assessmentResult = determineTestResultEnhanced(reportData);
+          const status = assessmentResult.status;
+          const details = assessmentResult.details;
+
+          return (
+            <table className="w-full border-collapse border border-gray-400">
+              <thead>
+                <tr>
+                  <th className={`border border-gray-400 p-3 font-bold text-center ${status === 'PASSED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    สรุปผลการทดสอบ
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="border border-gray-400 p-6 text-center">
+                    <div className="mb-4">
+                      <h2 className={`text-2xl font-bold ${status === 'PASSED' ? 'text-green-600' : 'text-red-600'}`}>
+                        {status === 'PASSED' ? 'ผ่านเกณฑ์' : 'ไม่ผ่านเกณฑ์'}
+                      </h2>
+                    </div>
+                    <p className="text-sm text-gray-700 mb-4">
+                      {status === 'PASSED'
+                        ? 'ตัวอย่างขมิ้นชันนี้ผ่านเกณฑ์มาตรฐานคุณภาพทุกด้าน'
+                        : 'ตัวอย่างขมิ้นชันนี้ไม่ผ่านเกณฑ์มาตรฐานคุณภาพที่กำหนด'}
+                    </p>
+
+                    {/* ✅ เพิ่มรายละเอียดการประเมิน */}
+                    <div className="bg-gray-50 rounded-lg p-4 mt-4">
+                      <h3 className="text-sm font-semibold mb-2">รายละเอียดการประเมิน:</h3>
+                      <ul className="text-xs text-left space-y-1">
+                        {details.map((detail, index) => (
+                          <li key={index} className="flex items-start">
+                            <span className="mr-2">•</span>
+                            <span>{detail}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="mt-4 text-xs text-gray-600">
+                      <p>วิธีการทดสอบ: {reportData.testingMethod}</p>
+                      <p>วันที่ทดสอบ: {reportData.testDate ? new Date(reportData.testDate).toLocaleDateString('th-TH') : 'N/A'}</p>
+                      <p>Batch ID: {reportData.batchId}</p>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          );
+        })()}
       </div>
 
       {/* Note */}
       <div className="mb-8">
         <p className="text-sm">
-          <strong>หมายเหตุ:</strong> *สามารถเปลี่ยนหน่วยเป็น %w/w เมื่อนำผลการทดสอบดังกล่าวหารด้วย 10, 
+          <strong>หมายเหตุ:</strong> *สามารถเปลี่ยนหน่วยเป็น %w/w เมื่อนำผลการทดสอบดังกล่าวหารด้วย 10,
           ที่ระดับความเชื่อมั่น 95% k = 2
         </p>
       </div>
