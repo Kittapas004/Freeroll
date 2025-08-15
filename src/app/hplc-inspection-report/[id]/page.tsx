@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Printer, Download } from "lucide-react";
+import { ArrowLeft, Printer, Download, FileText } from "lucide-react";
 
 interface ReportData {
   id: string;
@@ -75,9 +75,8 @@ interface ReportData {
 const MPICLogo = () => (
   <div className="flex items-center justify-center mb-4">
     <div className="flex flex-col items-center">
-      {/* MPIC Logo Placeholder - ใส่ logo จริงตรงนี้ */}
-      <div className="w-16 h-16 rounded-full flex items-center justify-center mb-8">
-        <img src="/MFU.png" alt="TurmeRic Logo" className="" />
+      <div className="w-30 h-30 rounded-full flex items-center justify-center mb-8">
+        <img src="/MFU.png" alt="TurmeRic Logo" className="w-full h-full object-contain" />
       </div>
       <div className="text-center">
         <div className="text-sm font-semibold text-gray-800">
@@ -300,25 +299,25 @@ export default function QualityInspectionReportPage() {
       id: record.id,
       batchId: batchId,
       farmName: farmName,
-      reportNumber: attrs?.hplc_report_code || 'RP 2025-257',
+      reportNumber: attrs?.hplc_report_code || '',
       reportDate: new Date().toLocaleDateString('th-TH', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
       }),
-      requestNumber: attrs?.hplc_testing_no || 'MPIC006-ACK25-245',
-      sampleReceiver: 'นางสาวเกตุนภา กึกกอง',
+      requestNumber: attrs?.hplc_testing_no || '',
+      sampleReceiver: attrs?.hplc_analyst_name,
       contactInfo: 'สวนพฤกษศาสตร์ มหาวิทยาลัยแม่ฟ้าหลวง\nเลขที่ 333 หมู่ 1 ต.ท่าสุด อ.เมือง\nจ.เชียงราย 57100 โทร 0-5391-7034',
       receiveDate: attrs?.Date ? new Date(attrs.Date).toLocaleDateString('th-TH', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
-      }) : '30 เมษายน 2568',
+      }) : '',
       testStartDate: attrs?.test_date ? new Date(attrs.test_date).toLocaleDateString('th-TH', {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
-      }) : '15 พฤษภาคม 2568',
+      }) : '',
       sampleId: attrs?.hplc_sample_code || 'MPIC-TS25-597',
       sampleName: attrs?.hplc_sample_name || 'ขมิ้นชัน',
       scientificName: attrs?.hplc_scientific_name || 'Curcuma longa L.',
@@ -1036,6 +1035,94 @@ export default function QualityInspectionReportPage() {
           ที่ระดับความเชื่อมั่น 95% k = 2
         </p>
       </div>
+
+                  {/* Test Result File Section - ใช้รูปแบบตารางเหมือนส่วนอื่นๆ */}
+            <div className="mb-8">
+                <table className="w-full border-collapse border border-gray-400 print-table">
+                    <thead>
+                        <tr>
+                            <th className="border border-gray-400 p-3 bg-gray-50 font-bold">
+                                <div className="flex items-center justify-center gap-2">
+                                    <FileText className="h-5 w-5" />
+                                    Test Result File
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td className="border border-gray-400 p-6">
+                                {reportData.resultImage ? (
+                                    <div className="text-center">
+                                        {/* ตรวจสอบว่าเป็นไฟล์ภาพหรือไม่ */}
+                                        {reportData.resultImage.name && /\.(jpg|jpeg|png|gif|webp)$/i.test(reportData.resultImage.name) ? (
+                                            // แสดงรูปภาพ
+                                            <div>
+                                                <img
+                                                    src={reportData.resultImage.url}
+                                                    alt="Test Result"
+                                                    className="w-full max-w-md mx-auto h-auto object-contain rounded-lg border mb-3"
+                                                    onError={(e) => {
+                                                        console.error('Image load error:', e);
+                                                        (e.target as HTMLImageElement).style.display = 'none';
+                                                    }}
+                                                />
+                                                <p className="text-sm text-gray-600 font-medium mb-3">{reportData.resultImage.name}</p>
+                                                <a
+                                                    href={reportData.resultImage.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors print:hidden"
+                                                >
+                                                    <Download className="h-4 w-4" />
+                                                    Download Image
+                                                </a>
+                                            </div>
+                                        ) : (
+                                            // แสดงไฟล์อื่นๆ (Excel, PDF, etc.)
+                                            <div className="py-6">
+                                                <div className="p-4 bg-blue-100 rounded-full mb-4 w-16 h-16 mx-auto flex items-center justify-center">
+                                                    {reportData.resultImage.name?.toLowerCase().includes('.xlsx') || reportData.resultImage.name?.toLowerCase().includes('.xls') ? (
+                                                        <svg className="h-10 w-10 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path d="M4 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H4zm0 2h12v10H4V5z"/>
+                                                            <path d="M6 7h8v1H6V7zm0 2h8v1H6V9zm0 2h8v1H6v-1z"/>
+                                                        </svg>
+                                                    ) : reportData.resultImage.name?.toLowerCase().includes('.pdf') ? (
+                                                        <svg className="h-10 w-10 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path d="M4 18h12V6h-4V2H4v16zm8-14v4h4l-4-4z"/>
+                                                        </svg>
+                                                    ) : (
+                                                        <FileText className="h-10 w-10 text-blue-600" />
+                                                    )}
+                                                </div>
+                                                <p className="text-lg font-semibold text-gray-800 mb-2">Test Result File</p>
+                                                <p className="text-sm text-gray-600 mb-4">{reportData.resultImage.name}</p>
+                                                <a
+                                                    href={reportData.resultImage.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors print:hidden"
+                                                >
+                                                    <Download className="h-4 w-4" />
+                                                    Download File
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8">
+                                        <div className="p-4 bg-gray-100 rounded-full mb-4 w-16 h-16 mx-auto flex items-center justify-center">
+                                            <FileText className="h-10 w-10 text-gray-400" />
+                                        </div>
+                                        <p className="text-gray-500 font-medium mb-2">No Result File</p>
+                                        <p className="text-sm text-gray-400">Test result file not available</p>
+                                    </div>
+                                )}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
       {/* Signatures Section */}
       <div className="grid grid-cols-2 gap-8 mb-8">

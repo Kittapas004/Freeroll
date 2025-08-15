@@ -3134,10 +3134,10 @@ export default function PlantingBatchDetail() {
                                                                             let reportUrl;
                                                                             if (testingMethod === 'HPLC') {
                                                                                 // HPLC = หน้า Word format
-                                                                                reportUrl = `/quality-inspection-report/${lab_rec.documentId}`;
+                                                                                reportUrl = `/hplc-inspection-report/${lab_rec.documentId}`;
                                                                             } else {
                                                                                 // NIR/UV-Vis = หน้าโค้ดเดิม
-                                                                                reportUrl = `/standard-quality-report/${lab_rec.documentId}`;
+                                                                                reportUrl = `/nir-uv-quality-report/${lab_rec.documentId}`;
                                                                             }
                                                                             router.push(reportUrl);
                                                                         }}
