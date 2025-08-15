@@ -39,6 +39,8 @@ interface ReportData {
     testDate: string;
     testingMethod: string;
     inspectorNotes: string;
+    analystName: string;
+    reviewerName: string;
     kaminCAL: {
         sample_name: string;
         plant_weight: number;
@@ -377,6 +379,8 @@ export default function QualityInspectionReportView() {
             testDate: attrs?.test_date || attrs?.testDate || attrs?.createdAt || '',
             testingMethod: attrs?.testing_method || attrs?.testingMethod || 'NIR Spectroscopy',
             inspectorNotes: attrs?.inspector_notes || attrs?.inspectorNotes || '',
+            analystName: attrs?.hplc_analyst_name || '',
+            reviewerName: attrs?.hplc_reviewer_name || '',
             kaminCAL: {
                 sample_name: attrs?.kamincal_sample_name || '',
                 plant_weight: parseFloat(attrs?.kamincal_plant_weight) || 0,
@@ -974,12 +978,12 @@ export default function QualityInspectionReportView() {
                             <td className="border border-gray-400 p-8 text-center w-1/2">
                                 <div className="h-16 mb-4 border-b border-gray-400"></div>
                                 <p className="font-medium">Inspector</p>
-                                <p className="text-sm text-gray-600">Date: _______________</p>
+                                <p className="text-sm">{reportData.analystName || '(........................)'}</p>
                             </td>
                             <td className="border border-gray-400 p-8 text-center w-1/2">
                                 <div className="h-16 mb-4 border-b border-gray-400"></div>
                                 <p className="font-medium">Authorized by</p>
-                                <p className="text-sm text-gray-600">Date: _______________</p>
+                                <p className="text-sm">{reportData.reviewerName || '(........................)'}</p>
                             </td>
                         </tr>
                     </tbody>

@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, Save, ArrowLeft, X, ImageIcon, Table, FileText } from "lucide-react";
+import { Upload, Save, ArrowLeft, X, ImageIcon, Table, FileText, FlaskConical, LucideMicroscope, Notebook, SquarePen, LucidePackage, LucideNotebook } from "lucide-react";
 
 interface InspectionRecord {
   id: string;
@@ -1755,8 +1755,8 @@ export default function QualityInspectionPage() {
         <main className="p-6 max-w-6xl mx-auto">
           {/* Batch Information */}
           <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Batch Information</CardTitle>
+            <CardHeader><CardTitle className="flex items-center gap-2">
+              <span className="text-green-600"><Label><LucidePackage className="h-4 w-4" /></Label></span>Batch Information</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
@@ -1835,7 +1835,9 @@ export default function QualityInspectionPage() {
           {/* Test Parameters */}
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>Test Parameters</CardTitle>
+              <CardTitle className="flex items-center gap-2"><span className="text-green-600"><Label><FlaskConical className="h-4 w-4" /></Label></span>
+              Test Parameters
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1898,7 +1900,7 @@ export default function QualityInspectionPage() {
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <span className="text-green-600">📊</span>
+                  <span className="text-green-600"><Label><LucideMicroscope className="h-4 w-4" /></Label></span>
                   Test Result
                 </CardTitle>
               </CardHeader>
@@ -2017,7 +2019,7 @@ export default function QualityInspectionPage() {
                   {/* Curcuminoid Quantity Section */}
                   <div className="border rounded-lg p-4">
                     <div className="flex items-center gap-2 mb-4">
-                      <span className="text-yellow-600">⚗️</span>
+                      <span className="text-green-600"><Label><FlaskConical className="h-4 w-4" /></Label></span>
                       <h3 className="text-lg font-semibold text-gray-800">Curcuminoid Quantity (mg/g)</h3>
                     </div>
 
@@ -2060,7 +2062,7 @@ export default function QualityInspectionPage() {
                     {/* ✅ Quality Assessment - วางใต้ Total Curcuminoids */}
                     <div className="border rounded-lg p-4 mt-4">
                       <div className="flex items-center gap-2 mb-4">
-                        <span className="text-blue-800">📋</span>
+                        <span className="text-green-600"><Label><SquarePen className="h-4 w-4" /></Label></span>
                         <h4 className="text-lg font-semibold ">Quality Assessment</h4>
                       </div>
 
@@ -2150,7 +2152,7 @@ export default function QualityInspectionPage() {
             /* Standard Test Results for NIR/UV-Vis */
             <Card className="mb-6">
               <CardHeader>
-                <CardTitle>Test Results</CardTitle>
+                <CardTitle className="flex items-center gap-2"><span className="text-green-600"><Label><LucideMicroscope className="h-4 w-4" /></Label></span>Test Results</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -2210,29 +2212,73 @@ export default function QualityInspectionPage() {
                       />
                     </div>
 
-                    {/* <div>
-                      <Label className="text-sm font-medium">Select Status</Label>
-                      <Select
-                        value={testResults.status}
-                        onValueChange={(value) =>
-                          setTestResults({ ...testResults, status: value })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Draft">Draft</SelectItem>
-                          <SelectItem value="Pending">Pending</SelectItem>
-                          <SelectItem value="Completed">Completed</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div> */}
+{/* ✅ Quality Assessment - วางใต้ Total Curcuminoids */}
+                    <div className="border rounded-lg p-4 mt-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <span className="text-green-600"><Label><SquarePen className="h-4 w-4" /></Label></span>
+                        <h4 className="text-lg font-semibold ">Quality Assessment</h4>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium text-gray-600">Overall Assessment</Label>
+                          <Select
+                            value={hplcData.quality_assessment}
+                            onValueChange={(value) => setHplcData({ ...hplcData, quality_assessment: value })}
+                          >
+                            <SelectTrigger className="bg-white ">
+                              <SelectValue placeholder="Select assessment" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Pass">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-green-600"></span>
+                                  <span>Pass</span>
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="Fail">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-red-600"></span>
+                                  <span>Fail</span>
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label className="text-sm font-medium text-gray-600">Analyst Name</Label>
+                          <Input
+                            name="hplc_analyst_name"
+                            value={hplcData.analyst_name}
+                            onChange={handleHPLCChange}
+                            placeholder="Enter analyst name"
+                            className="bg-white "
+                          />
+                        </div>
+
+                        <div>
+                          <Label className="text-sm font-medium text-gray-600">Reviewer Name</Label>
+                          <Input
+                            name="hplc_reviewer_name"
+                            value={hplcData.reviewer_name}
+                            onChange={handleHPLCChange}
+                            placeholder="Enter reviewer name"
+                            className="bg-white "
+                          />
+                        </div>
+                      </div>
+
+                      {/* Note เหมือน Total Curcuminoids */}
+                      <p className="text-xs text-gray-600 mt-2">
+                        Assessment based on laboratory standards and curcuminoid content analysis
+                      </p>
+                    </div>
                   </div>
 
                   <div className="space-y-4">
                     <div>
-                      <Label className="text-sm font-medium mb-2 block">Upload Results File</Label>
+                      <Label className="text-sm font-medium mb-2"><span className="text-green-600"><Label><Upload className="h-4 w-4" /></Label></span>Upload Results File</Label>
                       <div
                         className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-blue-500 transition cursor-pointer bg-gray-50 relative p-4"
                         onClick={() => !processingFile && fileInputRef.current?.click()}
@@ -2292,7 +2338,7 @@ export default function QualityInspectionPage() {
                     </div>
 
                     <div>
-                      <Label className="text-sm font-medium">Inspector Notes</Label>
+                      <Label className="text-sm font-medium"><span className="text-green-600"><Label><LucideNotebook className="h-4 w-4" /></Label></span>Inspector Notes</Label>
                       <Textarea
                         placeholder="Add your comments here..."
                         value={testResults.inspectorNotes}
@@ -2314,7 +2360,7 @@ export default function QualityInspectionPage() {
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <span className="text-green-600">📝</span>
+                  <span className="text-green-600"><Label><Notebook className="h-4 w-4" /></Label></span>
                   Inspector Notes
                 </CardTitle>
               </CardHeader>
@@ -2337,7 +2383,7 @@ export default function QualityInspectionPage() {
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <span className="text-green-600">📤</span>
+                  <span className="text-green-600"><Label><Upload className="h-4 w-4" /></Label></span>
                   Upload Results File
                 </CardTitle>
               </CardHeader>
