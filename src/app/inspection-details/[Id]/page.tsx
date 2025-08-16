@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, Save, ArrowLeft, X, ImageIcon, Table, FileText, FlaskConical, LucideMicroscope, Notebook, SquarePen, LucidePackage, LucideNotebook } from "lucide-react";
+import { Upload, Save, ArrowLeft, X, ImageIcon, Table, FileText, FlaskConical, LucideMicroscope, Notebook, SquarePen, LucidePackage, LucideNotebook, LucideCheck } from "lucide-react";
 
 interface InspectionRecord {
   id: string;
@@ -111,6 +111,129 @@ const generateReportNumber = async () => {
     const currentYear = new Date().getFullYear();
     return `RP ${currentYear}-1`;
   }
+};
+interface ReadOnlyAwareInputProps {
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  isReadOnly?: boolean;
+  className?: string;
+  onClick?: () => void;
+  [key: string]: any; // สำหรับ props อื่นๆ
+}
+const ReadOnlyAwareInput: React.FC<ReadOnlyAwareInputProps> = ({
+  value,
+  onChange,
+  isReadOnly = false,
+  className = '',
+  ...props
+}) => {
+  const showCompletedWarning = () => {
+    alert('This record has been completed and cannot be modified. Please contact administrator if changes are needed.');
+  };
+
+  return (
+    <Input
+      {...props}
+      value={value || ''}
+      onChange={isReadOnly ? undefined : onChange}
+      readOnly={isReadOnly}
+      className={`${className} ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+      onClick={isReadOnly ? showCompletedWarning : props.onClick}
+    />
+  );
+};
+
+interface ReadOnlyAwareTextareaProps {
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  isReadOnly?: boolean;
+  className?: string;
+  onClick?: () => void;
+  [key: string]: any;
+}
+
+const ReadOnlyAwareTextarea: React.FC<ReadOnlyAwareTextareaProps> = ({
+  value,
+  onChange,
+  isReadOnly = false,
+  className = '',
+  ...props
+}) => {
+  const showCompletedWarning = () => {
+    alert('This record has been completed and cannot be modified. Please contact administrator if changes are needed.');
+  };
+
+  return (
+    <Textarea
+      {...props}
+      value={value || ''}
+      onChange={isReadOnly ? undefined : onChange}
+      readOnly={isReadOnly}
+      className={`${className} ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+      onClick={isReadOnly ? showCompletedWarning : props.onClick}
+    />
+  );
+};
+
+interface ReadOnlyAwareSelectProps {
+  value?: string;
+  onValueChange?: (value: string) => void;
+  isReadOnly?: boolean;
+  children: React.ReactNode;
+  [key: string]: any;
+}
+
+const ReadOnlyAwareSelect: React.FC<ReadOnlyAwareSelectProps> = ({
+  value,
+  onValueChange,
+  isReadOnly = false,
+  children,
+  ...props
+}) => {
+  return (
+    <Select
+      {...props}
+      value={value}
+      onValueChange={isReadOnly ? undefined : onValueChange}
+      disabled={isReadOnly}
+    >
+      <SelectTrigger className={isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {children}
+      </SelectContent>
+    </Select>
+  );
+};
+
+interface ReadOnlyAwareCheckboxProps {
+  checked?: boolean;
+  onCheckedChange?: (checked: boolean) => void;
+  isReadOnly?: boolean;
+  onClick?: () => void;
+  [key: string]: any;
+}
+
+const ReadOnlyAwareCheckbox: React.FC<ReadOnlyAwareCheckboxProps> = ({
+  checked,
+  onCheckedChange,
+  isReadOnly = false,
+  ...props
+}) => {
+  const showCompletedWarning = () => {
+    alert('This record has been completed and cannot be modified. Please contact administrator if changes are needed.');
+  };
+
+  return (
+    <Checkbox
+      {...props}
+      checked={checked}
+      onCheckedChange={isReadOnly ? undefined : onCheckedChange}
+      disabled={isReadOnly}
+      onClick={isReadOnly ? showCompletedWarning : props.onClick}
+    />
+  );
 };
 
 const generateRequestNumber = async () => {
@@ -319,6 +442,8 @@ export default function QualityInspectionPage() {
   const [record, setRecord] = useState<InspectionRecord | null>(null);
   const [role, setRole] = useState<string | 'loading'>('loading');
 
+  const [isReadOnly, setIsReadOnly] = useState(false);
+
   // File upload states - อัพเดทจาก image upload
   const [filePreview, setFilePreview] = useState<FilePreview | null>(null);
   const [processingFile, setProcessingFile] = useState(false);
@@ -459,8 +584,6 @@ export default function QualityInspectionPage() {
       </div>
     );
   };
-
-
 
   const handleTestingMethodChange = async (newMethod: string) => {
     setTestParameters({ ...testParameters, testingMethod: newMethod });
@@ -1317,7 +1440,11 @@ export default function QualityInspectionPage() {
 
   const handleSave = async () => {
     if (!record) return;
-
+    // เช็คสถานะ Completed
+    if (isReadOnly) {
+      alert('This record has been completed and cannot be modified. Please contact administrator if changes are needed.');
+      return;
+    }
     // Validate form before saving
     if (!validateForm()) {
       return;
@@ -1640,6 +1767,7 @@ export default function QualityInspectionPage() {
     }
   };
 
+
   useEffect(() => {
     const userRole = localStorage.getItem('userRole');
     setRole(userRole || '');
@@ -1692,6 +1820,21 @@ export default function QualityInspectionPage() {
   //   );
   // }
 
+  useEffect(() => {
+    if (record) {
+      const isCompleted = record.Submission_status === 'Completed';
+      setIsReadOnly(isCompleted);
+
+      if (isCompleted) {
+        setTestResults(prev => ({ ...prev, status: 'Completed' }));
+      }
+    }
+  }, [record]);
+
+  const showCompletedWarning = () => {
+    alert('This record has been completed and cannot be modified. Please contact administrator if changes are needed.');
+  };
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
@@ -1734,10 +1877,27 @@ export default function QualityInspectionPage() {
               Back
             </Button>
             <h1 className="text-2xl font-semibold">Quality Inspection</h1>
+            {/* ⭐ แสดงสถานะ */}
+            {isReadOnly && (
+              <span className="bg-green-100 text-green-600 text-xs px-3 py-1 rounded-full font-medium flex items-center gap-2">
+                 <Label><LucideCheck className="h-4 w-4" /></Label> Completed - Read Only
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
-            <Button onClick={handleSave} disabled={saving} className="flex items-center gap-2">
-              {saving ? (
+            {/* ⭐ แก้ปุ่ม Save */}
+            <Button
+              onClick={handleSave}
+              disabled={saving || isReadOnly}
+              className={`flex items-center gap-2 ${isReadOnly ? 'opacity-50' : ''}`}
+              variant={isReadOnly ? 'secondary' : 'default'}
+            >
+              {isReadOnly ? (
+                <>
+                  <Save size={16} />
+                  Save Results
+                </>
+              ) : saving ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   Saving...
@@ -1751,6 +1911,7 @@ export default function QualityInspectionPage() {
             </Button>
           </div>
         </header>
+
 
         <main className="p-6 max-w-6xl mx-auto">
           {/* Batch Information */}
@@ -1836,7 +1997,7 @@ export default function QualityInspectionPage() {
           <Card className="mb-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><span className="text-green-600"><Label><FlaskConical className="h-4 w-4" /></Label></span>
-              Test Parameters
+                Test Parameters
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -2212,11 +2373,11 @@ export default function QualityInspectionPage() {
                       />
                     </div>
 
-{/* ✅ Quality Assessment - วางใต้ Total Curcuminoids */}
+                    {/* ✅ Quality Assessment  */}
                     <div className="border rounded-lg p-4 mt-4">
                       <div className="flex items-center gap-2 mb-4">
                         <span className="text-green-600"><Label><SquarePen className="h-4 w-4" /></Label></span>
-                        <h4 className="text-lg font-semibold ">Quality Assessment</h4>
+                        <h4 className=" font-semibold ">Quality Assessment</h4>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
