@@ -41,6 +41,7 @@ interface ReportData {
     inspectorNotes: string;
     analystName: string;
     reviewerName: string;
+    completedDate?: string;
     kaminCAL: {
         sample_name: string;
         plant_weight: number;
@@ -101,12 +102,12 @@ export default function QualityInspectionReportView() {
 
     useEffect(() => {
         if (role === 'loading') return;
-        
+
         if (!ALLOWED_ROLES.includes(role)) {
             router.push('/unauthorized');
             return;
         }
-        
+
         // ดึงข้อมูลเมื่อ role ถูกต้อง
         fetchData();
     }, [role, recordId]);
@@ -130,10 +131,10 @@ export default function QualityInspectionReportView() {
 
             if (!recordRes.ok) {
                 console.log('🔄 Direct fetch failed, trying alternative approach...');
-                
+
                 // Alternative: ดึงข้อมูลทั้งหมดแล้วค้นหา พร้อม populate เต็ม
                 const allRecordsUrl = `http://localhost:1337/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&populate[result_image][populate]=*&populate[Report][populate]=*`;
-                
+
                 const allRecordsRes = await fetch(allRecordsUrl, {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -153,7 +154,7 @@ export default function QualityInspectionReportView() {
                         console.log('✅ Found target record:', targetRecord);
                         console.log('🔍 Target record batch:', targetRecord.attributes?.batch);
                         console.log('🔍 Target record harvest:', targetRecord.attributes?.harvest_record);
-                        
+
                         // ดึงข้อมูล Farm ของ User เพื่อเปรียบเทียบสิทธิ์เข้าถึง
                         const farmRes = await fetch(`http://localhost:1337/api/farms?documentId=${localStorage.getItem("userId")}`, {
                             headers: {
@@ -166,13 +167,13 @@ export default function QualityInspectionReportView() {
                             const farmData = await farmRes.json();
                             userFarmId = farmData.data[0]?.documentId || '';
                         }
-                        
+
                         // ตรวจสอบว่า record นี้เป็นของ Farm ที่ user สามารถเข้าถึงได้หรือไม่
                         const recordFarmId = targetRecord.attributes?.batch?.data?.attributes?.Farm?.data?.documentId;
                         if (userFarmId && recordFarmId && recordFarmId !== userFarmId) {
                             throw new Error('This record does not belong to your farm');
                         }
-                        
+
                         // ส่งชื่อ farm จาก record แทนจาก user farm
                         const farmNameFromRecord = targetRecord.attributes?.batch?.data?.attributes?.Farm?.data?.attributes?.Farm_Name || 'Unknown Farm';
                         processRecordData(targetRecord, farmNameFromRecord);
@@ -219,9 +220,9 @@ export default function QualityInspectionReportView() {
 
     const processRecordData = (record: any, farmName: string) => {
         console.log('🔄 Processing record data:', record);
-        
+
         const attrs = record.attributes || record;
-        
+
         // Process batch and farm data
         let batchId = 'N/A';
         let actualFarmName = farmName;
@@ -232,7 +233,7 @@ export default function QualityInspectionReportView() {
         // หาข้อมูล Batch และ Farm
         if (attrs?.batch?.data?.attributes) {
             const batchData = attrs.batch.data.attributes;
-            
+
             // หา Batch ID
             batchId = batchData?.Batch_id || batchData?.batch_id || batchData?.Batch_Id || `Batch-${record.id}`;
             console.log('✅ Found batch ID from path 1:', batchId);
@@ -325,7 +326,7 @@ export default function QualityInspectionReportView() {
 
         // ดึงข้อมูลรูปภาพ/ไฟล์ผลลัพธ์
         let resultImage = undefined;
-        
+
         // ลองหาจาก result_image field หลายรูปแบบ
         if (attrs?.result_image?.data) {
             const imageData = attrs.result_image.data;
@@ -381,6 +382,7 @@ export default function QualityInspectionReportView() {
             inspectorNotes: attrs?.inspector_notes || attrs?.inspectorNotes || '',
             analystName: attrs?.hplc_analyst_name || '',
             reviewerName: attrs?.hplc_reviewer_name || '',
+            completedDate: attrs?.completed_date || attrs?.completedDate || attrs?.updatedAt || attrs?.createdAt || '',
             kaminCAL: {
                 sample_name: attrs?.kamincal_sample_name || '',
                 plant_weight: parseFloat(attrs?.kamincal_plant_weight) || 0,
@@ -536,13 +538,16 @@ export default function QualityInspectionReportView() {
             <div className="text-center mb-8 print-header">
                 <TurmeRicLogo />
                 <p className="text-sm text-gray-600">
-                    Report Generated: {new Date().toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    })}
+                    Report Generated: {reportData.completedDate ?
+                        new Date(reportData.completedDate).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        }) :
+                        'Date not available'
+                    }
                 </p>
             </div>
 
@@ -634,13 +639,12 @@ export default function QualityInspectionReportView() {
                                 {reportData.curcuminQuality ? `${reportData.curcuminQuality}%` : 'Not tested'}
                             </td>
                             <td className="border border-gray-400 p-3 text-center">≥ 3.0%</td>
-                            <td className={`border border-gray-400 p-3 text-center ${
-                                reportData.curcuminQuality && reportData.curcuminQuality >= 3 
-                                    ? 'print-result-pass bg-green-100 text-green-800' 
+                            <td className={`border border-gray-400 p-3 text-center ${reportData.curcuminQuality && reportData.curcuminQuality >= 3
+                                    ? 'print-result-pass bg-green-100 text-green-800'
                                     : 'print-result-fail bg-red-100 text-red-800'
-                            }`}>
-                                {reportData.curcuminQuality 
-                                    ? (reportData.curcuminQuality >= 3 ? 'PASS' : 'FAIL') 
+                                }`}>
+                                {reportData.curcuminQuality
+                                    ? (reportData.curcuminQuality >= 3 ? 'PASS' : 'FAIL')
                                     : 'N/A'}
                             </td>
                         </tr>
@@ -650,13 +654,12 @@ export default function QualityInspectionReportView() {
                                 {reportData.moistureQuality ? `${reportData.moistureQuality}%` : 'Not tested'}
                             </td>
                             <td className="border border-gray-400 p-3 text-center">≤ 15.0%</td>
-                            <td className={`border border-gray-400 p-3 text-center ${
-                                reportData.moistureQuality && reportData.moistureQuality <= 15 
-                                    ? 'print-result-pass bg-green-100 text-green-800' 
+                            <td className={`border border-gray-400 p-3 text-center ${reportData.moistureQuality && reportData.moistureQuality <= 15
+                                    ? 'print-result-pass bg-green-100 text-green-800'
                                     : 'print-result-fail bg-red-100 text-red-800'
-                            }`}>
-                                {reportData.moistureQuality 
-                                    ? (reportData.moistureQuality <= 15 ? 'PASS' : 'FAIL') 
+                                }`}>
+                                {reportData.moistureQuality
+                                    ? (reportData.moistureQuality <= 15 ? 'PASS' : 'FAIL')
                                     : 'N/A'}
                             </td>
                         </tr>
@@ -769,11 +772,10 @@ export default function QualityInspectionReportView() {
                         </tr>
                         <tr>
                             <td className="border border-gray-400 p-3 font-medium">Content Status</td>
-                            <td className={`border border-gray-400 p-3 text-center font-medium ${
-                                reportData.kaminCAL.curcuminoid_content === 'Pass' 
-                                    ? 'print-result-pass bg-green-100 text-green-800' 
+                            <td className={`border border-gray-400 p-3 text-center font-medium ${reportData.kaminCAL.curcuminoid_content === 'Pass'
+                                    ? 'print-result-pass bg-green-100 text-green-800'
                                     : 'print-result-fail bg-red-100 text-red-800'
-                            }`} colSpan={3}>
+                                }`} colSpan={3}>
                                 {reportData.kaminCAL.curcuminoid_content}
                             </td>
                         </tr>
@@ -829,12 +831,12 @@ export default function QualityInspectionReportView() {
                                                 <div className="p-4 bg-blue-100 rounded-full mb-4 w-16 h-16 mx-auto flex items-center justify-center">
                                                     {reportData.resultImage.name?.toLowerCase().includes('.xlsx') || reportData.resultImage.name?.toLowerCase().includes('.xls') ? (
                                                         <svg className="h-10 w-10 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path d="M4 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H4zm0 2h12v10H4V5z"/>
-                                                            <path d="M6 7h8v1H6V7zm0 2h8v1H6V9zm0 2h8v1H6v-1z"/>
+                                                            <path d="M4 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H4zm0 2h12v10H4V5z" />
+                                                            <path d="M6 7h8v1H6V7zm0 2h8v1H6V9zm0 2h8v1H6v-1z" />
                                                         </svg>
                                                     ) : reportData.resultImage.name?.toLowerCase().includes('.pdf') ? (
                                                         <svg className="h-10 w-10 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path d="M4 18h12V6h-4V2H4v16zm8-14v4h4l-4-4z"/>
+                                                            <path d="M4 18h12V6h-4V2H4v16zm8-14v4h4l-4-4z" />
                                                         </svg>
                                                     ) : (
                                                         <FileText className="h-10 w-10 text-blue-600" />
@@ -896,11 +898,10 @@ export default function QualityInspectionReportView() {
                 <table className="w-full border-collapse border border-gray-400 print-table">
                     <thead>
                         <tr>
-                            <th className={`border border-gray-400 p-4 font-bold text-center text-xl ${
-                                testResult === 'PASSED' 
-                                    ? 'print-result-pass bg-green-100 text-green-800' 
+                            <th className={`border border-gray-400 p-4 font-bold text-center text-xl ${testResult === 'PASSED'
+                                    ? 'print-result-pass bg-green-100 text-green-800'
                                     : 'print-result-fail bg-red-100 text-red-800'
-                            }`}>
+                                }`}>
                                 FINAL RESULT
                             </th>
                         </tr>
@@ -908,9 +909,8 @@ export default function QualityInspectionReportView() {
                     <tbody>
                         <tr>
                             <td className="border border-gray-400 p-8 text-center">
-                                <h2 className={`text-3xl font-bold mb-4 ${
-                                    testResult === 'PASSED' ? 'text-green-600' : 'text-red-600'
-                                }`}>
+                                <h2 className={`text-3xl font-bold mb-4 ${testResult === 'PASSED' ? 'text-green-600' : 'text-red-600'
+                                    }`}>
                                     {testResult}
                                 </h2>
                                 <p className="text-lg text-gray-700 mb-4">
@@ -918,7 +918,7 @@ export default function QualityInspectionReportView() {
                                         ? 'This batch meets all quality standards for turmeric.'
                                         : 'This batch does not meet the required quality standards.'}
                                 </p>
-                                
+
                                 {/* Test Details */}
                                 <div className="bg-gray-50 rounded-lg p-4 mt-4 text-left">
                                     <h3 className="text-sm font-semibold mb-3 text-center">Test Summary:</h3>
@@ -940,7 +940,7 @@ export default function QualityInspectionReportView() {
                                             <span className="ml-2">{reportData.farmName}</span>
                                         </div>
                                     </div>
-                                    
+
                                     {/* Quality Parameters */}
                                     <div className="mt-4 pt-3 border-t border-gray-200">
                                         <h4 className="text-xs font-semibold mb-2">Quality Assessment:</h4>
@@ -1034,11 +1034,10 @@ export default function QualityInspectionReportView() {
                             <Printer size={16} />
                             Print Report
                         </Button>
-                        <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                            testResult === 'PASSED'
+                        <div className={`px-3 py-1 rounded-full text-sm font-medium ${testResult === 'PASSED'
                                 ? 'bg-green-100 text-green-800'
                                 : 'bg-red-100 text-red-800'
-                        }`}>
+                            }`}>
                             {testResult}
                         </div>
                     </div>

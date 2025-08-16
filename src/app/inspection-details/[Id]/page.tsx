@@ -1354,6 +1354,13 @@ export default function QualityInspectionPage() {
             uploadedFile: null
           });
 
+          setHplcData(prev => ({
+            ...prev,
+            quality_assessment: attrs?.hplc_quality_assessment || targetRecord?.hplc_quality_assessment || 'Pass',
+            analyst_name: attrs?.hplc_analyst_name || targetRecord?.hplc_analyst_name || '',
+            reviewer_name: attrs?.hplc_reviewer_name || targetRecord?.hplc_reviewer_name || ''
+          }));
+
           // Pre-fill KaminCAL data
           setKaminCALData({
             sample_name: attrs?.kamincal_sample_name || targetRecord?.kamincal_sample_name || '',
@@ -1675,6 +1682,11 @@ export default function QualityInspectionPage() {
           kamincal_curcuminoid_percentage: parseFloat(kaminCALData.curcuminoid_percentage) || null,
           kamincal_third_time: parseFloat(kaminCALData.third_time) || null,
 
+          // Quality Assessment
+          hplc_quality_assessment: hplcData.quality_assessment || null,
+          hplc_analyst_name: hplcData.analyst_name || null,
+          hplc_reviewer_name: hplcData.reviewer_name || null,
+
           // Clear HPLC data when using standard methods
           hplc_report_code: null,
           hplc_testing_no: null,
@@ -1880,7 +1892,7 @@ export default function QualityInspectionPage() {
             {/* ⭐ แสดงสถานะ */}
             {isReadOnly && (
               <span className="bg-green-100 text-green-600 text-xs px-3 py-1 rounded-full font-medium flex items-center gap-2">
-                 <Label><LucideCheck className="h-4 w-4" /></Label> Completed - Read Only
+                <Label><LucideCheck className="h-4 w-4" /></Label> Completed - Read Only
               </span>
             )}
           </div>
