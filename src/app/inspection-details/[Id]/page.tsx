@@ -498,7 +498,7 @@ export default function QualityInspectionPage() {
       return 0;
     };
 
-    // 🔥 แปลง field name จาก hplc_xxx เป็น xxx เพื่อให้ตรงกับ state
+    // แปลง field name จาก hplc_xxx เป็น xxx เพื่อให้ตรงกับ state
     const cleanFieldName = name.startsWith('hplc_') ? name.replace('hplc_', '') : name;
 
     // Update the specific field first
@@ -526,9 +526,9 @@ export default function QualityInspectionPage() {
     scientific_name: '',
     sample_preparation: '',
     sample_condition: '',
-    quantity: '',        // เพิ่มใหม่
-    sample_amount: '',
-    temperature: '',     // เพิ่มใหม่
+    quantity: '',           // เก็บแบบ "1 Bag" (รวมกัน)
+    sample_amount: '',      // เก็บแบบ "10 g" (รวมกัน)
+    temperature: '',
     bdmc_result: '',
     dmc_result: '',
     cur_result: '',
@@ -545,6 +545,53 @@ export default function QualityInspectionPage() {
     laboratory_phone: 'โทรศัพท์ 053917416',
     certificate_number: ''
   });
+
+  const [quantityUI, setQuantityUI] = useState({ value: '', unit: 'Bag' });
+  const [sampleAmountUI, setSampleAmountUI] = useState({ value: '', unit: 'g' });
+
+  const parseQuantity = (quantityStr: string) => {
+    if (!quantityStr) return { value: '', unit: 'Bag' };
+    const match = quantityStr.match(/^(\d+\.?\d*)\s*(.+)$/);
+    if (match) {
+      return { value: match[1], unit: match[2] };
+    }
+    return { value: quantityStr, unit: 'Bag' };
+  };
+
+  const parseSampleAmount = (amountStr: string) => {
+    if (!amountStr) return { value: '', unit: 'g' };
+    const match = amountStr.match(/^(\d+\.?\d*)\s*(.+)$/);
+    if (match) {
+      return { value: match[1], unit: match[2] };
+    }
+    return { value: amountStr, unit: 'g' };
+  };
+
+  const handleQuantityValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setQuantityUI(prev => ({ ...prev, value: newValue }));
+    const combined = newValue ? `${newValue} ${quantityUI.unit}` : '';
+    setHplcData(prev => ({ ...prev, quantity: combined }));
+  };
+
+  const handleQuantityUnitChange = (newUnit: string) => {
+    setQuantityUI(prev => ({ ...prev, unit: newUnit }));
+    const combined = quantityUI.value ? `${quantityUI.value} ${newUnit}` : '';
+    setHplcData(prev => ({ ...prev, quantity: combined }));
+  };
+
+  const handleSampleAmountValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setSampleAmountUI(prev => ({ ...prev, value: newValue }));
+    const combined = newValue ? `${newValue} ${sampleAmountUI.unit}` : '';
+    setHplcData(prev => ({ ...prev, sample_amount: combined }));
+  };
+
+  const handleSampleAmountUnitChange = (newUnit: string) => {
+    setSampleAmountUI(prev => ({ ...prev, unit: newUnit }));
+    const combined = sampleAmountUI.value ? `${sampleAmountUI.value} ${newUnit}` : '';
+    setHplcData(prev => ({ ...prev, sample_amount: combined }));
+  };
 
   const TotalCurcuminoidsDisplay = () => {
     const extractNumericValue = (str: string): number => {
@@ -986,18 +1033,26 @@ export default function QualityInspectionPage() {
         const errorText = await uploadRes.text();
         console.error("❌ Upload Error Response:", errorText);
         throw new Error(`Upload failed with status ${uploadRes.status}: ${errorText}`);
+      }
+
+      // ✅ แก้ไขส่วนนี้ - เมื่อ upload สำเร็จ
+      const uploadData = await uploadRes.json();
+      console.log("✅ Upload Success Response:", uploadData);
+
+      if (uploadData && uploadData.length > 0 && uploadData[0].id) {
+        const fileId = uploadData[0].id;
+        console.log('✅ File uploaded successfully with ID:', fileId);
+        return fileId;
       } else {
-        console.error('File upload failed:', uploadRes.status);
-        const errorText = await uploadRes.text();
-        console.error('Upload error details:', errorText);
+        console.error('❌ Invalid upload response format:', uploadData);
         return null;
       }
+
     } catch (error) {
-      console.error('Error uploading file:', error);
+      console.error('❌ Error uploading file:', error);
       return null;
     }
   };
-
 
   const fetchRecord = async () => {
     try {
@@ -1287,6 +1342,36 @@ export default function QualityInspectionPage() {
           testingMethod: 'HPLC'
         });
 
+        // ✅ Helper functions สำหรับแยกและรวมค่า
+        const parseQuantity = (quantityStr: string) => {
+          if (!quantityStr) return { value: '', unit: 'Bag' };
+          const match = quantityStr.match(/^(\d+\.?\d*)\s*(.+)$/);
+          if (match) {
+            return { value: match[1], unit: match[2] };
+          }
+          return { value: quantityStr, unit: 'Bag' };
+        };
+
+        const parseSampleAmount = (amountStr: string) => {
+          if (!amountStr) return { value: '', unit: 'g' };
+          const match = amountStr.match(/^(\d+\.?\d*)\s*(.+)$/);
+          if (match) {
+            return { value: match[1], unit: match[2] };
+          }
+          return { value: amountStr, unit: 'g' };
+        };
+
+        const combineQuantity = (value: string, unit: string) => {
+          if (!value) return '';
+          return `${value} ${unit}`;
+        };
+
+        const combineSampleAmount = (value: string, unit: string) => {
+          if (!value) return '';
+          return `${value} ${unit}`;
+        };
+
+
         setHplcData({
           // Basic Information
           report_code: attrs?.hplc_report_code || targetRecord?.hplc_report_code || '',
@@ -1296,6 +1381,7 @@ export default function QualityInspectionPage() {
           scientific_name: attrs?.hplc_scientific_name || targetRecord?.hplc_scientific_name || 'Curcuma longa',
           sample_preparation: attrs?.hplc_sample_preparation || targetRecord?.hplc_sample_preparation || '',
           sample_condition: attrs?.hplc_sample_condition || targetRecord?.hplc_sample_condition || '',
+
           quantity: attrs?.hplc_quantity || targetRecord?.hplc_quantity || '',
           sample_amount: attrs?.hplc_sample_amount?.toString() || targetRecord?.hplc_sample_amount?.toString() || '',
           temperature: attrs?.hplc_temperature || targetRecord?.hplc_temperature || '',
@@ -1621,9 +1707,11 @@ export default function QualityInspectionPage() {
           hplc_scientific_name: hplcData.scientific_name || null,
           hplc_sample_preparation: hplcData.sample_preparation || null,
           hplc_sample_condition: hplcData.sample_condition || null,
-          hplc_quantity: hplcData.quantity || null,
-          hplc_sample_amount: hplcData.sample_amount || null,
           hplc_temperature: hplcData.temperature || null,
+
+          // เก็บแยกสำหรับการแสดงผล
+          hplc_quantity: hplcData.quantity || null,           // บันทึกแบบ "1 Bag"
+          hplc_sample_amount: hplcData.sample_amount || null, // บันทึกแบบ "10 g"
 
           // HPLC Results (store as text with ± values)
           hplc_bdmc_result: hplcData.bdmc_result || null,
@@ -1818,6 +1906,14 @@ export default function QualityInspectionPage() {
 
     initializeHPLCData();
   }, [testParameters.testingMethod]);
+
+  useEffect(() => {
+    const qData = parseQuantity(hplcData.quantity);
+    const sData = parseSampleAmount(hplcData.sample_amount);
+
+    setQuantityUI(qData);
+    setSampleAmountUI(sData);
+  }, [hplcData.quantity, hplcData.sample_amount]);
 
   // if (role === 'loading' || loading) {
   //   return (
@@ -2086,10 +2182,10 @@ export default function QualityInspectionPage() {
                         Report No.
                         <span className="text-xs text-green-600 ml-1">(Auto-generated)</span>
                       </Label>
-                      <Input
+                      <ReadOnlyAwareInput
                         name="hplc_report_code"
                         value={hplcData.report_code}
-                        readOnly
+                        isReadOnly={true}
                         className="bg-gray-100 cursor-not-allowed"
                         placeholder="RP 2025-1"
                       />
@@ -2099,10 +2195,10 @@ export default function QualityInspectionPage() {
                         Request No.
                         <span className="text-xs text-green-600 ml-1">(Auto-generated)</span>
                       </Label>
-                      <Input
+                      <ReadOnlyAwareInput
                         name="hplc_testing_no"
                         value={hplcData.testing_no}
-                        readOnly
+                        isReadOnly={true}
                         className="bg-gray-100 cursor-not-allowed"
                         placeholder="MPIC006-ACK25-245"
                       />
@@ -2112,30 +2208,32 @@ export default function QualityInspectionPage() {
                         Sample ID
                         <span className="text-xs text-green-600 ml-1">(Auto-generated)</span>
                       </Label>
-                      <Input
+                      <ReadOnlyAwareInput
                         name="hplc_sample_code"
                         value={hplcData.sample_code}
-                        readOnly
+                        isReadOnly={true}
                         className="bg-gray-100 cursor-not-allowed"
                         placeholder="MPIC-TS25-597"
                       />
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-600">Sample Name</Label>
-                      <Input
+                      <ReadOnlyAwareInput
                         name="hplc_sample_name"
                         value={hplcData.sample_name}
                         onChange={handleHPLCChange}
                         placeholder="Turmeric"
+                        isReadOnly={isReadOnly}
                       />
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-600">Scientific Name</Label>
-                      <Input
+                      <ReadOnlyAwareInput
                         name="hplc_scientific_name"
                         value={hplcData.scientific_name}
                         onChange={handleHPLCChange}
                         placeholder="Curcuma longa"
+                        isReadOnly={isReadOnly}
                       />
                     </div>
                     <div>
@@ -2143,48 +2241,102 @@ export default function QualityInspectionPage() {
                         Sample Code
                         <span className="text-xs text-green-600 ml-1">(Auto-generated)</span>
                       </Label>
-                      <Input
+                      <ReadOnlyAwareInput
                         name="hplc_sample_preparation"
                         value={hplcData.sample_preparation}
-                        readOnly
+                        isReadOnly={true}
                         className="bg-gray-100 cursor-not-allowed"
                         placeholder="T68-AJL-01"
                       />
                     </div>
+
+                    {/* ✅ Sample Type - เปลี่ยนเป็น Dropdown */}
                     <div>
                       <Label className="text-sm font-medium text-gray-600">Sample Type</Label>
-                      <Input
-                        name="hplc_sample_condition"
-                        value={hplcData.sample_condition}
-                        onChange={handleHPLCChange}
-                        placeholder="Powder/Dry"
-                      />
+                      {isReadOnly ? (
+                        <Input
+                          value={hplcData.sample_condition}
+                          readOnly
+                          className="bg-gray-100 cursor-not-allowed"
+                          onClick={showCompletedWarning}
+                        />
+                      ) : (
+                        <Select
+                          value={hplcData.sample_condition}
+                          onValueChange={(value) => setHplcData({ ...hplcData, sample_condition: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select sample type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Powder">Powder</SelectItem>
+                            <SelectItem value="Dry">Dry</SelectItem>
+                            <SelectItem value="Powder/Dry">Powder/Dry</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
+
                     <div>
                       <Label className="text-sm font-medium text-gray-600">Quantity</Label>
-                      <Input
-                        name="hplc_quantity"
-                        value={hplcData.quantity}
-                        onChange={handleHPLCChange}
-                        placeholder="1 Bag"
-                      />
+                      <div className="flex items-center gap-2">
+                        <ReadOnlyAwareInput
+                          type="number"
+                          value={quantityUI.value}
+                          onChange={handleQuantityValueChange}
+                          placeholder="1"
+                          className="flex-1"
+                          isReadOnly={isReadOnly}
+                        />
+                        <ReadOnlyAwareSelect
+                          value={quantityUI.unit}
+                          onValueChange={handleQuantityUnitChange}
+                          isReadOnly={isReadOnly}
+                          className="w-24"
+                        >
+                          <SelectItem value="Bag">Bag</SelectItem>
+                          <SelectItem value="Box">Box</SelectItem>
+                          <SelectItem value="Container">Container</SelectItem>
+                          <SelectItem value="Piece">Piece</SelectItem>
+                        </ReadOnlyAwareSelect>
+                      </div>
                     </div>
+
                     <div>
                       <Label className="text-sm font-medium text-gray-600">Weight/Volume</Label>
-                      <Input
-                        name="hplc_sample_amount"
-                        value={hplcData.sample_amount}
-                        onChange={handleHPLCChange}
-                        placeholder="10 g"
-                      />
+                      <div className="flex items-center gap-2">
+                        <ReadOnlyAwareInput
+                          type="number"
+                          step="0.01"
+                          value={sampleAmountUI.value}
+                          onChange={handleSampleAmountValueChange}
+                          placeholder="10"
+                          className="flex-1"
+                          isReadOnly={isReadOnly}
+                        />
+                        <ReadOnlyAwareSelect
+                          value={sampleAmountUI.unit}
+                          onValueChange={handleSampleAmountUnitChange}
+                          isReadOnly={isReadOnly}
+                          className="w-16"
+                        >
+                          <SelectItem value="g">g</SelectItem>
+                          <SelectItem value="kg">kg</SelectItem>
+                          <SelectItem value="mg">mg</SelectItem>
+                          <SelectItem value="mL">mL</SelectItem>
+                          <SelectItem value="L">L</SelectItem>
+                        </ReadOnlyAwareSelect>
+                      </div>
                     </div>
+
                     <div>
                       <Label className="text-sm font-medium text-gray-600">Temperature Upon Receipt</Label>
-                      <Input
+                      <ReadOnlyAwareInput
                         name="hplc_temperature"
                         value={hplcData.temperature}
                         onChange={handleHPLCChange}
                         placeholder="Room Temperature, Normal Condition"
+                        isReadOnly={isReadOnly}
                       />
                     </div>
                   </div>
@@ -2199,32 +2351,35 @@ export default function QualityInspectionPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                       <div>
                         <Label className="text-sm font-medium text-gray-600">Bisdemethoxycurcumin (BDMC)</Label>
-                        <Input
+                        <ReadOnlyAwareInput
                           name="hplc_bdmc_result"
                           type="text"
                           value={hplcData.bdmc_result}
                           onChange={handleHPLCChange}
                           placeholder="12.3 ± 1.8"
+                          isReadOnly={isReadOnly}
                         />
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-gray-600">Demethoxycurcumin (DMC)</Label>
-                        <Input
+                        <ReadOnlyAwareInput
                           name="hplc_dmc_result"
                           type="text"
                           value={hplcData.dmc_result}
                           onChange={handleHPLCChange}
                           placeholder="10.4 ± 3.5"
+                          isReadOnly={isReadOnly}
                         />
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-gray-600">Curcumin (CUR)</Label>
-                        <Input
+                        <ReadOnlyAwareInput
                           name="hplc_cur_result"
                           type="text"
                           value={hplcData.cur_result}
                           onChange={handleHPLCChange}
                           placeholder="27.2 ± 8.4"
+                          isReadOnly={isReadOnly}
                         />
                       </div>
                     </div>
@@ -2232,89 +2387,85 @@ export default function QualityInspectionPage() {
                     {/* Total Curcuminoids Display */}
                     <TotalCurcuminoidsDisplay />
 
-                    {/* ✅ Quality Assessment - วางใต้ Total Curcuminoids */}
+                    {/* Quality Assessment */}
                     <div className="border rounded-lg p-4 mt-4">
                       <div className="flex items-center gap-2 mb-4">
                         <span className="text-green-600"><Label><SquarePen className="h-4 w-4" /></Label></span>
-                        <h4 className="text-lg font-semibold ">Quality Assessment</h4>
+                        <h4 className="text-lg font-semibold">Quality Assessment</h4>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <Label className="text-sm font-medium text-gray-600">Overall Assessment</Label>
-                          <Select
+                          <ReadOnlyAwareSelect
                             value={hplcData.quality_assessment}
                             onValueChange={(value) => setHplcData({ ...hplcData, quality_assessment: value })}
+                            isReadOnly={isReadOnly}
                           >
-                            <SelectTrigger className="bg-white ">
-                              <SelectValue placeholder="Select assessment" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Pass">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-green-600"></span>
-                                  <span>Pass</span>
-                                </div>
-                              </SelectItem>
-                              <SelectItem value="Fail">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-red-600"></span>
-                                  <span>Fail</span>
-                                </div>
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
+                            <SelectItem value="Pass">
+                              <div className="flex items-center gap-2">
+                                <span className="text-green-600"></span>
+                                <span>Pass</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="Fail">
+                              <div className="flex items-center gap-2">
+                                <span className="text-red-600"></span>
+                                <span>Fail</span>
+                              </div>
+                            </SelectItem>
+                          </ReadOnlyAwareSelect>
                         </div>
 
                         <div>
                           <Label className="text-sm font-medium text-gray-600">Analyst Name</Label>
-                          <Input
+                          <ReadOnlyAwareInput
                             name="hplc_analyst_name"
                             value={hplcData.analyst_name}
                             onChange={handleHPLCChange}
                             placeholder="Enter analyst name"
-                            className="bg-white "
+                            isReadOnly={isReadOnly}
                           />
                         </div>
 
                         <div>
                           <Label className="text-sm font-medium text-gray-600">Reviewer Name</Label>
-                          <Input
+                          <ReadOnlyAwareInput
                             name="hplc_reviewer_name"
                             value={hplcData.reviewer_name}
                             onChange={handleHPLCChange}
                             placeholder="Enter reviewer name"
-                            className="bg-white "
+                            isReadOnly={isReadOnly}
                           />
                         </div>
                       </div>
 
-                      {/* Note เหมือน Total Curcuminoids */}
                       <p className="text-xs text-gray-600 mt-2">
                         Assessment based on laboratory standards and curcuminoid content analysis
                       </p>
                     </div>
                   </div>
 
-
                   {/* Bottom Section */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label className="text-sm font-medium text-gray-600">Moisture Quantity</Label>
-                      <Input
+                      <ReadOnlyAwareInput
                         name="hplc_moisture_quantity"
                         value={hplcData.moisture_quantity}
                         onChange={handleHPLCChange}
                         placeholder="Enter moisture content..."
+                        isReadOnly={isReadOnly}
                       />
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-600">Test Date</Label>
-                      <Input
+                      <ReadOnlyAwareInput
                         name="hplc_test_date"
                         type="date"
                         value={hplcData.test_date}
                         onChange={handleHPLCChange}
+                        isReadOnly={isReadOnly}
                       />
                     </div>
                   </div>
