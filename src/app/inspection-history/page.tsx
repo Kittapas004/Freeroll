@@ -55,7 +55,7 @@ export default function InspectionHistory() {
             console.log('=== Fetching Inspection History ===');
 
             // Get lab info first
-            const labRes = await fetch(`http://localhost:1337/api/labs?documentId=${localStorage.getItem("userId")}`, {
+            const labRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/labs?documentId=${localStorage.getItem("userId")}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem('jwt')}`,
                 },
@@ -76,7 +76,7 @@ export default function InspectionHistory() {
             console.log('Lab ID:', labId);
 
             // Get lab submission records with populated data - simplified approach
-            const recordsUrl = `http://localhost:1337/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&populate[result_image][populate]=*&filters[lab][documentId][$eq]=${labId}`;
+            const recordsUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&populate[result_image][populate]=*&filters[lab][documentId][$eq]=${labId}`;
             console.log('Fetching records from:', recordsUrl);
 
             const recordsRes = await fetch(recordsUrl, {
@@ -125,7 +125,7 @@ export default function InspectionHistory() {
                 if (farmName === 'Unknown Farm' && batchId !== 'N/A') {
                     console.log(`Fetching batch ${batchId} separately for farm name`);
                     try {
-                        const batchRes = await fetch(`http://localhost:1337/api/batches?filters[Batch_id][$eq]=${batchId}&populate[Farm]=*`, {
+                        const batchRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/batches?filters[Batch_id][$eq]=${batchId}&populate[Farm]=*`, {
                             headers: {
                                 Authorization: `Bearer ${localStorage.getItem('jwt')}`,
                             },

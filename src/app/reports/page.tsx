@@ -143,7 +143,7 @@ export default function ReportsPage() {
       try {
         const userId = localStorage.getItem("userId");
         if (!userId) return;
-        const response = await fetch(`http://localhost:1337/api/labs?documentId=${userId}`, {
+        const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/labs?documentId=${userId}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('jwt')}`,
           },
@@ -172,7 +172,7 @@ export default function ReportsPage() {
       console.log('Step 1: Fetching all completed lab submission records...');
 
       const response = await fetch(
-        `http://localhost:1337/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&filters[Submission_status][$eq]=Completed`,
+        `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&filters[Submission_status][$eq]=Completed`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -451,7 +451,7 @@ export default function ReportsPage() {
       console.log('🔍 === DEBUG API RESPONSE ===');
 
       const response = await fetch(
-        `http://localhost:1337/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&filters[Submission_status][$eq]=Completed`,
+        `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&filters[Submission_status][$eq]=Completed`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -553,7 +553,7 @@ export default function ReportsPage() {
   //     console.log('=== Fetching Export History from API ONLY ===');
 
   //     const historyRes = await fetch(
-  //       `http://localhost:1337/api/export-histories?sort=createdAt:desc`,
+  //       `https://popular-trust-9012d3ebd9.strapiapp.com/api/export-histories?sort=createdAt:desc`,
   //       {
   //         headers: {
   //           Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -611,7 +611,7 @@ export default function ReportsPage() {
 
       // ตรวจสอบข้อมูลใน lab-submission-records
       const labRes = await fetch(
-        'http://localhost:1337/api/lab-submission-records?populate=*',
+        'https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?populate=*',
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -881,7 +881,7 @@ export default function ReportsPage() {
 
         // Step 1: Update exported status
         for (const mapping of idMapping) {
-          const updateRes = await fetch(`http://localhost:1337/api/lab-submission-records/${mapping.apiId}`, {
+          const updateRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records/${mapping.apiId}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -903,7 +903,7 @@ export default function ReportsPage() {
 
         // Step 2: Create Export History in database
         const apiIds = idMapping.map(mapping => mapping.apiId);
-        await fetch('http://localhost:1337/api/export-histories', {
+        await fetch('https://popular-trust-9012d3ebd9.strapiapp.com/api/export-histories', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1041,7 +1041,7 @@ export default function ReportsPage() {
 
     try {
       // ทดสอบ GET
-      const getRes = await fetch('http://localhost:1337/api/export-histories', {
+      const getRes = await fetch('https://popular-trust-9012d3ebd9.strapiapp.com/api/export-histories', {
         headers: { Authorization: `Bearer ${localStorage.getItem('jwt')}` }
       });
 

@@ -31,7 +31,7 @@ export default function InspectionDetailsPage() {
 
   const fetchLabSubmissions = async () => {
     try {
-      const res = await fetch(`http://localhost:1337/api/labs?documentId=${localStorage.getItem("userId")}`, {
+      const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/labs?documentId=${localStorage.getItem("userId")}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('jwt')}`,
         },
@@ -55,11 +55,11 @@ export default function InspectionDetailsPage() {
     try {
       console.log('=== DEBUG: Fetching Lab Submissions ===');
       console.log('Lab ID:', id);
-      console.log('API URL:', `http://localhost:1337/api/lab-submission-records?populate[batch][populate]=Farm&populate[harvest_record][populate]=*&filters[lab][documentId][$eq]=${id}`);
+      console.log('API URL:', `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?populate[batch][populate]=Farm&populate[harvest_record][populate]=*&filters[lab][documentId][$eq]=${id}`);
 
       // ดึงข้อมูล lab submission records พร้อม populate batch และ farm
       const res = await fetch(
-        `http://localhost:1337/api/lab-submission-records?populate[batch][populate]=Farm&populate[harvest_record][populate]=*&filters[lab][documentId][$eq]=${id}`,
+        `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?populate[batch][populate]=Farm&populate[harvest_record][populate]=*&filters[lab][documentId][$eq]=${id}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('jwt')}`,

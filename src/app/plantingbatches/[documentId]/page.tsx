@@ -128,7 +128,7 @@ export default function PlantingBatchDetail() {
 
     const fetchLabData = async () => {
         try {
-            const response = await fetch(`http://localhost:1337/api/labs?populate=*`, {
+            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/labs?populate=*`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -148,7 +148,7 @@ export default function PlantingBatchDetail() {
 
     const fetchFarms = async () => {
         try {
-            const response = await fetch(`http://localhost:1337/api/farms?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
+            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -175,14 +175,46 @@ export default function PlantingBatchDetail() {
         }
     };
 
+
+    // ฟังก์ชันสำหรับสร้าง URL รูปภาพ (เพิ่มในโค้ด)
+    const getBatchImageUrl = (batchImage: any) => {
+        if (!batchImage) return "";
+
+        console.log("🖼️ Batch image data:", batchImage);
+
+        // ลองหลายรูปแบบของ Strapi structure
+        const possibleUrls = [
+            batchImage.url,                                    // Direct URL
+            batchImage.data?.attributes?.url,                  // Strapi v4 structure  
+            batchImage.data?.attributes?.formats?.large?.url,  // Large format
+            batchImage.data?.attributes?.formats?.medium?.url, // Medium format
+            batchImage.data?.attributes?.formats?.small?.url,  // Small format
+        ];
+
+        const validUrl = possibleUrls.find(url => url);
+        console.log("🔗 Found batch image URL:", validUrl);
+
+        if (validUrl) {
+            // ตรวจสอบว่าเป็น full URL หรือไม่
+            if (validUrl.startsWith('http')) {
+                return validUrl;
+            } else {
+                return `https://popular-trust-9012d3ebd9.strapiapp.com${validUrl}`;
+            }
+        }
+
+        return "";
+    };
+
+    // ใน fetchPlantingBatches function แก้ไขเป็น:
     const fetchPlantingBatches = async () => {
         try {
             console.log("Fetching data for documentId:", documentId);
             const res = await fetch(
-                `http://localhost:1337/api/batches/${documentId}?` +
+                `https://popular-trust-9012d3ebd9.strapiapp.com/api/batches/${documentId}?` +
                 `populate[Farm][populate]=*&` +
                 `populate[Batch_image][populate]=*&` +
-                `populate[lab_submission_records][populate]=*&` + // ⭐ ต้องมี exported fields
+                `populate[lab_submission_records][populate]=*&` +
                 `populate[harvest_records][populate]=*&` +
                 `populate[fertilizer_records][populate]=*`,
                 {
@@ -196,6 +228,8 @@ export default function PlantingBatchDetail() {
 
             const data = await res.json();
             console.log("Fetched data:", data);
+            console.log("🖼️ Batch_image structure:", data.data.Batch_image);
+
             const batch = data.data;
 
             setPlantingBatches({
@@ -207,8 +241,7 @@ export default function PlantingBatchDetail() {
                 farm_id: batch.Farm.documentId,
                 location: batch.Farm.Farm_Name ?? "N/A",
                 Farm_Status: batch.Farm.Farm_Status,
-                image: batch.Batch_image?.url ? `http://localhost:1337${batch.Batch_image.url}`
-                    : "",
+                image: getBatchImageUrl(batch.Batch_image),
                 recent_fertilizer_record: batch.fertilizer_records.map((record: any) => ({
                     id: record.id,
                     documentId: record.documentId,
@@ -255,11 +288,11 @@ export default function PlantingBatchDetail() {
                     status: record.Submission_status,
                     harvest_record: record.harvest_record.documentId,
                     report: record.Report?.[0]?.url
-                        ? `http://localhost:1337${record.Report[0].url}`
+                        ? `https://popular-trust-9012d3ebd9.strapiapp.com${record.Report[0].url}`
                         : "",
                     exported: record.exported || false,
-                    export_status: record.export_status || 'Unknown', 
-                    export_date: record.export_date || null, 
+                    export_status: record.export_status || 'Unknown',
+                    export_date: record.export_date || null,
                     testing_method: record.testing_method
                 })),
             });
@@ -278,7 +311,7 @@ export default function PlantingBatchDetail() {
                 return;
             }
 
-            const res = await fetch(`http://localhost:1337/api/fertilizer-records`, {
+            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/fertilizer-records`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -298,7 +331,7 @@ export default function PlantingBatchDetail() {
                 })
             });
             try {
-                const res_notification = await fetch(`http://localhost:1337/api/notifications`, {
+                const res_notification = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/notifications`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -315,7 +348,7 @@ export default function PlantingBatchDetail() {
                     })
                 });
                 if (!res_notification.ok) throw new Error("Failed to create notification record");
-                const update_status_res = await fetch(`http://localhost:1337/api/farms/${PlantingBatches?.farm_id}`, {
+                const update_status_res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms/${PlantingBatches?.farm_id}`, {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
@@ -365,7 +398,7 @@ export default function PlantingBatchDetail() {
                 return;
             }
 
-            const res = await fetch(`http://localhost:1337/api/harvest-records`, {
+            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/harvest-records`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -400,7 +433,7 @@ export default function PlantingBatchDetail() {
                 })
             });
             try {
-                const res_notification = await fetch(`http://localhost:1337/api/notifications`, {
+                const res_notification = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/notifications`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -421,7 +454,7 @@ export default function PlantingBatchDetail() {
                 console.error("Error creating notification record:", error);
             }
 
-            const update_status_res = await fetch(`http://localhost:1337/api/farms/${PlantingBatches?.farm_id}`, {
+            const update_status_res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms/${PlantingBatches?.farm_id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -516,7 +549,7 @@ export default function PlantingBatchDetail() {
 
                     console.log('Submission data:', submitData);
 
-                    const res = await fetch(`http://localhost:1337/api/lab-submission-records`, {
+                    const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records`, {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
@@ -538,7 +571,7 @@ export default function PlantingBatchDetail() {
 
                     // Update the harvest record status to "Pending"
                     console.log('Updating harvest record status...');
-                    const updateRes = await fetch(`http://localhost:1337/api/harvest-records/${sampleId}`, {
+                    const updateRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/harvest-records/${sampleId}`, {
                         method: "PUT",
                         headers: {
                             "Content-Type": "application/json",
@@ -559,7 +592,7 @@ export default function PlantingBatchDetail() {
 
                     // Create notification
                     try {
-                        const submitted_notification = await fetch(`http://localhost:1337/api/notifications`, {
+                        const submitted_notification = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/notifications`, {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
@@ -602,7 +635,7 @@ export default function PlantingBatchDetail() {
                 return;
             }
 
-            const res = await fetch(`http://localhost:1337/api/lab-submission-records/${recordId}`, {
+            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records/${recordId}`, {
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json",
@@ -610,7 +643,7 @@ export default function PlantingBatchDetail() {
                 },
             });
             if (res.ok) {
-                const updateRes = await fetch(`http://localhost:1337/api/harvest-records/${harvest_record}`, {
+                const updateRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/harvest-records/${harvest_record}`, {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
@@ -646,7 +679,7 @@ export default function PlantingBatchDetail() {
                 return;
             }
 
-            const res = await fetch(`http://localhost:1337/api/harvest-records/${recordId}`, {
+            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/harvest-records/${recordId}`, {
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json",
@@ -672,7 +705,7 @@ export default function PlantingBatchDetail() {
                 return;
             }
 
-            const res = await fetch(`http://localhost:1337/api/fertilizer-records/${recordId}`, {
+            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/fertilizer-records/${recordId}`, {
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json",
@@ -698,7 +731,7 @@ export default function PlantingBatchDetail() {
                 return;
             }
 
-            const res = await fetch(`http://localhost:1337/api/batches/${documentId}`, {
+            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/batches/${documentId}`, {
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json",
@@ -724,7 +757,7 @@ export default function PlantingBatchDetail() {
                 return;
             }
 
-            const res = await fetch(`http://localhost:1337/api/fertilizer-records/${editingRecord.documentId}`, {
+            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/fertilizer-records/${editingRecord.documentId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -769,7 +802,7 @@ export default function PlantingBatchDetail() {
                 const formData = new FormData();
                 formData.append("files", imageInputRef.current.files[0]);
 
-                const uploadRes = await fetch("http://localhost:1337/api/upload", {
+                const uploadRes = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/upload", {
                     method: "POST",
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem("jwt")}`,
@@ -798,7 +831,7 @@ export default function PlantingBatchDetail() {
                 updatedData.Batch_image = imageId;
             }
 
-            const res = await fetch(`http://localhost:1337/api/batches/${documentId}`, {
+            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/batches/${documentId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -829,7 +862,7 @@ export default function PlantingBatchDetail() {
                 return;
             }
 
-            const res = await fetch(`http://localhost:1337/api/harvest-records/${editingRecord.documentId}`, {
+            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/harvest-records/${editingRecord.documentId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -1017,7 +1050,7 @@ export default function PlantingBatchDetail() {
             }
 
             // Update Batch_Status to "Completed Successfully"
-            const res = await fetch(`http://localhost:1337/api/batches/${documentId}`, {
+            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/batches/${documentId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -1053,7 +1086,7 @@ export default function PlantingBatchDetail() {
                     batch: documentId,
                     harvest_records: records,
                 });
-                const fac_submission_res = await fetch(`http://localhost:1337/api/factory-submissions`, {
+                const fac_submission_res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/factory-submissions`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -1082,7 +1115,7 @@ export default function PlantingBatchDetail() {
 
             if (!res.ok) throw new Error("Failed to update Batch_Status to Completed Successfully");
 
-            const farm_res = await fetch(`http://localhost:1337/api/farms/${PlantingBatches.farm_id}`, {
+            const farm_res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms/${PlantingBatches.farm_id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -1097,7 +1130,7 @@ export default function PlantingBatchDetail() {
 
             if (!farm_res.ok) throw new Error("Failed to update Farm Batch_Status to End Planted");
 
-            const notification_res = await fetch(`http://localhost:1337/api/notifications`, {
+            const notification_res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/notifications`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -1120,7 +1153,7 @@ export default function PlantingBatchDetail() {
             // Automatically update Batch_Status to "Completed Past Data" after 10 minutes
             setTimeout(async () => {
                 try {
-                    const updateRes = await fetch(`http://localhost:1337/api/batches/${documentId}`, {
+                    const updateRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/batches/${documentId}`, {
                         method: "PUT",
                         headers: {
                             "Content-Type": "application/json",
@@ -1208,7 +1241,7 @@ export default function PlantingBatchDetail() {
                 },
             };
 
-            const res = await fetch(`http://localhost:1337/api/lab-submission-records`, {
+            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -1223,7 +1256,7 @@ export default function PlantingBatchDetail() {
             }
 
             // Update the harvest record status to "Pending"
-            const updateRes = await fetch(`http://localhost:1337/api/harvest-records/${labSubmissionModal.harvestRecordId}`, {
+            const updateRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/harvest-records/${labSubmissionModal.harvestRecordId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -1242,7 +1275,7 @@ export default function PlantingBatchDetail() {
 
             // Create notification
             try {
-                await fetch(`http://localhost:1337/api/notifications`, {
+                await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/notifications`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -1646,9 +1679,18 @@ export default function PlantingBatchDetail() {
                     </div>
                 </header>
                 <main>
-                    <div className="h-full max-h-[240px] w-full bg-cover bg-center relative" style={{ backgroundImage: `url(${PlantingBatches.image})` }} />
-
-
+                    <div
+                        className="h-full max-h-[240px] w-full bg-cover bg-center relative"
+                        style={{
+                            backgroundImage: PlantingBatches.image
+                                ? `url(${PlantingBatches.image})`
+                                : `url('/batch1.jpg')` // fallback image
+                        }}
+                        onError={(e) => {
+                            console.error("❌ Error loading background image:", PlantingBatches.image);
+                            // อาจจะเปลี่ยนเป็นรูป default
+                        }}
+                    />
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-10 px-4 -mt-10 relative z-10 w-full max-w-5xl mx-auto">
                         <Card className="p-4 shadow-md justify-center">
                             <div className="flex items-center gap-4">
@@ -3119,9 +3161,9 @@ export default function PlantingBatchDetail() {
                                                         {(() => {
                                                             // ⭐ ตรวจสอบ exported status และ submission status
                                                             const isCompleted = lab_rec.status === 'Completed';
-                                                            const isExported = lab_rec.exported === true; 
+                                                            const isExported = lab_rec.exported === true;
                                                             const exportStatus = lab_rec.export_status || 'Unknown';
-                                                            const testingMethod = lab_rec.testing_method || 'NIR Spectroscopy'; 
+                                                            const testingMethod = lab_rec.testing_method || 'NIR Spectroscopy';
 
                                                             if (isCompleted && isExported) {
                                                                 // ✅ แสดง View Report เมื่อ Completed และ Exported แล้ว

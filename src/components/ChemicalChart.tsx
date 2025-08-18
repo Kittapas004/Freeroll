@@ -27,7 +27,7 @@ export default function ChemicalChart({ batchDoucumentId }: ChemicalChartProps) 
     setLoading(true);
     try {
       const response = await fetch(
-        `http://localhost:1337/api/harvest-records?populate=*&filters[batch][documentId][$eq]=${batchDoucumentId}&filters[Date][$gte]=${getStartDate(
+        `https://popular-trust-9012d3ebd9.strapiapp.com/api/harvest-records?populate=*&filters[batch][documentId][$eq]=${batchDoucumentId}&filters[Date][$gte]=${getStartDate(
           timeframe
         )}`,
         {

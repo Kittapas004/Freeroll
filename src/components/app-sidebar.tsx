@@ -1,6 +1,5 @@
 "use client"
 
-
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -11,7 +10,7 @@ import {
   SquareTerminal,
   Factory,
   Shovel,
-  History, // ✅ เพิ่มตรงนี้
+  History,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main"
@@ -23,7 +22,6 @@ import {
   SidebarHeader,
 } from "@/components/ui/sidebar"
 import { NavUser } from "./nav-user";
-
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
@@ -40,9 +38,39 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     role: "",
   });
 
+  // ฟังก์ชันสำหรับสร้าง URL รูปภาพ
+  const getAvatarUrl = (avatar: any) => {
+    if (!avatar) return "";
+    
+    // Debug avatar structure
+    console.log("🖼️ Sidebar Avatar data:", avatar);
+    
+    // ลองหลายรูปแบบของ Strapi structure
+    const possibleUrls = [
+      avatar.url,                                    // Direct URL
+      avatar.data?.attributes?.url,                  // Strapi v4 structure  
+      avatar.data?.attributes?.formats?.thumbnail?.url, // Thumbnail format
+      avatar.data?.attributes?.formats?.small?.url,     // Small format
+    ];
+    
+    const validUrl = possibleUrls.find(url => url);
+    console.log("🔗 Found avatar URL:", validUrl);
+    
+    if (validUrl) {
+      // ตรวจสอบว่าเป็น full URL หรือไม่
+      if (validUrl.startsWith('http')) {
+        return validUrl;
+      } else {
+        return `https://popular-trust-9012d3ebd9.strapiapp.com${validUrl}`;
+      }
+    }
+    
+    return "";
+  };
+
   const fetchUserData = async () => {
     try {
-      const response = await fetch("http://localhost:1337/api/users/me?populate=*", {
+      const response = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/users/me?populate=*", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("jwt")}`,
         },
@@ -53,16 +81,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       }
 
       const userData = await response.json();
+      console.log("✅ Sidebar user data:", userData);
+      console.log("🖼️ Sidebar avatar structure:", userData.avatar);
+      
       setUser({
         name: userData.username || "",
         email: userData.email || "",
-        avatar: userData.avatar?.url
-          ? `http://localhost:1337${userData.avatar.url}`
-          : "",
+        avatar: getAvatarUrl(userData.avatar),
         role: userData.user_role || "",
       });
     } catch (error) {
-      console.error("Error fetching user data:", error);
+      console.error("❌ Error fetching user data:", error);
     }
   };
 
@@ -91,7 +120,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       { title: "Settings", url: "/settings", icon: Settings2 },
     ],
   };
-  // console.log("User role:", user.role);
+  
   const navItems = navMain[user.role] || [];
   const updatedNavMain = navItems.map((item) => ({
     ...item,

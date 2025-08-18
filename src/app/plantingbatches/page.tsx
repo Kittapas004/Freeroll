@@ -110,7 +110,7 @@ export default function PlantingBatchesPage() {
 
     const fetchFarms = async () => {
         try {
-            const response = await fetch(`http://localhost:1337/api/farms?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
+            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -137,10 +137,73 @@ export default function PlantingBatchesPage() {
         }
     };
 
+    const uploadDefaultImage = async (jwt: string): Promise<number | null> => {
+        try {
+            // สร้าง FormData สำหรับอัพโหลดรูป default
+            const formData = new FormData();
+
+            // ใช้ fetch เพื่อดึงไฟล์ batch1.png จาก public folder
+            const response = await fetch('/batch1.png');
+            if (!response.ok) {
+                console.error('Default image not found');
+                return null;
+            }
+
+            const blob = await response.blob();
+            const file = new File([blob], 'batch1.png', { type: 'image/png' });
+
+            formData.append("files", file);
+
+            const uploadRes = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/upload", {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${jwt}`,
+                },
+                body: formData,
+            });
+
+            if (!uploadRes.ok) {
+                console.error('Failed to upload default image');
+                return null;
+            }
+
+            const uploadData = await uploadRes.json();
+            console.log('✅ Default image uploaded successfully:', uploadData[0]?.id);
+            return uploadData[0]?.id || null;
+        } catch (error) {
+            console.error('Error uploading default image:', error);
+            return null;
+        }
+    };
+
+    const getBatchImageUrl = (batchImage: any) => {
+        if (!batchImage) return "/batch1.png"; // fallback เป็นรูป default
+
+        // ลองหลายรูปแบบของ Strapi structure
+        const possibleUrls = [
+            batchImage.url,                                    // Direct URL
+            batchImage.data?.attributes?.url,                  // Strapi v4 structure  
+            batchImage.data?.attributes?.formats?.medium?.url, // Medium format
+            batchImage.data?.attributes?.formats?.small?.url,  // Small format
+        ];
+
+        const validUrl = possibleUrls.find(url => url);
+
+        if (validUrl) {
+            // ตรวจสอบว่าเป็น full URL หรือไม่
+            if (validUrl.startsWith('http')) {
+                return validUrl;
+            } else {
+                return `https://popular-trust-9012d3ebd9.strapiapp.com${validUrl}`;
+            }
+        }
+
+        return "/batch1.png"; // fallback เป็นรูป default
+    };
 
     const fetchPlantingBatches = async () => {
         try {
-            const response = await fetch(`http://localhost:1337/api/batches?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
+            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/batches?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -160,9 +223,7 @@ export default function PlantingBatchesPage() {
                     Farm_Name: batch.Farm.Farm_Name,
                     Farm_Cultivation_Method: batch.Farm.Cultivation_Method,
                     Batch_Status: batch.Batch_Status,
-                    Batch_image: batch.Batch_image?.url
-                        ? `http://localhost:1337${batch.Batch_image.url}`
-                        : "",
+                    Batch_image: getBatchImageUrl(batch.Batch_image), // ใช้ฟังก์ชันใหม่
                 }))
             );
             return data;
@@ -174,7 +235,7 @@ export default function PlantingBatchesPage() {
 
     const fetchAllBatchesForIDGeneration = async () => {
         try {
-            const response = await fetch(`http://localhost:1337/api/batches`, {
+            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/batches`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -213,11 +274,13 @@ export default function PlantingBatchesPage() {
 
             let imageId = null;
 
+            // ตรวจสอบว่ามีการเลือกรูปใหม่หรือไม่
             if (imageInputRef.current?.files?.[0]) {
+                // ถ้ามีการเลือกรูปใหม่ ให้อัพโหลดรูปนั้น
                 const formData = new FormData();
                 formData.append("files", imageInputRef.current.files[0]);
 
-                const uploadRes = await fetch("http://localhost:1337/api/upload", {
+                const uploadRes = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/upload", {
                     method: "POST",
                     headers: {
                         Authorization: `Bearer ${jwt}`,
@@ -225,8 +288,15 @@ export default function PlantingBatchesPage() {
                     body: formData,
                 });
 
-                const uploadData = await uploadRes.json();
-                imageId = uploadData[0]?.id;
+                if (uploadRes.ok) {
+                    const uploadData = await uploadRes.json();
+                    imageId = uploadData[0]?.id;
+                    console.log('✅ User selected image uploaded:', imageId);
+                }
+            } else {
+                // ถ้าไม่มีการเลือกรูป ให้อัพโหลดรูป default
+                imageId = await uploadDefaultImage(jwt);
+                console.log('✅ Default image will be used:', imageId);
             }
 
             const newBatchId = await generateNewBatchId();
@@ -239,12 +309,14 @@ export default function PlantingBatchesPage() {
                     Batch_Status: "Pending Actions",
                     user_documentId: userId,
                     Farm: selectedFarm.documentId,
-                    Batch_image: imageId,
+                    Batch_image: imageId, // จะเป็น ID ของรูปที่ user เลือก หรือรูป default
                     Cultivation_Method: cultivationMethod,
                 },
             };
 
-            const response = await fetch("http://localhost:1337/api/batches", {
+            console.log('🚀 Creating batch with payload:', batchPayload);
+
+            const response = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/batches", {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${jwt}`,
@@ -264,7 +336,7 @@ export default function PlantingBatchesPage() {
                     },
                 };
 
-                const farmUpdateResponse = await fetch(`http://localhost:1337/api/farms/${selectedFarm?.documentId}`, {
+                const farmUpdateResponse = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms/${selectedFarm?.documentId}`, {
                     method: "PUT",
                     headers: {
                         Authorization: `Bearer ${jwt}`,
@@ -279,18 +351,20 @@ export default function PlantingBatchesPage() {
             }
 
             const result = await response.json();
-            console.log("Batch added:", result);
+            console.log("✅ Batch added successfully:", result);
             await fetchPlantingBatches();
             setIsDialogOpen(false);
+            setImagePreview(null); // reset preview
+            if (imageInputRef.current) {
+                imageInputRef.current.value = '';
+            }
             alert("Batch added successfully!");
 
         } catch (error) {
-            console.error("Error adding batch:", error);
+            console.error("❌ Error adding batch:", error);
             alert("Something went wrong while adding the batch.");
         }
     };
-
-
 
     React.useEffect(() => {
         fetchFarms();
@@ -448,8 +522,13 @@ export default function PlantingBatchesPage() {
                                                     />
                                                 ) : (
                                                     <div className="flex flex-col items-center gap-2 z-10">
+                                                        <img
+                                                            src="/batch1.png"
+                                                            alt="Default Preview"
+                                                            className="w-24 h-24 object-cover rounded-lg opacity-50"
+                                                        />
                                                         <p className="text-sm">Drag & drop an image here</p>
-                                                        <p className="text-xs text-gray-400">or click to browse</p>
+                                                        <p className="text-xs text-gray-400">or click to browse (default: batch1.png)</p>
                                                     </div>
                                                 )}
                                                 <input
@@ -503,9 +582,16 @@ export default function PlantingBatchesPage() {
                                         More Detail
                                     </div>
                                     <img
-                                        src={batch.Batch_image}
+                                        src={batch.Batch_image || "/batch1.png"} // เพิ่ม fallback
                                         alt="Batch Image"
                                         className={`w-full h-37.5 object-cover ${batch.Batch_Status === "Completed Past Data" ? "grayscale-100" : ""}`}
+                                        onError={(e) => {
+                                            console.error("❌ Error loading batch image, using default:", batch.Batch_image);
+                                            e.currentTarget.src = "/batch1.png"; // ใช้รูป default เมื่อโหลดไม่ได้
+                                        }}
+                                        onLoad={() => {
+                                            console.log("✅ Batch image loaded successfully:", batch.Batch_image);
+                                        }}
                                     />
                                     <Circle
                                         className={`absolute top-2 right-2 w-6 h-6 ${batch.Batch_Status === "Completed Successfully"

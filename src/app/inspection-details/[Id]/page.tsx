@@ -48,7 +48,7 @@ const generateReportNumber = async () => {
     const currentYear = new Date().getFullYear();
 
     // ดึงข้อมูล Lab ID ก่อน
-    const labRes = await fetch(`http://localhost:1337/api/labs?documentId=${localStorage.getItem("userId")}`, {
+    const labRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/labs?documentId=${localStorage.getItem("userId")}`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('jwt')}`,
       },
@@ -66,7 +66,7 @@ const generateReportNumber = async () => {
     }
 
     // ดึงจำนวน reports ที่มีอยู่ในปีปัจจุบันสำหรับ lab นี้
-    const reportsCountUrl = `http://localhost:1337/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_report_code][$startsWith]=RP ${currentYear}-&pagination[pageSize]=1000`;
+    const reportsCountUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_report_code][$startsWith]=RP ${currentYear}-&pagination[pageSize]=1000`;
 
     console.log('📊 Fetching existing reports:', reportsCountUrl);
 
@@ -241,7 +241,7 @@ const generateRequestNumber = async () => {
     console.log('🔢 Generating request number...');
     const currentYear = new Date().getFullYear().toString().slice(-2); // ปี 2 หลัก
 
-    const labRes = await fetch(`http://localhost:1337/api/labs?documentId=${localStorage.getItem("userId")}`, {
+    const labRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/labs?documentId=${localStorage.getItem("userId")}`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('jwt')}`,
       },
@@ -259,7 +259,7 @@ const generateRequestNumber = async () => {
     }
 
     // ดึงจำนวน requests ที่มีอยู่ในปีปัจจุบัน
-    const requestsCountUrl = `http://localhost:1337/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_testing_no][$startsWith]=MPIC006-ACK${currentYear}-&pagination[pageSize]=1000`;
+    const requestsCountUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_testing_no][$startsWith]=MPIC006-ACK${currentYear}-&pagination[pageSize]=1000`;
 
     const requestsRes = await fetch(requestsCountUrl, {
       headers: {
@@ -306,7 +306,7 @@ const generateSampleId = async () => {
     console.log('🔢 Generating sample ID...');
     const currentYear = new Date().getFullYear().toString().slice(-2); // ปี 2 หลัก
 
-    const labRes = await fetch(`http://localhost:1337/api/labs?documentId=${localStorage.getItem("userId")}`, {
+    const labRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/labs?documentId=${localStorage.getItem("userId")}`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('jwt')}`,
       },
@@ -324,7 +324,7 @@ const generateSampleId = async () => {
     }
 
     // ดึงจำนวน samples ที่มีอยู่ในปีปัจจุบัน
-    const samplesCountUrl = `http://localhost:1337/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_sample_code][$startsWith]=MPIC-TS${currentYear}-&pagination[pageSize]=1000`;
+    const samplesCountUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_sample_code][$startsWith]=MPIC-TS${currentYear}-&pagination[pageSize]=1000`;
 
     const samplesRes = await fetch(samplesCountUrl, {
       headers: {
@@ -371,7 +371,7 @@ const generateSampleCode = async () => {
     console.log('🔢 Generating sample code...');
     const currentYear = new Date().getFullYear().toString().slice(-2); // ปี 2 หลัก
 
-    const labRes = await fetch(`http://localhost:1337/api/labs?documentId=${localStorage.getItem("userId")}`, {
+    const labRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/labs?documentId=${localStorage.getItem("userId")}`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('jwt')}`,
       },
@@ -389,7 +389,7 @@ const generateSampleCode = async () => {
     }
 
     // ดึงจำนวน sample codes ที่มีอยู่ในปีปัจจุบัน
-    const codesCountUrl = `http://localhost:1337/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_sample_preparation][$startsWith]=T${currentYear}-&pagination[pageSize]=1000`;
+    const codesCountUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_sample_preparation][$startsWith]=T${currentYear}-&pagination[pageSize]=1000`;
 
     const codesRes = await fetch(codesCountUrl, {
       headers: {
@@ -677,6 +677,13 @@ export default function QualityInspectionPage() {
 
   // Enhanced file processing with CSV/Excel support
   const handleFile = async (file: File) => {
+    console.log('📁 File selected for upload:', {
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      lastModified: new Date(file.lastModified).toISOString()
+    });
+
     // Validate file type - เพิ่มรองรับ CSV และ Excel
     const allowedTypes = [
       'image/png', 'image/jpeg', 'image/jpg', 'image/gif',
@@ -724,16 +731,29 @@ export default function QualityInspectionPage() {
   const processImageFile = (file: File) => {
     return new Promise<void>((resolve, reject) => {
       const reader = new FileReader();
+
       reader.onload = (e) => {
-        setFilePreview({
-          type: 'image',
-          content: e.target?.result as string,
-          name: file.name,
-          size: file.size
-        });
-        resolve();
+        const result = e.target?.result as string;
+
+        if (result) {
+          console.log('✅ Image file read successfully:', file.name);
+          setFilePreview({
+            type: 'image',
+            content: result,
+            name: file.name,
+            size: file.size
+          });
+          resolve();
+        } else {
+          reject(new Error('Failed to read image file'));
+        }
       };
-      reader.onerror = reject;
+
+      reader.onerror = (error) => {
+        console.error('❌ FileReader error:', error);
+        reject(new Error('Failed to read image file'));
+      };
+
       reader.readAsDataURL(file);
     });
   };
@@ -828,6 +848,25 @@ export default function QualityInspectionPage() {
               src={filePreview.content as string}
               alt="Preview"
               className="w-full h-48 object-cover rounded-lg"
+              onError={(e) => {
+                console.error("❌ Error loading preview image:", filePreview.content);
+                // แสดง fallback content
+                e.currentTarget.style.display = 'none';
+                const parent = e.currentTarget.parentElement;
+                if (parent) {
+                  parent.innerHTML = `
+                  <div class="w-full h-48 flex items-center justify-center bg-gray-100 rounded-lg">
+                    <div class="text-center">
+                      <p class="text-red-500 text-sm">Failed to load image</p>
+                      <p class="text-gray-400 text-xs">${filePreview.name}</p>
+                    </div>
+                  </div>
+                `;
+                }
+              }}
+              onLoad={() => {
+                console.log("✅ Preview image loaded successfully:", filePreview.content);
+              }}
             />
             <Button
               variant="destructive"
@@ -920,6 +959,7 @@ export default function QualityInspectionPage() {
     }
   };
 
+
   // Handle KaminCAL data changes
   const handleKaminCALChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -997,16 +1037,44 @@ export default function QualityInspectionPage() {
     }
   };
 
+  // เพิ่มฟังก์ชันสำหรับจัดการ URL รูปภาพ
+  const getImageUrl = (imageData: any) => {
+    if (!imageData) return null;
+
+    console.log("🖼️ Processing image data:", imageData);
+
+    // ลองหลายรูปแบบของ Strapi structure
+    const possibleUrls = [
+      imageData.url,                                    // Direct URL
+      imageData.data?.attributes?.url,                  // Strapi v4 structure  
+      imageData.attributes?.url,                        // Alternative structure
+      imageData.data?.url,                              // Another alternative
+    ];
+
+    const validUrl = possibleUrls.find(url => url);
+    console.log("🔗 Found image URL:", validUrl);
+
+    if (validUrl) {
+      // ตรวจสอบว่าเป็น full URL หรือไม่
+      if (validUrl.startsWith('http')) {
+        return validUrl;
+      } else {
+        return `https://popular-trust-9012d3ebd9.strapiapp.com${validUrl}`;
+      }
+    }
+
+    return null;
+  };
+
   // แก้ไขฟังก์ชัน uploadFileToStrapi
   const uploadFileToStrapi = async (file: File): Promise<number | null> => {
     if (!file) {
-      console.log('No file provided');
+      console.log('No file provided for upload');
       return null;
     }
 
     try {
-      console.log('🚀 Starting upload process...');
-      console.log('📁 File details:', {
+      console.log('🚀 Starting upload process for:', {
         name: file.name,
         size: file.size,
         type: file.type
@@ -1015,10 +1083,13 @@ export default function QualityInspectionPage() {
       const formData = new FormData();
       formData.append("files", file);
 
-      console.log('🌐 Sending upload request to: http://localhost:1337/api/upload');
-      console.log('🔑 Using JWT:', localStorage.getItem("jwt")?.substring(0, 20) + '...');
+      // Log FormData contents
+      console.log('📦 FormData prepared');
+      for (let pair of formData.entries()) {
+        console.log('📄 FormData entry:', pair[0], pair[1]);
+      }
 
-      const uploadRes = await fetch('http://localhost:1337/api/upload', {
+      const uploadRes = await fetch('https://popular-trust-9012d3ebd9.strapiapp.com/api/upload', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -1035,13 +1106,22 @@ export default function QualityInspectionPage() {
         throw new Error(`Upload failed with status ${uploadRes.status}: ${errorText}`);
       }
 
-      // ✅ แก้ไขส่วนนี้ - เมื่อ upload สำเร็จ
       const uploadData = await uploadRes.json();
       console.log("✅ Upload Success Response:", uploadData);
 
       if (uploadData && uploadData.length > 0 && uploadData[0].id) {
         const fileId = uploadData[0].id;
         console.log('✅ File uploaded successfully with ID:', fileId);
+
+        // Verify the uploaded file URL
+        const uploadedUrl = uploadData[0].url;
+        if (uploadedUrl) {
+          const fullUrl = uploadedUrl.startsWith('http')
+            ? uploadedUrl
+            : `https://popular-trust-9012d3ebd9.strapiapp.com${uploadedUrl}`;
+          console.log('🔗 Uploaded file URL:', fullUrl);
+        }
+
         return fileId;
       } else {
         console.error('❌ Invalid upload response format:', uploadData);
@@ -1063,7 +1143,7 @@ export default function QualityInspectionPage() {
 
       // Use the same API approach as Inspection Details page
       console.log('Step 1: Getting lab info...');
-      const labRes = await fetch(`http://localhost:1337/api/labs?documentId=${localStorage.getItem("userId")}`, {
+      const labRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/labs?documentId=${localStorage.getItem("userId")}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('jwt')}`,
         },
@@ -1082,7 +1162,7 @@ export default function QualityInspectionPage() {
 
       // Step 2: Get lab submission records using simple populate first
       console.log('Step 2: Getting lab submission records...');
-      const recordsUrl = `http://localhost:1337/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&populate[result_image][populate]=*&filters[lab][documentId][$eq]=${labId}`;
+      const recordsUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&populate[result_image][populate]=*&filters[lab][documentId][$eq]=${labId}`;
       console.log('Records API URL:', recordsUrl);
 
       const recordsRes = await fetch(recordsUrl, {
@@ -1480,57 +1560,87 @@ export default function QualityInspectionPage() {
       // Load existing file preview if available - อัพเดทการตรวจสอบประเภทไฟล์
       if (mappedRecord.result_image) {
         console.log('🖼️ Loading existing file preview:', mappedRecord.result_image);
-        let fileUrl = '';
 
-        if (mappedRecord.result_image.url) {
-          fileUrl = `http://localhost:1337${mappedRecord.result_image.url}`;
-        } else if (mappedRecord.result_image.attributes?.url) {
-          fileUrl = `http://localhost:1337${mappedRecord.result_image.attributes.url}`;
-        }
+        const imageUrl = getImageUrl(mappedRecord.result_image);
 
-        if (fileUrl) {
-          // Check if it's an image file
-          const fileName = mappedRecord.result_image.name || mappedRecord.result_image.attributes?.name || '';
-          const isImage = /\.(jpg|jpeg|png|gif)$/i.test(fileName);
+        if (imageUrl) {
+          // ตรวจสอบประเภทไฟล์จากชื่อไฟล์
+          const fileName = mappedRecord.result_image.name ||
+            mappedRecord.result_image.attributes?.name ||
+            mappedRecord.result_image.data?.attributes?.name ||
+            '';
+
+          const fileSize = mappedRecord.result_image.size ||
+            mappedRecord.result_image.attributes?.size ||
+            mappedRecord.result_image.data?.attributes?.size ||
+            0;
+
+          console.log('📁 File details:', { fileName, fileSize, imageUrl });
+
+          const isImage = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(fileName);
           const isCSV = /\.csv$/i.test(fileName);
           const isExcel = /\.(xls|xlsx)$/i.test(fileName);
 
           if (isImage) {
-            setFilePreview({
-              type: 'image',
-              content: fileUrl,
-              name: fileName,
-              size: mappedRecord.result_image.size || 0
-            });
+            // ทดสอบการโหลดรูปก่อน
+            const img = new Image();
+            img.onload = () => {
+              console.log('✅ Existing image loaded successfully');
+              setFilePreview({
+                type: 'image',
+                content: imageUrl,
+                name: fileName,
+                size: fileSize
+              });
+            };
+            img.onerror = (error) => {
+              console.error('❌ Failed to load existing image:', error);
+              console.error('Image URL:', imageUrl);
+              // แสดง placeholder แทน
+              setFilePreview({
+                type: 'image',
+                content: '/placeholder-image.png', // ใช้รูป placeholder
+                name: fileName + ' (Failed to load)',
+                size: fileSize
+              });
+            };
+            img.src = imageUrl;
           } else if (isCSV) {
             setFilePreview({
               type: 'csv',
-              content: [['Existing CSV file preview not available']],
+              content: [['Existing CSV file - click to view full content']],
               name: fileName,
-              size: mappedRecord.result_image.size || 0
+              size: fileSize
             });
           } else if (isExcel) {
             setFilePreview({
               type: 'excel',
-              content: [['Existing Excel file preview not available']],
+              content: [['Existing Excel file - click to view full content']],
               name: fileName,
-              size: mappedRecord.result_image.size || 0
+              size: fileSize
+            });
+          } else {
+            console.warn('🤷‍♂️ Unknown file type:', fileName);
+            // แสดงเป็น generic file
+            setFilePreview({
+              type: 'image', // ใช้ image type แต่แสดงข้อความ
+              content: '/placeholder-file.png',
+              name: fileName + ' (Unknown type)',
+              size: fileSize
             });
           }
+        } else {
+          console.warn('⚠️ Could not construct image URL from:', mappedRecord.result_image);
         }
       }
 
     } catch (err) {
       console.error('Error fetching record:', err);
-      setError(
-        `Error loading record: ${err instanceof Error ? err.message : String(err)
-        }`
-      );
+      setError(`Error loading record: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoading(false);
     }
   };
-
   const handleSave = async () => {
     if (!record) return;
     // เช็คสถานะ Completed
@@ -1572,7 +1682,7 @@ export default function QualityInspectionPage() {
       console.log('Test parameters:', testParameters);
 
       // First, let's get the record details to understand the structure
-      const checkUrl = `http://localhost:1337/api/lab-submission-records/${record.id}?populate=*`;
+      const checkUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records/${record.id}?populate=*`;
       console.log('Checking record URL:', checkUrl);
 
       const checkRes = await fetch(checkUrl, {
@@ -1588,7 +1698,7 @@ export default function QualityInspectionPage() {
         console.log('Record not found with regular ID, trying alternative approaches...');
 
         // Try to find the record by searching all records and matching
-        const labRes = await fetch(`http://localhost:1337/api/labs?documentId=${localStorage.getItem("userId")}`, {
+        const labRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/labs?documentId=${localStorage.getItem("userId")}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('jwt')}`,
           },
@@ -1600,7 +1710,7 @@ export default function QualityInspectionPage() {
 
           if (labId) {
             // Get all records and find the one we want
-            const allRecordsUrl = `http://localhost:1337/api/lab-submission-records?populate=*&filters[lab][documentId][$eq]=${labId}`;
+            const allRecordsUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?populate=*&filters[lab][documentId][$eq]=${labId}`;
             const allRecordsRes = await fetch(allRecordsUrl, {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -1660,7 +1770,7 @@ export default function QualityInspectionPage() {
         const formData = new FormData();
         formData.append("files", testResults.uploadedFile);
 
-        const uploadRes = await fetch("http://localhost:1337/api/upload", {
+        const uploadRes = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/upload", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${localStorage.getItem("jwt")}`,
@@ -1795,7 +1905,7 @@ export default function QualityInspectionPage() {
 
     console.log('📤 Update data to send:', updateData);
 
-    const saveUrl = `http://localhost:1337/api/lab-submission-records/${saveId}`;
+    const saveUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records/${saveId}`;
     const res = await fetch(saveUrl, {
       method: 'PUT',
       headers: {

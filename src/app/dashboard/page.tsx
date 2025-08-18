@@ -81,7 +81,7 @@ export default function DashboardPage() {
   const [dashboardData, setDashboardData] = useState<Batches | null>(null);
   const fetchDashboardData = async (documentId: string) => {
     try {
-      const res = await fetch(`http://localhost:1337/api/batches/${documentId}?populate[Farm][populate]=*&populate[Batch_image][populate]=*&populate[lab_submission_records][populate]=*&populate[harvest_records][populate]=*&populate[fertilizer_records][populate]=*&populate[factory_submissions][populate]=*`, {
+      const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/batches/${documentId}?populate[Farm][populate]=*&populate[Batch_image][populate]=*&populate[lab_submission_records][populate]=*&populate[harvest_records][populate]=*&populate[fertilizer_records][populate]=*&populate[factory_submissions][populate]=*`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("jwt")}`,
         },
@@ -101,7 +101,7 @@ export default function DashboardPage() {
         farm_id: batch.Farm.documentId,
         location: batch.Farm.Farm_Name ?? "N/A",
         Farm_Status: batch.Farm.Farm_Status,
-        image: batch.Batch_image?.url ? `http://localhost:1337${batch.Batch_image.url}`
+        image: batch.Batch_image?.url ? `https://popular-trust-9012d3ebd9.strapiapp.com${batch.Batch_image.url}`
           : "",
         recent_fertilizer_record: batch.fertilizer_records.map((record: any) => ({
           id: record.id,
@@ -137,7 +137,7 @@ export default function DashboardPage() {
           status: record.Submission_status,
           harvest_record: record.harvest_record.documentId,
           report: record.Report?.[0]?.url
-            ? `http://localhost:1337${record.Report[0].url}`
+            ? `https://popular-trust-9012d3ebd9.strapiapp.com${record.Report[0].url}`
             : "",
         })),
         factory_records: batch.factory_submissions.map((record: any) => ({
@@ -165,7 +165,7 @@ export default function DashboardPage() {
 
   const fetchUserData = async () => {
     try {
-      const response = await fetch("http://localhost:1337/api/users/me?populate=*", {
+      const response = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/users/me?populate=*", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("jwt")}`,
         },
@@ -180,7 +180,7 @@ export default function DashboardPage() {
         name: userData.username || "",
         email: userData.email || "",
         avatar: userData.avatar?.url
-          ? `http://localhost:1337${userData.avatar.url}`
+          ? `https://popular-trust-9012d3ebd9.strapiapp.com${userData.avatar.url}`
           : "",
         role: userData.user_role || "",
       });
@@ -192,7 +192,7 @@ export default function DashboardPage() {
 
   const fetchBatch = async () => {
     try {
-      const response = await fetch(`http://localhost:1337/api/batches?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
+      const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/batches?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("jwt")}`,
         },

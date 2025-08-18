@@ -117,7 +117,7 @@ export default function QualityInspectionReportPage() {
       console.log('User Role:', role);
 
       // ดึงข้อมูล record โดยตรงก่อน
-      const recordUrl = `http://localhost:1337/api/lab-submission-records/${recordId}?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&populate[result_image][populate]=*&populate[Report][populate]=*`;
+      const recordUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records/${recordId}?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&populate[result_image][populate]=*&populate[Report][populate]=*`;
 
       const recordRes = await fetch(recordUrl, {
         headers: {
@@ -129,7 +129,7 @@ export default function QualityInspectionReportPage() {
         console.log('🔄 Direct fetch failed, trying alternative approach...');
 
         // Alternative: ดึงข้อมูลทั้งหมดแล้วค้นหา
-        const allRecordsUrl = `http://localhost:1337/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&populate[result_image][populate]=*&populate[Report][populate]=*`;
+        const allRecordsUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&populate[result_image][populate]=*&populate[Report][populate]=*`;
 
         const allRecordsRes = await fetch(allRecordsUrl, {
           headers: {
@@ -151,7 +151,7 @@ export default function QualityInspectionReportPage() {
 
             // สำหรับ Farmer ต้องตรวจสอบสิทธิ์เข้าถึง
             if (role === 'Farmer') {
-              const farmRes = await fetch(`http://localhost:1337/api/farms?documentId=${localStorage.getItem("userId")}`, {
+              const farmRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms?documentId=${localStorage.getItem("userId")}`, {
                 headers: {
                   Authorization: `Bearer ${localStorage.getItem('jwt')}`,
                 },
@@ -185,7 +185,7 @@ export default function QualityInspectionReportPage() {
 
       // สำหรับ Farmer ต้องตรวจสอบสิทธิ์เข้าถึง
       if (role === 'Farmer') {
-        const farmRes = await fetch(`http://localhost:1337/api/farms?documentId=${localStorage.getItem("userId")}`, {
+        const farmRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms?documentId=${localStorage.getItem("userId")}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('jwt')}`,
           },
@@ -212,6 +212,34 @@ export default function QualityInspectionReportPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getImageUrl = (imageData: any): string | null => {
+    if (!imageData) return null;
+
+    console.log("🖼️ Processing image data:", imageData);
+
+    // ลองหลายรูปแบบของ Strapi structure
+    const possibleUrls = [
+      imageData.url,                                    // Direct URL
+      imageData.data?.attributes?.url,                  // Strapi v4 structure  
+      imageData.attributes?.url,                        // Alternative structure
+      imageData.data?.url,                              // Another alternative
+    ];
+
+    const validUrl = possibleUrls.find(url => url);
+    console.log("🔗 Found image URL:", validUrl);
+
+    if (validUrl) {
+      // ตรวจสอบว่าเป็น full URL หรือไม่
+      if (validUrl.startsWith('http')) {
+        return validUrl;
+      } else {
+        return `https://popular-trust-9012d3ebd9.strapiapp.com${validUrl}`;
+      }
+    }
+
+    return null;
   };
 
   const processRecordData = (record: any) => {
@@ -272,26 +300,80 @@ export default function QualityInspectionReportPage() {
 
     // Process result image - ใช้วิธีเดียวกับโค้ดเดิม
     let resultImage = undefined;
-    if (attrs?.result_image?.data) {
-      const imageData = attrs.result_image.data;
-      resultImage = {
-        url: `http://localhost:1337${imageData.attributes?.url || imageData.url}`,
-        name: imageData.attributes?.name || imageData.name || 'Test Result'
-      };
-    } else if (attrs?.result_image) {
-      const imageData = attrs.result_image;
-      if (imageData.url) {
-        resultImage = {
-          url: `http://localhost:1337${imageData.url}`,
-          name: imageData.name || 'Test Result'
-        };
+    const imageSources = [
+      { source: attrs?.result_image, name: 'result_image' },
+      { source: attrs?.Report, name: 'Report' },
+      { source: attrs?.test_result_file, name: 'test_result_file' },
+      { source: attrs?.attachment, name: 'attachment' }
+    ];
+
+    for (const { source, name } of imageSources) {
+      if (source && !resultImage) {
+        console.log(`🔍 Checking ${name}:`, source);
+
+        // Case 1: Data with attributes structure
+        if (source.data?.attributes) {
+          const fileData = source.data.attributes;
+          const imageUrl = getImageUrl(fileData);
+
+          if (imageUrl) {
+            resultImage = {
+              url: imageUrl,
+              name: fileData.name || fileData.filename || `${name}_file`
+            };
+            console.log(`✅ Found image from ${name} (data.attributes):`, resultImage);
+            break;
+          }
+        }
+
+        // Case 2: Array of files
+        else if (Array.isArray(source.data) && source.data.length > 0) {
+          const fileData = source.data[0].attributes || source.data[0];
+          const imageUrl = getImageUrl(fileData);
+
+          if (imageUrl) {
+            resultImage = {
+              url: imageUrl,
+              name: fileData.name || fileData.filename || `${name}_file`
+            };
+            console.log(`✅ Found image from ${name} (array):`, resultImage);
+            break;
+          }
+        }
+
+        // Case 3: Direct data structure
+        else if (source.data) {
+          const fileData = source.data;
+          const imageUrl = getImageUrl(fileData);
+
+          if (imageUrl) {
+            resultImage = {
+              url: imageUrl,
+              name: fileData.name || fileData.filename || `${name}_file`
+            };
+            console.log(`✅ Found image from ${name} (data):`, resultImage);
+            break;
+          }
+        }
+
+        // Case 4: Direct structure (no data wrapper)
+        else if (source.url || source.attributes?.url) {
+          const imageUrl = getImageUrl(source);
+
+          if (imageUrl) {
+            resultImage = {
+              url: imageUrl,
+              name: source.name || source.attributes?.name || source.filename || `${name}_file`
+            };
+            console.log(`✅ Found image from ${name} (direct):`, resultImage);
+            break;
+          }
+        }
       }
-    } else if (attrs?.Report?.data) {
-      const reportData = attrs.Report.data;
-      resultImage = {
-        url: `http://localhost:1337${reportData.attributes?.url || reportData.url}`,
-        name: reportData.attributes?.name || reportData.name || 'Lab Report'
-      };
+    }
+
+    if (!resultImage) {
+      console.log('⚠️ No result image found in any source');
     }
 
     // Process the data for the report
@@ -470,15 +552,118 @@ export default function QualityInspectionReportPage() {
     return { status: finalStatus, details };
   };
 
-  const determineTestResult = (curcumin?: number, moisture?: number) => {
-    const curcuminThreshold = 3.0;
-    const moistureThreshold = 15.0;
+  const ResultFileDisplay = ({ resultImage }: { resultImage?: { url: string; name: string } }) => {
+    const [imageError, setImageError] = useState(false);
+    const [imageLoaded, setImageLoaded] = useState(false);
 
-    const curcuminPass = !curcumin || curcumin >= curcuminThreshold;
-    const moisturePass = !moisture || moisture <= moistureThreshold;
+    if (!resultImage) {
+      return (
+        <div className="text-center py-8">
+          <div className="p-4 bg-gray-100 rounded-full mb-4 w-16 h-16 mx-auto flex items-center justify-center">
+            <FileText className="h-10 w-10 text-gray-400" />
+          </div>
+          <p className="text-gray-500 font-medium mb-2">No Result File</p>
+          <p className="text-sm text-gray-400">Test result file not available</p>
+        </div>
+      );
+    }
 
-    return curcuminPass && moisturePass ? 'PASSED' : 'FAILED';
+    const isImageFile = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(resultImage.name);
+    const isExcelFile = /\.(xlsx|xls)$/i.test(resultImage.name);
+    const isPdfFile = /\.pdf$/i.test(resultImage.name);
+
+    if (isImageFile) {
+      return (
+        <div className="text-center">
+          {/* แสดง loading placeholder */}
+          {!imageLoaded && !imageError && (
+            <div className="w-full max-w-md mx-auto h-64 bg-gray-100 rounded-lg border mb-3 flex items-center justify-center">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                <p className="text-sm text-gray-500">Loading image...</p>
+              </div>
+            </div>
+          )}
+
+          {/* แสดงรูปภาพจริง */}
+          <img
+            src={resultImage.url}
+            alt="Test Result"
+            className={`w-full max-w-md mx-auto h-auto object-contain rounded-lg border mb-3 ${imageLoaded ? 'block' : 'hidden'
+              }`}
+            onLoad={() => {
+              console.log('✅ Image loaded successfully:', resultImage.url);
+              setImageLoaded(true);
+              setImageError(false);
+            }}
+            onError={(e) => {
+              console.error('❌ Image load error:', resultImage.url);
+              setImageError(true);
+              setImageLoaded(false);
+            }}
+          />
+
+          {/* แสดง error placeholder */}
+          {imageError && (
+            <div className="w-full max-w-md mx-auto h-64 bg-red-50 rounded-lg border mb-3 flex items-center justify-center">
+              <div className="text-center">
+                <div className="p-3 bg-red-100 rounded-full mb-2 w-12 h-12 mx-auto flex items-center justify-center">
+                  <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.732 16.5c-.77.833-.27 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <p className="text-red-600 text-sm font-medium">Failed to load image</p>
+                <p className="text-gray-500 text-xs mt-1">{resultImage.name}</p>
+              </div>
+            </div>
+          )}
+
+          <p className="text-sm text-gray-600 font-medium mb-3">{resultImage.name}</p>
+          <a
+            href={resultImage.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors print:hidden"
+          >
+            <Download className="h-4 w-4" />
+            Download Image
+          </a>
+        </div>
+      );
+    }
+
+    // แสดงไฟล์อื่นๆ (Excel, PDF, etc.)
+    return (
+      <div className="text-center py-6">
+        <div className="p-4 bg-blue-100 rounded-full mb-4 w-16 h-16 mx-auto flex items-center justify-center">
+          {isExcelFile ? (
+            <svg className="h-10 w-10 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M4 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H4zm0 2h12v10H4V5z" />
+              <path d="M6 7h8v1H6V7zm0 2h8v1H6V9zm0 2h8v1H6v-1z" />
+            </svg>
+          ) : isPdfFile ? (
+            <svg className="h-10 w-10 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M4 18h12V6h-4V2H4v16zm8-14v4h4l-4-4z" />
+            </svg>
+          ) : (
+            <FileText className="h-10 w-10 text-blue-600" />
+          )}
+        </div>
+        <p className="text-lg font-semibold text-gray-800 mb-2">Test Result File</p>
+        <p className="text-sm text-gray-600 mb-4">{resultImage.name}</p>
+        <a
+          href={resultImage.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors print:hidden"
+        >
+          <Download className="h-4 w-4" />
+          Download File
+        </a>
+      </div>
+    );
   };
+
 
   const handlePrint = () => {
     setIsPrintMode(true);
@@ -1036,93 +1221,28 @@ export default function QualityInspectionReportPage() {
         </p>
       </div>
 
-                  {/* Test Result File Section - ใช้รูปแบบตารางเหมือนส่วนอื่นๆ */}
-            <div className="mb-8">
-                <table className="w-full border-collapse border border-gray-400 print-table">
-                    <thead>
-                        <tr>
-                            <th className="border border-gray-400 p-3 bg-gray-50 font-bold">
-                                <div className="flex items-center justify-center gap-2">
-                                    <FileText className="h-5 w-5" />
-                                    Test Result File
-                                </div>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td className="border border-gray-400 p-6">
-                                {reportData.resultImage ? (
-                                    <div className="text-center">
-                                        {/* ตรวจสอบว่าเป็นไฟล์ภาพหรือไม่ */}
-                                        {reportData.resultImage.name && /\.(jpg|jpeg|png|gif|webp)$/i.test(reportData.resultImage.name) ? (
-                                            // แสดงรูปภาพ
-                                            <div>
-                                                <img
-                                                    src={reportData.resultImage.url}
-                                                    alt="Test Result"
-                                                    className="w-full max-w-md mx-auto h-auto object-contain rounded-lg border mb-3"
-                                                    onError={(e) => {
-                                                        console.error('Image load error:', e);
-                                                        (e.target as HTMLImageElement).style.display = 'none';
-                                                    }}
-                                                />
-                                                <p className="text-sm text-gray-600 font-medium mb-3">{reportData.resultImage.name}</p>
-                                                <a
-                                                    href={reportData.resultImage.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors print:hidden"
-                                                >
-                                                    <Download className="h-4 w-4" />
-                                                    Download Image
-                                                </a>
-                                            </div>
-                                        ) : (
-                                            // แสดงไฟล์อื่นๆ (Excel, PDF, etc.)
-                                            <div className="py-6">
-                                                <div className="p-4 bg-blue-100 rounded-full mb-4 w-16 h-16 mx-auto flex items-center justify-center">
-                                                    {reportData.resultImage.name?.toLowerCase().includes('.xlsx') || reportData.resultImage.name?.toLowerCase().includes('.xls') ? (
-                                                        <svg className="h-10 w-10 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path d="M4 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H4zm0 2h12v10H4V5z"/>
-                                                            <path d="M6 7h8v1H6V7zm0 2h8v1H6V9zm0 2h8v1H6v-1z"/>
-                                                        </svg>
-                                                    ) : reportData.resultImage.name?.toLowerCase().includes('.pdf') ? (
-                                                        <svg className="h-10 w-10 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path d="M4 18h12V6h-4V2H4v16zm8-14v4h4l-4-4z"/>
-                                                        </svg>
-                                                    ) : (
-                                                        <FileText className="h-10 w-10 text-blue-600" />
-                                                    )}
-                                                </div>
-                                                <p className="text-lg font-semibold text-gray-800 mb-2">Test Result File</p>
-                                                <p className="text-sm text-gray-600 mb-4">{reportData.resultImage.name}</p>
-                                                <a
-                                                    href={reportData.resultImage.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors print:hidden"
-                                                >
-                                                    <Download className="h-4 w-4" />
-                                                    Download File
-                                                </a>
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-8">
-                                        <div className="p-4 bg-gray-100 rounded-full mb-4 w-16 h-16 mx-auto flex items-center justify-center">
-                                            <FileText className="h-10 w-10 text-gray-400" />
-                                        </div>
-                                        <p className="text-gray-500 font-medium mb-2">No Result File</p>
-                                        <p className="text-sm text-gray-400">Test result file not available</p>
-                                    </div>
-                                )}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+      {/* Test Result File Section - ใช้รูปแบบตารางเหมือนส่วนอื่นๆ */}
+      <div className="mb-8">
+        <table className="w-full border-collapse border border-gray-400 print-table">
+          <thead>
+            <tr>
+              <th className="border border-gray-400 p-3 bg-gray-50 font-bold">
+                <div className="flex items-center justify-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Test Result File
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="border border-gray-400 p-6">
+                <ResultFileDisplay resultImage={reportData.resultImage} />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       {/* Signatures Section */}
       <div className="grid grid-cols-2 gap-8 mb-8">

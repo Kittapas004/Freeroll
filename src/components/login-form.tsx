@@ -30,7 +30,7 @@ export function LoginForm({
     setError("")
 
     try {
-      const res = await fetch("http://localhost:1337/api/auth/local", {
+      const res = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/auth/local", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -61,7 +61,7 @@ export function LoginForm({
 
   const fetchUserData = async () => {
     try {
-      const response = await fetch("http://localhost:1337/api/users/me", {
+      const response = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/users/me", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("jwt")}`,
         },

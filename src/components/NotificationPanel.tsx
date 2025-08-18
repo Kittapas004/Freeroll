@@ -61,7 +61,7 @@ export default function NotificationPanel({ selectedBatchId }: NotificationPanel
   const fecthNotifications = async () => {
     try {
       const response = await fetch(
-        `http://localhost:1337/api/notifications?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`,
+        `https://popular-trust-9012d3ebd9.strapiapp.com/api/notifications?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("jwt")}`,
@@ -96,7 +96,7 @@ export default function NotificationPanel({ selectedBatchId }: NotificationPanel
     }
     try {
       const response = await fetch(
-        `http://localhost:1337/api/notifications/${id}`,
+        `https://popular-trust-9012d3ebd9.strapiapp.com/api/notifications/${id}`,
         {
           method: "DELETE",
           headers: {

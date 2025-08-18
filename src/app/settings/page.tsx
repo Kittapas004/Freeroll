@@ -84,14 +84,14 @@ export default function SettingsPage() {
 
                 console.log("📦 Uploading file:", imageInputRef.current.files[0]);
 
-                const uploadRes = await fetch("http://localhost:1337/api/upload", {
+                const uploadRes = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/upload", {
                     method: "POST",
                     headers: {
-                      Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                     },
                     body: formData,
-                  });
-                  
+                });
+
 
 
                 if (!uploadRes.ok) {
@@ -116,7 +116,7 @@ export default function SettingsPage() {
 
             // Fetch the numeric user ID
             const jwt = localStorage.getItem("jwt");
-            const userRes = await fetch("http://localhost:1337/api/users/me", {
+            const userRes = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/users/me", {
                 headers: {
                     Authorization: `Bearer ${jwt}`,
                 },
@@ -130,7 +130,7 @@ export default function SettingsPage() {
             const userId = userDataResponse.id; // Numeric user ID
 
             // Update the user
-            const res = await fetch(`http://localhost:1337/api/users/${userId}`, {
+            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/users/${userId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -162,13 +162,11 @@ export default function SettingsPage() {
                 const jwt = localStorage.getItem("jwt");
                 console.log("JWT token:", jwt);
 
-                const res = await fetch('http://localhost:1337/api/users/me?populate=*', {
+                const res = await fetch('https://popular-trust-9012d3ebd9.strapiapp.com/api/users/me?populate=*', {
                     headers: {
                         Authorization: `Bearer ${jwt}`,
                     },
                 });
-
-                console.log("🔁 Status:", res.status);
 
                 if (!res.ok) {
                     const errorText = await res.text();
@@ -178,6 +176,17 @@ export default function SettingsPage() {
 
                 const data = await res.json();
                 console.log("✅ Fetched user:", data);
+
+                // Debug avatar data structure
+                console.log("🖼️ Avatar data:", data.avatar);
+                if (data.avatar) {
+                    console.log("🔗 Avatar URL structure:", {
+                        direct: data.avatar.url,
+                        nested: data.avatar.data?.attributes?.url,
+                        formats: data.avatar.data?.attributes?.formats
+                    });
+                }
+
                 setUser(data);
             } catch (err) {
                 console.error("❌ Error fetching user:", err);
@@ -186,6 +195,32 @@ export default function SettingsPage() {
 
         fetchUser();
     }, []);
+
+    const getAvatarUrl = (avatar: any) => {
+        if (!avatar) return null;
+
+        // ลองหลายรูปแบบของ Strapi structure
+        const possibleUrls = [
+            avatar.url,                                    // Direct URL
+            avatar.data?.attributes?.url,                  // Strapi v4 structure
+            avatar.data?.attributes?.formats?.thumbnail?.url, // Thumbnail format
+            avatar.data?.attributes?.formats?.small?.url,     // Small format
+        ];
+
+        const validUrl = possibleUrls.find(url => url);
+
+        if (validUrl) {
+            // ตรวจสอบว่าเป็น full URL หรือไม่
+            if (validUrl.startsWith('http')) {
+                return validUrl;
+            } else {
+                return `https://popular-trust-9012d3ebd9.strapiapp.com${validUrl}`;
+            }
+        }
+
+        return null;
+    };
+
 
     if (!user) {
         return <div className="p-6 text-gray-500">Loading user info...</div>;
@@ -225,12 +260,20 @@ export default function SettingsPage() {
                                         src={imagePreview}
                                         alt="Preview"
                                         className="absolute inset-0 object-cover w-full h-full rounded-full"
+                                        onError={(e) => {
+                                            console.error("❌ Error loading preview image");
+                                            setImagePreview(null);
+                                        }}
                                     />
-                                ) : user.avatar?.url ? (
+                                ) : getAvatarUrl(user.avatar) ? (
                                     <img
-                                        src={`http://localhost:1337${user.avatar.url}`}
-                                        alt="Preview"
+                                        src={getAvatarUrl(user.avatar)}
+                                        alt="Avatar"
                                         className="absolute inset-0 object-cover w-full h-full rounded-full"
+                                        onError={(e) => {
+                                            console.error("❌ Error loading avatar image:", getAvatarUrl(user.avatar));
+                                            // อาจจะ set state เพื่อไม่ให้แสดงรูปนี้อีก
+                                        }}
                                     />
                                 ) : (
                                     <div className="flex flex-col items-center gap-2 z-10">
@@ -375,7 +418,7 @@ export default function SettingsPage() {
                                             }
                                             try {
                                                 const jwt = localStorage.getItem("jwt");
-                                                const res = await fetch("http://localhost:1337/api/auth/change-password", {
+                                                const res = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/auth/change-password", {
                                                     method: "POST",
                                                     headers: {
                                                         "Content-Type": "application/json",
