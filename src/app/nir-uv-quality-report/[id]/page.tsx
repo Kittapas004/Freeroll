@@ -80,6 +80,24 @@ const TurmeRicLogo = () => (
     </div>
 );
 
+// เพิ่มฟังก์ชันเช็คว่ามีข้อมูล KaminCAL หรือไม่
+const hasKaminCALData = (kaminCAL: any) => {
+    // เช็คว่ามีข้อมูลอย่างน้อย 1 field ที่มีค่า
+    return (
+        (kaminCAL.sample_name && kaminCAL.sample_name.trim() !== '') ||
+        kaminCAL.plant_weight > 0 ||
+        kaminCAL.solvent_volume > 0 ||
+        kaminCAL.average_od > 0 ||
+        kaminCAL.concentration > 0 ||
+        kaminCAL.number_of_replications > 0 ||
+        kaminCAL.first_time > 0 ||
+        kaminCAL.second_time > 0 ||
+        kaminCAL.third_time > 0 ||
+        kaminCAL.curcuminoid_percentage > 0 ||
+        (kaminCAL.analytical_instrument && kaminCAL.analytical_instrument !== 'HPLC') // เช็คว่าไม่ใช่ค่า default
+    );
+};
+
 export default function QualityInspectionReportView() {
     const [reportData, setReportData] = useState<ReportData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -857,106 +875,130 @@ export default function QualityInspectionReportView() {
             </div>
 
             {/* KaminCAL Analysis Details Table */}
-            <div className="mb-8">
-                <table className="w-full border-collapse border border-gray-400 print-table">
-                    <thead>
-                        <tr>
-                            <th className="border border-gray-400 p-3 bg-gray-50 font-bold" colSpan={4}>
-                                KaminCAL Analysis Details
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {/* Sample Information */}
-                        <tr>
-                            <td className="border border-gray-400 p-3 font-semibold bg-gray-100" colSpan={4}>
-                                Sample Information
-                            </td>
-                        </tr>
-                        <tr>
-                            <td className="border border-gray-400 p-3 font-medium">Sample Name:</td>
-                            <td className="border border-gray-400 p-3">
-                                {reportData.kaminCAL.sample_name || 'N/A'}
-                            </td>
-                            <td className="border border-gray-400 p-3 font-medium">Plant Weight:</td>
-                            <td className="border border-gray-400 p-3">
-                                {reportData.kaminCAL.plant_weight > 0 ? `${reportData.kaminCAL.plant_weight} mg` : 'N/A'}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td className="border border-gray-400 p-3 font-medium">Solvent Volume:</td>
-                            <td className="border border-gray-400 p-3">
-                                {reportData.kaminCAL.solvent_volume > 0 ? `${reportData.kaminCAL.solvent_volume} mL` : 'N/A'}
-                            </td>
-                            <td className="border border-gray-400 p-3 font-medium">Average OD:</td>
-                            <td className="border border-gray-400 p-3">
-                                {reportData.kaminCAL.average_od > 0 ? reportData.kaminCAL.average_od : 'N/A'}
-                            </td>
-                        </tr>
+            {hasKaminCALData(reportData.kaminCAL) && (
+                <div className="mb-8">
+                    <table className="w-full border-collapse border border-gray-400 print-table">
+                        <thead>
+                            <tr>
+                                <th className="border border-gray-400 p-3 bg-gray-50 font-bold" colSpan={4}>
+                                    KaminCAL Analysis Details
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {/* Sample Information - แสดงเฉพาะเมื่อมีข้อมูล sample */}
+                            {((reportData.kaminCAL.sample_name && reportData.kaminCAL.sample_name.trim() !== '') ||
+                                reportData.kaminCAL.plant_weight > 0 ||
+                                reportData.kaminCAL.solvent_volume > 0 ||
+                                reportData.kaminCAL.average_od > 0) && (
+                                    <>
+                                        <tr>
+                                            <td className="border border-gray-400 p-3 font-semibold bg-gray-100" colSpan={4}>
+                                                Sample Information
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td className="border border-gray-400 p-3 font-medium">Sample Name:</td>
+                                            <td className="border border-gray-400 p-3">
+                                                {reportData.kaminCAL.sample_name || 'N/A'}
+                                            </td>
+                                            <td className="border border-gray-400 p-3 font-medium">Plant Weight:</td>
+                                            <td className="border border-gray-400 p-3">
+                                                {reportData.kaminCAL.plant_weight > 0 ? `${reportData.kaminCAL.plant_weight} mg` : 'N/A'}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td className="border border-gray-400 p-3 font-medium">Solvent Volume:</td>
+                                            <td className="border border-gray-400 p-3">
+                                                {reportData.kaminCAL.solvent_volume > 0 ? `${reportData.kaminCAL.solvent_volume} mL` : 'N/A'}
+                                            </td>
+                                            <td className="border border-gray-400 p-3 font-medium">Average OD:</td>
+                                            <td className="border border-gray-400 p-3">
+                                                {reportData.kaminCAL.average_od > 0 ? reportData.kaminCAL.average_od : 'N/A'}
+                                            </td>
+                                        </tr>
+                                    </>
+                                )}
 
-                        {/* Analysis Parameters */}
-                        <tr>
-                            <td className="border border-gray-400 p-3 font-semibold bg-gray-100" colSpan={4}>
-                                Analysis Parameters
-                            </td>
-                        </tr>
-                        <tr>
-                            <td className="border border-gray-400 p-3 font-medium">Concentration:</td>
-                            <td className="border border-gray-400 p-3">
-                                {reportData.kaminCAL.concentration > 0 ? `${reportData.kaminCAL.concentration} mg/mL` : 'N/A'}
-                            </td>
-                            <td className="border border-gray-400 p-3 font-medium">Replications:</td>
-                            <td className="border border-gray-400 p-3">
-                                {reportData.kaminCAL.number_of_replications > 0 ? reportData.kaminCAL.number_of_replications : 'N/A'}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td className="border border-gray-400 p-3 font-medium">Instrument:</td>
-                            <td className="border border-gray-400 p-3">
-                                {reportData.kaminCAL.analytical_instrument}
-                            </td>
-                            <td className="border border-gray-400 p-3 font-medium">Curcuminoid %:</td>
-                            <td className="border border-gray-400 p-3 font-bold">
-                                {reportData.kaminCAL.curcuminoid_percentage > 0 ? `${reportData.kaminCAL.curcuminoid_percentage}%` : 'N/A'}
-                            </td>
-                        </tr>
+                            {/* Analysis Parameters - แสดงเฉพาะเมื่อมีข้อมูล analysis */}
+                            {(reportData.kaminCAL.concentration > 0 ||
+                                reportData.kaminCAL.number_of_replications > 0 ||
+                                reportData.kaminCAL.curcuminoid_percentage > 0 ||
+                                (reportData.kaminCAL.analytical_instrument && reportData.kaminCAL.analytical_instrument !== 'HPLC')) && (
+                                    <>
+                                        <tr>
+                                            <td className="border border-gray-400 p-3 font-semibold bg-gray-100" colSpan={4}>
+                                                Analysis Parameters
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td className="border border-gray-400 p-3 font-medium">Concentration:</td>
+                                            <td className="border border-gray-400 p-3">
+                                                {reportData.kaminCAL.concentration > 0 ? `${reportData.kaminCAL.concentration} mg/mL` : 'N/A'}
+                                            </td>
+                                            <td className="border border-gray-400 p-3 font-medium">Replications:</td>
+                                            <td className="border border-gray-400 p-3">
+                                                {reportData.kaminCAL.number_of_replications > 0 ? reportData.kaminCAL.number_of_replications : 'N/A'}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td className="border border-gray-400 p-3 font-medium">Instrument:</td>
+                                            <td className="border border-gray-400 p-3">
+                                                {reportData.kaminCAL.analytical_instrument}
+                                            </td>
+                                            <td className="border border-gray-400 p-3 font-medium">Curcuminoid %:</td>
+                                            <td className="border border-gray-400 p-3 font-bold">
+                                                {reportData.kaminCAL.curcuminoid_percentage > 0 ? `${reportData.kaminCAL.curcuminoid_percentage}%` : 'N/A'}
+                                            </td>
+                                        </tr>
+                                    </>
+                                )}
 
-                        {/* Time Measurements */}
-                        <tr>
-                            <td className="border border-gray-400 p-3 font-semibold bg-gray-100" colSpan={4}>
-                                Time Measurements
-                            </td>
-                        </tr>
-                        <tr>
-                            <td className="border border-gray-400 p-3 font-medium">Measurement</td>
-                            <td className="border border-gray-400 p-3 font-medium">First Time</td>
-                            <td className="border border-gray-400 p-3 font-medium">Second Time</td>
-                            <td className="border border-gray-400 p-3 font-medium">Third Time</td>
-                        </tr>
-                        <tr>
-                            <td className="border border-gray-400 p-3">Values (mg/mL)</td>
-                            <td className="border border-gray-400 p-3 text-center">
-                                {reportData.kaminCAL.first_time > 0 ? reportData.kaminCAL.first_time : 'N/A'}
-                            </td>
-                            <td className="border border-gray-400 p-3 text-center">
-                                {reportData.kaminCAL.second_time > 0 ? reportData.kaminCAL.second_time : 'N/A'}
-                            </td>
-                            <td className="border border-gray-400 p-3 text-center">
-                                {reportData.kaminCAL.third_time > 0 ? reportData.kaminCAL.third_time : 'N/A'}
-                            </td>
-                        </tr>
-                        <tr>
-                            <td className="border border-gray-400 p-3 font-medium">Content Status</td>
-                            <td className={`border border-gray-400 p-3 text-center font-medium ${reportData.kaminCAL.curcuminoid_content === 'Pass'
-                                ? 'print-result-pass bg-green-100 text-green-800'
-                                : 'print-result-fail bg-red-100 text-red-800'
-                                }`} colSpan={3}>
-                                {reportData.kaminCAL.curcuminoid_content}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                            {/* Time Measurements - แสดงเฉพาะเมื่อมีข้อมูล time measurements */}
+                            {(reportData.kaminCAL.first_time > 0 ||
+                                reportData.kaminCAL.second_time > 0 ||
+                                reportData.kaminCAL.third_time > 0) && (
+                                    <>
+                                        <tr>
+                                            <td className="border border-gray-400 p-3 font-semibold bg-gray-100" colSpan={4}>
+                                                Time Measurements
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td className="border border-gray-400 p-3 font-medium">Measurement</td>
+                                            <td className="border border-gray-400 p-3 font-medium">First Time</td>
+                                            <td className="border border-gray-400 p-3 font-medium">Second Time</td>
+                                            <td className="border border-gray-400 p-3 font-medium">Third Time</td>
+                                        </tr>
+                                        <tr>
+                                            <td className="border border-gray-400 p-3">Values (mg/mL)</td>
+                                            <td className="border border-gray-400 p-3 text-center">
+                                                {reportData.kaminCAL.first_time > 0 ? reportData.kaminCAL.first_time : 'N/A'}
+                                            </td>
+                                            <td className="border border-gray-400 p-3 text-center">
+                                                {reportData.kaminCAL.second_time > 0 ? reportData.kaminCAL.second_time : 'N/A'}
+                                            </td>
+                                            <td className="border border-gray-400 p-3 text-center">
+                                                {reportData.kaminCAL.third_time > 0 ? reportData.kaminCAL.third_time : 'N/A'}
+                                            </td>
+                                        </tr>
+                                    </>
+                                )}
+
+                            {/* Content Status - แสดงเสมอถ้ามี KaminCAL data */}
+                            <tr>
+                                <td className="border border-gray-400 p-3 font-medium">Content Status</td>
+                                <td className={`border border-gray-400 p-3 text-center font-medium ${reportData.kaminCAL.curcuminoid_content === 'Pass'
+                                    ? 'print-result-pass bg-green-100 text-green-800'
+                                    : 'print-result-fail bg-red-100 text-red-800'
+                                    }`} colSpan={3}>
+                                    {reportData.kaminCAL.curcuminoid_content}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
             {/* Test Result File Section - ใช้รูปแบบตารางเหมือนส่วนอื่นๆ */}
             <div className="mb-8">

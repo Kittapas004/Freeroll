@@ -737,539 +737,782 @@ export default function QualityInspectionReportPage() {
     );
   }
 
-  const reportContent = (
-    <div className="max-w-4xl mx-auto bg-white">
-      {/* Header with Logo */}
-      <div className="text-center mb-8">
-        <MPICLogo />
-        <h1 className="text-xl font-bold mb-2">
-          รายงานผลการวิเคราะห์ปริมาณสารเคอร์คูมินอยด์ ด้วย HPLC
-        </h1>
-        <p className="text-lg font-semibold">
-          เลขที่รับเรื่อง {reportData.requestNumber}
-        </p>
-      </div>
+  const reportContent = (<div className="max-w-4xl mx-auto bg-white">
+    {/* Enhanced Print Styles */}
+    <style jsx global>{`
+      @media print {
+        * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        
+        body {
+          font-size: 12pt !important;
+          line-height: 1.4 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        
+        @page {
+          margin: 0.75in !important;
+          size: A4 !important;
+        }
+        
+        .print\\:hidden {
+          display: none !important;
+        }
+        
+        /* Main container */
+        .print-container {
+          max-width: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: white !important;
+        }
+        
+        /* Header section */
+        .print-header {
+          text-align: center !important;
+          margin-bottom: 20px !important;
+          page-break-inside: avoid !important;
+        }
+        
+        .print-header img {
+          max-width: 80px !important;
+          height: auto !important;
+        }
+        
+        .print-header h1 {
+          font-size: 16pt !important;
+          font-weight: bold !important;
+          margin: 10px 0 !important;
+          line-height: 1.2 !important;
+        }
+        
+        .print-header p {
+          font-size: 14pt !important;
+          margin: 5px 0 !important;
+        }
+        
+        /* Table styles */
+        .print-table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          margin-bottom: 16px !important;
+          page-break-inside: auto !important;
+        }
+        
+        .print-table td, 
+        .print-table th {
+          border: 1px solid #333 !important;
+          padding: 8px 6px !important;
+          text-align: left !important;
+          font-size: 11pt !important;
+          line-height: 1.3 !important;
+          vertical-align: top !important;
+        }
+        
+        .print-table th {
+          background-color: #f0f0f0 !important;
+          font-weight: bold !important;
+          font-size: 12pt !important;
+        }
+        
+        .print-table .bg-gray-50 {
+          background-color: #f8f8f8 !important;
+        }
+        
+        .print-table .bg-blue-50 {
+          background-color: #e6f3ff !important;
+        }
+        
+        .print-table .bg-green-50 {
+          background-color: #e6ffe6 !important;
+        }
+        
+        .print-table .bg-purple-50 {
+          background-color: #f0e6ff !important;
+        }
+        
+        .print-table .bg-yellow-50 {
+          background-color: #fffbe6 !important;
+        }
+        
+        /* Result status styles */
+        .print-result-pass {
+          background-color: #d4edda !important;
+          color: #155724 !important;
+          font-weight: bold !important;
+        }
+        
+        .print-result-fail {
+          background-color: #f8d7da !important;
+          color: #721c24 !important;
+          font-weight: bold !important;
+        }
+        
+        /* Specific section breaks */
+        .print-section {
+          page-break-inside: avoid !important;
+          margin-bottom: 16px !important;
+        }
+        
+        .print-section-title {
+          font-size: 13pt !important;
+          font-weight: bold !important;
+          margin-bottom: 8px !important;
+        }
+        
+        /* Final result section */
+        .print-final-result {
+          page-break-before: auto !important;
+          page-break-inside: avoid !important;
+          margin: 20px 0 !important;
+        }
+        
+        .print-final-result h2 {
+          font-size: 18pt !important;
+          margin: 10px 0 !important;
+        }
+        
+        /* Test result file section */
+        .print-file-section {
+          page-break-inside: avoid !important;
+          text-align: center !important;
+        }
+        
+        .print-file-section img {
+          max-width: 400px !important;
+          max-height: 300px !important;
+          object-fit: contain !important;
+        }
+        
+        /* Signatures section */
+        .print-signatures {
+          page-break-inside: avoid !important;
+          margin-top: 30px !important;
+        }
+        
+        .print-signature-line {
+          border-bottom: 1px solid #333 !important;
+          height: 60px !important;
+          margin-bottom: 10px !important;
+        }
+        
+        /* Footer */
+        .print-footer {
+          margin-top: 20px !important;
+          text-align: center !important;
+          font-size: 10pt !important;
+          border-top: 1px solid #ddd !important;
+          padding-top: 10px !important;
+        }
+        
+        /* Whitespace preservation */
+        .whitespace-pre-line {
+          white-space: pre-line !important;
+        }
+        
+        /* Force page breaks where needed */
+        .page-break-before {
+          page-break-before: always !important;
+        }
+        
+        .page-break-after {
+          page-break-after: always !important;
+        }
+        
+        /* Prevent orphans and widows */
+        p, td, th {
+          orphans: 2 !important;
+          widows: 2 !important;
+        }
+        
+        /* List styles */
+        ul {
+          margin: 8px 0 !important;
+          padding-left: 20px !important;
+        }
+        
+        li {
+          margin: 4px 0 !important;
+          line-height: 1.3 !important;
+        }
+        
+        /* Text alignment helpers */
+        .text-center {
+          text-align: center !important;
+        }
+        
+        .text-left {
+          text-align: left !important;
+        }
+        
+        .font-bold {
+          font-weight: bold !important;
+        }
+        
+        .italic {
+          font-style: italic !important;
+        }
+        
+        /* Color preservation for important elements */
+        .text-green-600 {
+          color: #16a34a !important;
+        }
+        
+        .text-red-600 {
+          color: #dc2626 !important;
+        }
+        
+        .text-green-800 {
+          color: #166534 !important;
+        }
+        
+        .text-red-800 {
+          color: #991b1b !important;
+        }
+        
+        .bg-green-100 {
+          background-color: #dcfce7 !important;
+        }
+        
+        .bg-red-100 {
+          background-color: #fee2e2 !important;
+        }
+      }
+    `}</style>
+    {/* Header - เพิ่ม class สำหรับ print */}
+    <div className="text-center mb-8 print-header print-section">
+      <MPICLogo />
+      <h1 className="text-xl font-bold mb-2">
+        รายงานผลการวิเคราะห์ปริมาณสารเคอร์คูมินอยด์ ด้วย HPLC
+      </h1>
+      <p className="text-lg font-semibold">
+        เลขที่รับเรื่อง {reportData.requestNumber}
+      </p>
+    </div>
 
-      {/* Report Information Table */}
-      <div className="mb-8">
-        <table className="w-full border-collapse border border-gray-400">
-          <tbody>
-            <tr>
-              <td className="border border-gray-400 p-3 font-semibold bg-gray-50 w-1/3">
-                เลขที่รายงานผล
-              </td>
-              <td className="border border-gray-400 p-3" colSpan={2}>
-                {reportData.reportNumber}
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                วันที่ออกรายงานผล
-              </td>
-              <td className="border border-gray-400 p-3" colSpan={2}>
-                {reportData.reportDate}
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                ชื่อผู้ส่งตัวอย่าง
-              </td>
-              <td className="border border-gray-400 p-3" colSpan={2}>
-                {reportData.sampleReceiver}
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                ข้อมูลติดต่อผู้ส่งตัวอย่าง
-              </td>
-              <td className="border border-gray-400 p-3" colSpan={2}>
-                <div className="whitespace-pre-line">{reportData.contactInfo}</div>
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                วันที่รับตัวอย่าง
-              </td>
-              <td className="border border-gray-400 p-3" colSpan={2}>
-                {reportData.receiveDate}
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                วันที่เริ่มทดสอบ
-              </td>
-              <td className="border border-gray-400 p-3" colSpan={2}>
-                {reportData.testStartDate}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    {/* Report Information Table */}
+    <div className="mb-8 print-section">
+      <table className="w-full border-collapse border border-gray-400 print-table">
+        <tbody>
+          <tr>
+            <td className="border border-gray-400 p-3 font-semibold bg-gray-50 w-1/3">
+              เลขที่รายงานผล
+            </td>
+            <td className="border border-gray-400 p-3" colSpan={2}>
+              {reportData.reportNumber}
+            </td>
+          </tr>
+          <tr>
+            <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+              วันที่ออกรายงานผล
+            </td>
+            <td className="border border-gray-400 p-3" colSpan={2}>
+              {reportData.reportDate}
+            </td>
+          </tr>
+          <tr>
+            <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+              ชื่อผู้ส่งตัวอย่าง
+            </td>
+            <td className="border border-gray-400 p-3" colSpan={2}>
+              {reportData.sampleReceiver}
+            </td>
+          </tr>
+          <tr>
+            <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+              ข้อมูลติดต่อผู้ส่งตัวอย่าง
+            </td>
+            <td className="border border-gray-400 p-3" colSpan={2}>
+              <div className="whitespace-pre-line">{reportData.contactInfo}</div>
+            </td>
+          </tr>
+          <tr>
+            <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+              วันที่รับตัวอย่าง
+            </td>
+            <td className="border border-gray-400 p-3" colSpan={2}>
+              {reportData.receiveDate}
+            </td>
+          </tr>
+          <tr>
+            <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+              วันที่เริ่มทดสอบ
+            </td>
+            <td className="border border-gray-400 p-3" colSpan={2}>
+              {reportData.testStartDate}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-      {/* Sample Information Table */}
-      <div className="mb-8">
-        <table className="w-full border-collapse border border-gray-400">
-          <tbody>
-            <tr>
-              <td className="border border-gray-400 p-3 font-semibold bg-gray-50 w-1/3">
-                ข้อมูลตัวอย่างทดสอบ
-              </td>
-              <td className="border border-gray-400 p-3 font-semibold bg-gray-50 w-1/4">
-                รหัสตัวอย่างวิเคราะห์
-              </td>
-              <td className="border border-gray-400 p-3 font-bold">
-                {reportData.sampleId}
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                ชื่อตัวอย่าง
-              </td>
-              <td className="border border-gray-400 p-3" colSpan={2}>
-                {reportData.sampleName}
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                ชื่อวิทยาศาสตร์ / ชื่อวงศ์ (ถ้ามี)
-              </td>
-              <td className="border border-gray-400 p-3 italic" colSpan={2}>
-                {reportData.scientificName}
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                รหัสวัตถุดิบ/ตัวอย่าง
-              </td>
-              <td className="border border-gray-400 p-3" colSpan={2}>
-                ตัวอย่างที่ 1<br />({reportData.sampleCode})
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-3 font-semibold bg-gray-50" rowSpan={2}>
-                ลักษณะและสภาพตัวอย่าง
-              </td>
-              <td className="border border-gray-400 p-3">
-                ประเภทตัวอย่าง: {reportData.sampleType}
-              </td>
-              <td className="border border-gray-400 p-3">
-                จำนวน: {reportData.quantity}
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-3">
-                น้ำหนัก/ปริมาณ: {reportData.weight}
-              </td>
-              <td className="border border-gray-400 p-3">
-                อุณหภูมิขณะรับ: {reportData.temperature}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    {/* Sample Information Table */}
+    <div className="mb-8 print-section">
+      <table className="w-full border-collapse border border-gray-400 print-table">
+        <tbody>
+          <tr>
+            <td className="border border-gray-400 p-3 font-semibold bg-gray-50 w-1/3">
+              ข้อมูลตัวอย่างทดสอบ
+            </td>
+            <td className="border border-gray-400 p-3 font-semibold bg-gray-50 w-1/4">
+              รหัสตัวอย่างวิเคราะห์
+            </td>
+            <td className="border border-gray-400 p-3 font-bold">
+              {reportData.sampleId}
+            </td>
+          </tr>
+          <tr>
+            <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+              ชื่อตัวอย่าง
+            </td>
+            <td className="border border-gray-400 p-3" colSpan={2}>
+              {reportData.sampleName}
+            </td>
+          </tr>
+          <tr>
+            <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+              ชื่อวิทยาศาสตร์ / ชื่อวงศ์ (ถ้ามี)
+            </td>
+            <td className="border border-gray-400 p-3 italic" colSpan={2}>
+              {reportData.scientificName}
+            </td>
+          </tr>
+          <tr>
+            <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+              รหัสวัตถุดิบ/ตัวอย่าง
+            </td>
+            <td className="border border-gray-400 p-3" colSpan={2}>
+              ตัวอย่างที่ 1<br />({reportData.sampleCode})
+            </td>
+          </tr>
+          <tr>
+            <td className="border border-gray-400 p-3 font-semibold bg-gray-50" rowSpan={2}>
+              ลักษณะและสภาพตัวอย่าง
+            </td>
+            <td className="border border-gray-400 p-3">
+              ประเภทตัวอย่าง: {reportData.sampleType}
+            </td>
+            <td className="border border-gray-400 p-3">
+              จำนวน: {reportData.quantity}
+            </td>
+          </tr>
+          <tr>
+            <td className="border border-gray-400 p-3">
+              น้ำหนัก/ปริมาณ: {reportData.weight}
+            </td>
+            <td className="border border-gray-400 p-3">
+              อุณหภูมิขณะรับ: {reportData.temperature}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-      {/* Test Results Table */}
-      <div className="mb-8">
-        <table className="w-full border-collapse border border-gray-400">
+    {/* Test Results Table */}
+    <div className="mb-8 print-section">
+      <table className="w-full border-collapse border border-gray-400 print-table">
+        <thead>
+          <tr>
+            <th className="border border-gray-400 p-3 bg-gray-50 font-bold">
+              รายการทดสอบ
+            </th>
+            <th className="border border-gray-400 p-3 bg-gray-50 font-bold">
+              ผลการทดสอบ
+            </th>
+            <th className="border border-gray-400 p-3 bg-gray-50 font-bold">
+              หน่วย
+            </th>
+            <th className="border border-gray-400 p-3 bg-gray-50 font-bold">
+              วิธีทดสอบอ้างอิง
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="border border-gray-400 p-3 font-bold" colSpan={4}>
+              Curcuminoids
+            </td>
+          </tr>
+          <tr>
+            <td className="border border-gray-400 p-3">
+              Bisdemethoxycurcumin (BDMC)
+            </td>
+            <td className="border border-gray-400 p-3 text-center">
+              {reportData.bdmcResult}
+            </td>
+            <td className="border border-gray-400 p-3 text-center">mg/g</td>
+            <td className="border border-gray-400 p-3" rowSpan={4}>
+              {reportData.methodReference}<br />
+              {reportData.methodDetails}
+            </td>
+          </tr>
+          <tr>
+            <td className="border border-gray-400 p-3">
+              Desmethoxycurcumin (DMC)
+            </td>
+            <td className="border border-gray-400 p-3 text-center">
+              {reportData.dmcResult}
+            </td>
+            <td className="border border-gray-400 p-3 text-center">mg/g</td>
+          </tr>
+          <tr>
+            <td className="border border-gray-400 p-3">
+              Curcumin (CUR)
+            </td>
+            <td className="border border-gray-400 p-3 text-center">
+              {reportData.curResult}
+            </td>
+            <td className="border border-gray-400 p-3 text-center">mg/g</td>
+          </tr>
+          <tr>
+            <td className="border border-gray-400 p-3 font-bold">
+              Total Curcuminoids
+            </td>
+            <td className="border border-gray-400 p-3 text-center font-bold">
+              {reportData.totalCurcuminoids}*
+            </td>
+            <td className="border border-gray-400 p-3 text-center">mg/g</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    {/* Additional Information - Batch & Farm Details */}
+    <div className="mb-8 print-section">
+      <table className="w-full border-collapse border border-gray-400 print-table">
+        <thead>
+          <tr>
+            <th className="border border-gray-400 p-3 bg-blue-50 font-bold" colSpan={4}>
+              ข้อมูลเพิ่มเติม - รายละเอียดแบทช์และฟาร์ม
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+              Batch ID
+            </td>
+            <td className="border border-gray-400 p-3">
+              {reportData.batchId}
+            </td>
+            <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+              ฟาร์ม
+            </td>
+            <td className="border border-gray-400 p-3">
+              {reportData.farmName}
+            </td>
+          </tr>
+          <tr>
+            <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+              คุณภาพ
+            </td>
+            <td className="border border-gray-400 p-3">
+              {reportData.qualityGrade}
+            </td>
+            <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+              ผลผลิต
+            </td>
+            <td className="border border-gray-400 p-3">
+              {reportData.yield > 0 ? `${reportData.yield} ${reportData.yieldUnit}` : 'N/A'}
+            </td>
+          </tr>
+          <tr>
+            <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+              วันที่เก็บเกี่ยว
+            </td>
+            <td className="border border-gray-400 p-3">
+              {reportData.harvestDate ? new Date(reportData.harvestDate).toLocaleDateString('th-TH') : 'N/A'}
+            </td>
+            <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+              สถานะการส่งตัวอย่าง
+            </td>
+            <td className="border border-gray-400 p-3">
+              {reportData.status}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    {/* Standard Test Results (if available) */}
+    {(reportData.curcuminQuality || reportData.moistureQuality) && (
+      <div className="mb-8 print-section">
+        <table className="w-full border-collapse border border-gray-400 print-table">
           <thead>
             <tr>
+              <th className="border border-gray-400 p-3 bg-green-50 font-bold" colSpan={4}>
+                ผลการทดสอบมาตรฐาน (NIR/UV-Vis)
+              </th>
+            </tr>
+            <tr>
               <th className="border border-gray-400 p-3 bg-gray-50 font-bold">
-                รายการทดสอบ
+                พารามิเตอร์การทดสอบ
               </th>
               <th className="border border-gray-400 p-3 bg-gray-50 font-bold">
                 ผลการทดสอบ
               </th>
               <th className="border border-gray-400 p-3 bg-gray-50 font-bold">
-                หน่วย
+                เกณฑ์มาตรฐาน
               </th>
               <th className="border border-gray-400 p-3 bg-gray-50 font-bold">
-                วิธีทดสอบอ้างอิง
+                สถานะ
               </th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td className="border border-gray-400 p-3 font-bold" colSpan={4}>
-                Curcuminoids
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-3">
-                Bisdemethoxycurcumin (BDMC)
-              </td>
-              <td className="border border-gray-400 p-3 text-center">
-                {reportData.bdmcResult}
-              </td>
-              <td className="border border-gray-400 p-3 text-center">mg/g</td>
-              <td className="border border-gray-400 p-3" rowSpan={4}>
-                {reportData.methodReference}<br />
-                {reportData.methodDetails}
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-3">
-                Desmethoxycurcumin (DMC)
-              </td>
-              <td className="border border-gray-400 p-3 text-center">
-                {reportData.dmcResult}
-              </td>
-              <td className="border border-gray-400 p-3 text-center">mg/g</td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-3">
-                Curcumin (CUR)
-              </td>
-              <td className="border border-gray-400 p-3 text-center">
-                {reportData.curResult}
-              </td>
-              <td className="border border-gray-400 p-3 text-center">mg/g</td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-3 font-bold">
-                Total Curcuminoids
-              </td>
-              <td className="border border-gray-400 p-3 text-center font-bold">
-                {reportData.totalCurcuminoids}*
-              </td>
-              <td className="border border-gray-400 p-3 text-center">mg/g</td>
-            </tr>
+            {reportData.curcuminQuality && (
+              <tr>
+                <td className="border border-gray-400 p-3">
+                  ปริมาณเคอร์คูมินอยด์ (วิธีมาตรฐาน)
+                </td>
+                <td className="border border-gray-400 p-3 text-center">
+                  {reportData.curcuminQuality}%
+                </td>
+                <td className="border border-gray-400 p-3 text-center">
+                  ≥ 3.0%
+                </td>
+                <td className="border border-gray-400 p-3 text-center">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${reportData.curcuminQuality >= 3 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {reportData.curcuminQuality >= 3 ? 'ผ่าน' : 'ไม่ผ่าน'}
+                  </span>
+                </td>
+              </tr>
+            )}
+            {reportData.moistureQuality && (
+              <tr>
+                <td className="border border-gray-400 p-3">
+                  ปริมาณความชื้น
+                </td>
+                <td className="border border-gray-400 p-3 text-center">
+                  {reportData.moistureQuality}%
+                </td>
+                <td className="border border-gray-400 p-3 text-center">
+                  ≤ 15.0%
+                </td>
+                <td className="border border-gray-400 p-3 text-center">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${reportData.moistureQuality <= 15 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {reportData.moistureQuality <= 15 ? 'ผ่าน' : 'ไม่ผ่าน'}
+                  </span>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
+    )}
 
-      {/* Additional Information - Batch & Farm Details */}
-      <div className="mb-8">
-        <table className="w-full border-collapse border border-gray-400">
-          <thead>
-            <tr>
-              <th className="border border-gray-400 p-3 bg-blue-50 font-bold" colSpan={4}>
-                ข้อมูลเพิ่มเติม - รายละเอียดแบทช์และฟาร์ม
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                Batch ID
-              </td>
-              <td className="border border-gray-400 p-3">
-                {reportData.batchId}
-              </td>
-              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                ฟาร์ม
-              </td>
-              <td className="border border-gray-400 p-3">
-                {reportData.farmName}
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                คุณภาพ
-              </td>
-              <td className="border border-gray-400 p-3">
-                {reportData.qualityGrade}
-              </td>
-              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                ผลผลิต
-              </td>
-              <td className="border border-gray-400 p-3">
-                {reportData.yield > 0 ? `${reportData.yield} ${reportData.yieldUnit}` : 'N/A'}
-              </td>
-            </tr>
-            <tr>
-              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                วันที่เก็บเกี่ยว
-              </td>
-              <td className="border border-gray-400 p-3">
-                {reportData.harvestDate ? new Date(reportData.harvestDate).toLocaleDateString('th-TH') : 'N/A'}
-              </td>
-              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                สถานะการส่งตัวอย่าง
-              </td>
-              <td className="border border-gray-400 p-3">
-                {reportData.status}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      {/* Standard Test Results (if available) */}
-      {(reportData.curcuminQuality || reportData.moistureQuality) && (
-        <div className="mb-8">
-          <table className="w-full border-collapse border border-gray-400">
-            <thead>
-              <tr>
-                <th className="border border-gray-400 p-3 bg-green-50 font-bold" colSpan={4}>
-                  ผลการทดสอบมาตรฐาน (NIR/UV-Vis)
-                </th>
-              </tr>
-              <tr>
-                <th className="border border-gray-400 p-3 bg-gray-50 font-bold">
-                  พารามิเตอร์การทดสอบ
-                </th>
-                <th className="border border-gray-400 p-3 bg-gray-50 font-bold">
-                  ผลการทดสอบ
-                </th>
-                <th className="border border-gray-400 p-3 bg-gray-50 font-bold">
-                  เกณฑ์มาตรฐาน
-                </th>
-                <th className="border border-gray-400 p-3 bg-gray-50 font-bold">
-                  สถานะ
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {reportData.curcuminQuality && (
-                <tr>
-                  <td className="border border-gray-400 p-3">
-                    ปริมาณเคอร์คูมินอยด์ (วิธีมาตรฐาน)
-                  </td>
-                  <td className="border border-gray-400 p-3 text-center">
-                    {reportData.curcuminQuality}%
-                  </td>
-                  <td className="border border-gray-400 p-3 text-center">
-                    ≥ 3.0%
-                  </td>
-                  <td className="border border-gray-400 p-3 text-center">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${reportData.curcuminQuality >= 3 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {reportData.curcuminQuality >= 3 ? 'ผ่าน' : 'ไม่ผ่าน'}
-                    </span>
-                  </td>
-                </tr>
-              )}
-              {reportData.moistureQuality && (
-                <tr>
-                  <td className="border border-gray-400 p-3">
-                    ปริมาณความชื้น
-                  </td>
-                  <td className="border border-gray-400 p-3 text-center">
-                    {reportData.moistureQuality}%
-                  </td>
-                  <td className="border border-gray-400 p-3 text-center">
-                    ≤ 15.0%
-                  </td>
-                  <td className="border border-gray-400 p-3 text-center">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${reportData.moistureQuality <= 15 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                      {reportData.moistureQuality <= 15 ? 'ผ่าน' : 'ไม่ผ่าน'}
-                    </span>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* KaminCAL Analysis (if available) */}
-      {reportData.kaminCAL && (reportData.kaminCAL.sample_name || reportData.kaminCAL.plant_weight > 0) && (
-        <div className="mb-8">
-          <table className="w-full border-collapse border border-gray-400">
-            <thead>
-              <tr>
-                <th className="border border-gray-400 p-3 bg-purple-50 font-bold" colSpan={4}>
-                  การวิเคราะห์ KaminCAL
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                  ชื่อตัวอย่าง
-                </td>
-                <td className="border border-gray-400 p-3">
-                  {reportData.kaminCAL.sample_name || 'N/A'}
-                </td>
-                <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                  น้ำหนักพืช
-                </td>
-                <td className="border border-gray-400 p-3">
-                  {reportData.kaminCAL.plant_weight > 0 ? `${reportData.kaminCAL.plant_weight} mg` : 'N/A'}
-                </td>
-              </tr>
-              <tr>
-                <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                  ปริมาตรตัวทำละลาย
-                </td>
-                <td className="border border-gray-400 p-3">
-                  {reportData.kaminCAL.solvent_volume > 0 ? `${reportData.kaminCAL.solvent_volume} mL` : 'N/A'}
-                </td>
-                <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                  ค่า OD เฉลี่ย
-                </td>
-                <td className="border border-gray-400 p-3">
-                  {reportData.kaminCAL.average_od > 0 ? reportData.kaminCAL.average_od : 'N/A'}
-                </td>
-              </tr>
-              <tr>
-                <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                  ความเข้มข้น
-                </td>
-                <td className="border border-gray-400 p-3">
-                  {reportData.kaminCAL.concentration > 0 ? `${reportData.kaminCAL.concentration} mg/mL` : 'N/A'}
-                </td>
-                <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                  จำนวนครั้งที่ทำซ้ำ
-                </td>
-                <td className="border border-gray-400 p-3">
-                  {reportData.kaminCAL.number_of_replications > 0 ? reportData.kaminCAL.number_of_replications : 'N/A'}
-                </td>
-              </tr>
-              <tr>
-                <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                  เครื่องมือวิเคราะห์
-                </td>
-                <td className="border border-gray-400 p-3">
-                  {reportData.kaminCAL.analytical_instrument}
-                </td>
-                <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
-                  เปอร์เซ็นต์เคอร์คูมินอยด์
-                </td>
-                <td className="border border-gray-400 p-3 font-bold">
-                  {reportData.kaminCAL.curcuminoid_percentage > 0 ? `${reportData.kaminCAL.curcuminoid_percentage}%` : 'N/A'}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Inspector Notes (if available) */}
-      {reportData.inspectorNotes && (
-        <div className="mb-8">
-          <table className="w-full border-collapse border border-gray-400">
-            <thead>
-              <tr>
-                <th className="border border-gray-400 p-3 bg-yellow-50 font-bold">
-                  หมายเหตุจากผู้ตรวจสอบ
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="border border-gray-400 p-3">
-                  {reportData.inspectorNotes}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Final Result Summary */}
-      <div className="mb-8">
-        {(() => {
-          // ✅ ใช้ enhanced assessment function
-          const assessmentResult = determineTestResultEnhanced(reportData);
-          const status = assessmentResult.status;
-          const details = assessmentResult.details;
-
-          return (
-            <table className="w-full border-collapse border border-gray-400">
-              <thead>
-                <tr>
-                  <th className={`border border-gray-400 p-3 font-bold text-center ${status === 'PASSED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                    สรุปผลการทดสอบ
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="border border-gray-400 p-6 text-center">
-                    <div className="mb-4">
-                      <h2 className={`text-2xl font-bold ${status === 'PASSED' ? 'text-green-600' : 'text-red-600'}`}>
-                        {status === 'PASSED' ? 'ผ่านเกณฑ์' : 'ไม่ผ่านเกณฑ์'}
-                      </h2>
-                    </div>
-                    <p className="text-sm text-gray-700 mb-4">
-                      {status === 'PASSED'
-                        ? 'ตัวอย่างขมิ้นชันนี้ผ่านเกณฑ์มาตรฐานคุณภาพทุกด้าน'
-                        : 'ตัวอย่างขมิ้นชันนี้ไม่ผ่านเกณฑ์มาตรฐานคุณภาพที่กำหนด'}
-                    </p>
-
-                    {/* ✅ เพิ่มรายละเอียดการประเมิน */}
-                    <div className="bg-gray-50 rounded-lg p-4 mt-4">
-                      <h3 className="text-sm font-semibold mb-2">รายละเอียดการประเมิน:</h3>
-                      <ul className="text-xs text-left space-y-1">
-                        {details.map((detail, index) => (
-                          <li key={index} className="flex items-start">
-                            <span className="mr-2">•</span>
-                            <span>{detail}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div className="mt-4 text-xs text-gray-600">
-                      <p>วิธีการทดสอบ: {reportData.testingMethod}</p>
-                      <p>วันที่ทดสอบ: {reportData.testDate ? new Date(reportData.testDate).toLocaleDateString('th-TH') : 'N/A'}</p>
-                      <p>Batch ID: {reportData.batchId}</p>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          );
-        })()}
-      </div>
-
-      {/* Note */}
-      <div className="mb-8">
-        <p className="text-sm">
-          <strong>หมายเหตุ:</strong> *สามารถเปลี่ยนหน่วยเป็น %w/w เมื่อนำผลการทดสอบดังกล่าวหารด้วย 10,
-          ที่ระดับความเชื่อมั่น 95% k = 2
-        </p>
-      </div>
-
-      {/* Test Result File Section - ใช้รูปแบบตารางเหมือนส่วนอื่นๆ */}
-      <div className="mb-8">
+    {/* KaminCAL Analysis (if available) */}
+    {reportData.kaminCAL && (reportData.kaminCAL.sample_name || reportData.kaminCAL.plant_weight > 0) && (
+      <div className="mb-8 print-section">
         <table className="w-full border-collapse border border-gray-400 print-table">
           <thead>
             <tr>
-              <th className="border border-gray-400 p-3 bg-gray-50 font-bold">
-                <div className="flex items-center justify-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Test Result File
-                </div>
+              <th className="border border-gray-400 p-3 bg-purple-50 font-bold" colSpan={4}>
+                การวิเคราะห์ KaminCAL
               </th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td className="border border-gray-400 p-6">
-                <ResultFileDisplay resultImage={reportData.resultImage} />
+              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+                ชื่อตัวอย่าง
+              </td>
+              <td className="border border-gray-400 p-3">
+                {reportData.kaminCAL.sample_name || 'N/A'}
+              </td>
+              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+                น้ำหนักพืช
+              </td>
+              <td className="border border-gray-400 p-3">
+                {reportData.kaminCAL.plant_weight > 0 ? `${reportData.kaminCAL.plant_weight} mg` : 'N/A'}
+              </td>
+            </tr>
+            <tr>
+              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+                ปริมาตรตัวทำละลาย
+              </td>
+              <td className="border border-gray-400 p-3">
+                {reportData.kaminCAL.solvent_volume > 0 ? `${reportData.kaminCAL.solvent_volume} mL` : 'N/A'}
+              </td>
+              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+                ค่า OD เฉลี่ย
+              </td>
+              <td className="border border-gray-400 p-3">
+                {reportData.kaminCAL.average_od > 0 ? reportData.kaminCAL.average_od : 'N/A'}
+              </td>
+            </tr>
+            <tr>
+              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+                ความเข้มข้น
+              </td>
+              <td className="border border-gray-400 p-3">
+                {reportData.kaminCAL.concentration > 0 ? `${reportData.kaminCAL.concentration} mg/mL` : 'N/A'}
+              </td>
+              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+                จำนวนครั้งที่ทำซ้ำ
+              </td>
+              <td className="border border-gray-400 p-3">
+                {reportData.kaminCAL.number_of_replications > 0 ? reportData.kaminCAL.number_of_replications : 'N/A'}
+              </td>
+            </tr>
+            <tr>
+              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+                เครื่องมือวิเคราะห์
+              </td>
+              <td className="border border-gray-400 p-3">
+                {reportData.kaminCAL.analytical_instrument}
+              </td>
+              <td className="border border-gray-400 p-3 font-semibold bg-gray-50">
+                เปอร์เซ็นต์เคอร์คูมินอยด์
+              </td>
+              <td className="border border-gray-400 p-3 font-bold">
+                {reportData.kaminCAL.curcuminoid_percentage > 0 ? `${reportData.kaminCAL.curcuminoid_percentage}%` : 'N/A'}
               </td>
             </tr>
           </tbody>
         </table>
       </div>
+    )}
 
-      {/* Signatures Section */}
-      <div className="grid grid-cols-2 gap-8 mb-8">
-        <div className="text-center">
-          <div className="border-b border-gray-400 mb-2 h-16"></div>
-          <p className="text-sm">ผู้วิเคราะห์</p>
-          <p className="text-sm">{reportData.analystName || '(........................)'}</p>
-        </div>
-        <div className="text-center">
-          <div className="border-b border-gray-400 mb-2 h-16"></div>
-          <p className="text-sm">ผู้ตรวจสอบ</p>
-          <p className="text-sm">{reportData.reviewerName || '(........................)'}</p>
-        </div>
+    {/* Inspector Notes (if available) */}
+   {reportData.inspectorNotes && (
+      <div className="mb-8 print-section">
+        <table className="w-full border-collapse border border-gray-400 print-table">
+          <thead>
+            <tr>
+              <th className="border border-gray-400 p-3 bg-yellow-50 font-bold">
+                หมายเหตุจากผู้ตรวจสอบ
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td className="border border-gray-400 p-3">
+                {reportData.inspectorNotes}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
+    )}
 
-      {/* Laboratory Information */}
-      <div className="text-center text-sm text-gray-600 border-t pt-4">
-        <p className="font-semibold">{reportData.laboratory}</p>
-        <p>{reportData.laboratoryAddress}</p>
-        <p>{reportData.laboratoryPhone}</p>
+    {/* Final Result Summary */}
+     <div className="mb-8 print-final-result print-section">
+      {(() => {
+        // ✅ ใช้ enhanced assessment function
+        const assessmentResult = determineTestResultEnhanced(reportData);
+        const status = assessmentResult.status;
+        const details = assessmentResult.details;
+
+        return (
+          <table className="w-full border-collapse border border-gray-400">
+            <thead>
+              <tr>
+                <th className={`border border-gray-400 p-3 font-bold text-center ${status === 'PASSED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                  สรุปผลการทดสอบ
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="border border-gray-400 p-6 text-center">
+                  <div className="mb-4">
+                    <h2 className={`text-2xl font-bold ${status === 'PASSED' ? 'text-green-600' : 'text-red-600'}`}>
+                      {status === 'PASSED' ? 'ผ่านเกณฑ์' : 'ไม่ผ่านเกณฑ์'}
+                    </h2>
+                  </div>
+                  <p className="text-sm text-gray-700 mb-4">
+                    {status === 'PASSED'
+                      ? 'ตัวอย่างขมิ้นชันนี้ผ่านเกณฑ์มาตรฐานคุณภาพทุกด้าน'
+                      : 'ตัวอย่างขมิ้นชันนี้ไม่ผ่านเกณฑ์มาตรฐานคุณภาพที่กำหนด'}
+                  </p>
+
+                  {/* ✅ เพิ่มรายละเอียดการประเมิน */}
+                  <div className="bg-gray-50 rounded-lg p-4 mt-4">
+                    <h3 className="text-sm font-semibold mb-2">รายละเอียดการประเมิน:</h3>
+                    <ul className="text-xs text-left space-y-1">
+                      {details.map((detail, index) => (
+                        <li key={index} className="flex items-start">
+                          <span className="mr-2">•</span>
+                          <span>{detail}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="mt-4 text-xs text-gray-600">
+                    <p>วิธีการทดสอบ: {reportData.testingMethod}</p>
+                    <p>วันที่ทดสอบ: {reportData.testDate ? new Date(reportData.testDate).toLocaleDateString('th-TH') : 'N/A'}</p>
+                    <p>Batch ID: {reportData.batchId}</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        );
+      })()}
+    </div>
+
+    {/* Note */}
+    <div className="mb-8">
+      <p className="text-sm">
+        <strong>หมายเหตุ:</strong> *สามารถเปลี่ยนหน่วยเป็น %w/w เมื่อนำผลการทดสอบดังกล่าวหารด้วย 10,
+        ที่ระดับความเชื่อมั่น 95% k = 2
+      </p>
+    </div>
+
+    {/* Test Result File Section - ใช้รูปแบบตารางเหมือนส่วนอื่นๆ */}
+    <div className="mb-8">
+      <table className="w-full border-collapse border border-gray-400 print-table">
+        <thead>
+          <tr>
+            <th className="border border-gray-400 p-3 bg-gray-50 font-bold">
+              <div className="flex items-center justify-center gap-2">
+                <FileText className="h-5 w-5" />
+                Test Result File
+              </div>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="border border-gray-400 p-6">
+              <ResultFileDisplay resultImage={reportData.resultImage} />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    {/* Signatures Section */}
+    <div className="grid grid-cols-2 gap-8 mb-8">
+      <div className="text-center">
+        <div className="border-b border-gray-400 mb-2 h-16"></div>
+        <p className="text-sm">ผู้วิเคราะห์</p>
+        <p className="text-sm">{reportData.analystName || '(........................)'}</p>
       </div>
-
-      {/* End of Report */}
-      <div className="text-center mt-8">
-        <p className="text-sm font-semibold">-สิ้นสุดการรายงาน-</p>
+      <div className="text-center">
+        <div className="border-b border-gray-400 mb-2 h-16"></div>
+        <p className="text-sm">ผู้ตรวจสอบ</p>
+        <p className="text-sm">{reportData.reviewerName || '(........................)'}</p>
       </div>
     </div>
+
+    {/* Laboratory Information */}
+    <div className="text-center text-sm text-gray-600 border-t pt-4">
+      <p className="font-semibold">{reportData.laboratory}</p>
+      <p>{reportData.laboratoryAddress}</p>
+      <p>{reportData.laboratoryPhone}</p>
+    </div>
+
+    {/* End of Report */}
+    <div className="text-center mt-8">
+      <p className="text-sm font-semibold">-สิ้นสุดการรายงาน-</p>
+    </div>
+  </div>
   );
 
   return (
