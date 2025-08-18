@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, Save, ArrowLeft, X, ImageIcon, Table, FileText, FlaskConical, LucideMicroscope, Notebook, SquarePen, LucidePackage, LucideNotebook, LucideCheck } from "lucide-react";
+import { Upload, Save, ArrowLeft, X, ImageIcon, Table, FileText, FlaskConical, LucideMicroscope, Notebook, SquarePen, LucidePackage, LucideNotebook, LucideCheck, Leaf, Scale, Beaker, BarChart3, Droplets, Repeat, Timer, Settings } from "lucide-react";
 
 interface InspectionRecord {
   id: string;
@@ -2885,14 +2885,14 @@ export default function QualityInspectionPage() {
           {/* KaminCAL Section */}
           <Card className="mb-6">
             <CardHeader>
-              <CardTitle>KaminCAL</CardTitle>
+              <CardTitle><div className="flex items-center gap-3 mb-4"><Leaf className="h-4 w-4 text-green-600" />KaminCAL</div></CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Left Column */}
                 <div className="space-y-4">
                   <div>
-                    <Label className="text-sm font-medium">Sample Name</Label>
+                    <Label className="text-sm font-medium"><FileText className="h-4 w-4" />Sample Name</Label>
                     <Input
                       name="sample_name"
                       value={kaminCALData.sample_name}
@@ -2902,7 +2902,7 @@ export default function QualityInspectionPage() {
                   </div>
 
                   <div>
-                    <Label className="text-sm font-medium">Solvent Volume</Label>
+                    <Label className="text-sm font-medium"><Beaker className="h-4 w-4" />Solvent Volume</Label>
                     <div className="flex items-center gap-2">
                       <Input
                         name="solvent_volume"
@@ -2918,7 +2918,7 @@ export default function QualityInspectionPage() {
                   </div>
 
                   <div>
-                    <Label className="text-sm font-medium">Concentration</Label>
+                    <Label className="text-sm font-medium"><Droplets className="h-4 w-4" />Concentration</Label>
                     <div className="flex items-center gap-2">
                       <Input
                         name="concentration"
@@ -2934,7 +2934,7 @@ export default function QualityInspectionPage() {
                   </div>
 
                   <div>
-                    <Label className="text-sm font-medium">First Time</Label>
+                    <Label className="text-sm font-medium"><Timer className="h-4 w-4" />First Time</Label>
                     <div className="flex items-center gap-2">
                       <Input
                         name="first_time"
@@ -2950,7 +2950,7 @@ export default function QualityInspectionPage() {
                   </div>
 
                   <div>
-                    <Label className="text-sm font-medium">Second Time</Label>
+                    <Label className="text-sm font-medium"><Timer className="h-4 w-4" />Second Time</Label>
                     <div className="flex items-center gap-2">
                       <Input
                         name="second_time"
@@ -2966,7 +2966,7 @@ export default function QualityInspectionPage() {
                   </div>
 
                   <div>
-                    <Label className="text-sm font-medium">Third Time</Label>
+                    <Label className="text-sm font-medium"><Timer className="h-4 w-4" />Third Time</Label>
                     <div className="flex items-center gap-2">
                       <Input
                         name="third_time"
@@ -2985,7 +2985,7 @@ export default function QualityInspectionPage() {
                 {/* Right Column */}
                 <div className="space-y-4">
                   <div>
-                    <Label className="text-sm font-medium">Plant Weight</Label>
+                    <Label className="text-sm font-medium"><Scale className="h-4 w-4" />Plant Weight</Label>
                     <div className="flex items-center gap-2">
                       <Input
                         name="plant_weight"
@@ -3001,7 +3001,7 @@ export default function QualityInspectionPage() {
                   </div>
 
                   <div>
-                    <Label className="text-sm font-medium">Average OD</Label>
+                    <Label className="text-sm font-medium"><BarChart3 className="h-4 w-4" />Average OD</Label>
                     <Input
                       name="average_od"
                       type="number"
@@ -3013,7 +3013,7 @@ export default function QualityInspectionPage() {
                   </div>
 
                   <div>
-                    <Label className="text-sm font-medium">Number of Replications</Label>
+                    <Label className="text-sm font-medium"><Repeat className="h-4 w-4" />Number of Replications</Label>
                     <Input
                       name="number_of_replications"
                       type="number"
@@ -3024,7 +3024,7 @@ export default function QualityInspectionPage() {
                   </div>
 
                   <div>
-                    <Label className="text-sm font-medium">Analytical Instrument</Label>
+                    <Label className="text-sm font-medium"><Settings className="h-4 w-4" />Analytical Instrument</Label>
                     <Select
                       value={kaminCALData.analytical_instrument}
                       onValueChange={(value) =>
@@ -3043,7 +3043,7 @@ export default function QualityInspectionPage() {
                   </div>
 
                   <div>
-                    <Label className="text-sm font-medium">Curcuminoid Content (Percentage by weight)</Label>
+                    <Label className="text-sm font-medium"><FlaskConical className="h-4 w-4" />Curcuminoid Content (Percentage by weight)</Label>
                     <div className="flex items-center gap-2">
                       <Input
                         name="curcuminoid_percentage"
