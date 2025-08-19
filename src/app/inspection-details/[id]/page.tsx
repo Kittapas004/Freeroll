@@ -2441,13 +2441,30 @@ export default function QualityInspectionPage() {
 
                     <div>
                       <Label className="text-sm font-medium text-gray-600">Temperature Upon Receipt</Label>
-                      <ReadOnlyAwareInput
-                        name="hplc_temperature"
-                        value={hplcData.temperature}
-                        onChange={handleHPLCChange}
-                        placeholder="Room Temperature, Normal Condition"
-                        isReadOnly={isReadOnly}
-                      />
+                      {isReadOnly ? (
+                        <Input
+                          value={hplcData.temperature}
+                          readOnly
+                          className="bg-gray-100 cursor-not-allowed"
+                          onClick={showCompletedWarning}
+                        />
+                      ) : (
+                        <Select
+                          value={hplcData.temperature}
+                          onValueChange={(value) => setHplcData({ ...hplcData, temperature: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select temperature condition" />
+                          </SelectTrigger>
+                          <SelectContent> 
+                            <SelectItem value="Room Temperature, Normal Condition">Room Temperature, Normal Condition</SelectItem>
+                            <SelectItem value="Cool/Dry Place">Cool/Dry Place</SelectItem>
+                            <SelectItem value="Refrigerated">Refrigerated</SelectItem>
+                            <SelectItem value="Frozen">Frozen</SelectItem>
+                            <SelectItem value="Deep Frozen">Deep Frozen</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                   </div>
 
