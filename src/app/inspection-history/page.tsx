@@ -44,7 +44,7 @@ export default function InspectionHistory() {
     const [role, setRole] = useState<string | 'loading'>('loading');
 
     const router = useRouter();
-    const resultsPerPage = 2;
+    const resultsPerPage = 5;
     const ALLOWED_ROLES = ['Quality Inspection'];
 
     // Fetch inspection history data
