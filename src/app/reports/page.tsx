@@ -416,29 +416,29 @@ export default function ReportsPage() {
   }, []);
 
   // Auto-refresh processedRecords and exportHistory every 30 seconds (flicker-free)
-  // useEffect(() => {
-  //   let isMounted = true;
-  //   let intervalId: NodeJS.Timeout;
+  useEffect(() => {
+    let isMounted = true;
+    let intervalId: NodeJS.Timeout;
 
-  //   const refreshData = async () => {
-  //     setLoading(true);
-  //     try {
-  //       await fetchCompletedRecords();
-  //       await fetchExportHistory();
-  //     } catch (err) {
-  //       // Error handled in fetch functions
-  //     } finally {
-  //       if (isMounted) setLoading(false);
-  //     }
-  //   };
+    const refreshData = async () => {
+      setLoading(true);
+      try {
+        await fetchCompletedRecords();
+        await fetchExportHistory();
+      } catch (err) {
+        // Error handled in fetch functions
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
 
-  //   intervalId = setInterval(refreshData, 30000);
+    intervalId = setInterval(refreshData, 30000);
 
-  //   return () => {
-  //     isMounted = false;
-  //     clearInterval(intervalId);
-  //   };
-  // }, []);
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
+  }, []);
 
   const clearExportHistory = async () => {
     const confirmed = confirm('Clear all export history?\n\nThis will remove all records from the database.');
