@@ -1169,7 +1169,7 @@ export default function QualityInspectionReportView() {
                         <h1 className="text-2xl font-semibold">Quality Inspection Report</h1>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button
+                        {/* <Button
                             onClick={handleDownload}
                             variant="outline"
                             size="sm"
@@ -1177,7 +1177,7 @@ export default function QualityInspectionReportView() {
                         >
                             <Download size={16} />
                             Download PDF
-                        </Button>
+                        </Button> */}
                         <Button
                             onClick={handlePrint}
                             className="flex items-center gap-2"
