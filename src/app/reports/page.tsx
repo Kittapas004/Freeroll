@@ -1034,7 +1034,7 @@ export default function ReportsPage() {
                             ? 'bg-green-100 text-green-800'
                             : 'bg-yellow-100 text-yellow-800'
                             }`}>
-                            Grade {result.qualityGrade}
+                            {result.qualityGrade}
                           </span>
                         </td>
                         <td className="py-3">{result.yield} {result.yieldUnit}</td>
