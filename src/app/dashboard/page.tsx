@@ -162,7 +162,7 @@ export default function DashboardPage() {
       return !prev;
     });
   };
-  
+
   const getDisplayStatus = (batchStatus: string | undefined): string => {
     if (!batchStatus) return "Planted"; // ถ้าไม่มีค่า default เป็น "Planted"
 
@@ -217,13 +217,23 @@ export default function DashboardPage() {
       }
 
       const batchData = await response.json();
-      const batchDetails = batchData.data.map((batch: any) => ({
+
+      // ⭐ เพิ่มการเรียงลำดับตาม Batch_id
+      const sortedBatches = batchData.data.sort((a: any, b: any) => {
+        const getNumber = (batchId: string) => {
+          const match = batchId.match(/T-Batch-(\d+)/);
+          return match ? parseInt(match[1], 10) : 0;
+        };
+        return getNumber(a.Batch_id) - getNumber(b.Batch_id);
+      });
+
+      const batchDetails = sortedBatches.map((batch: any) => ({
         id: batch.Batch_id,
         documentId: batch.documentId,
       }));
+
       console.log("Batch data fetched successfully:", batchDetails);
       setBatch(batchDetails);
-      // console.log("Batch data fetched successfully:", batchData);
     } catch (error) {
       console.error("Error fetching batch data:", error);
     }
