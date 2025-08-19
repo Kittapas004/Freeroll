@@ -203,7 +203,7 @@ export default function PlantingBatchesPage() {
 
     const fetchPlantingBatches = async () => {
         try {
-            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/batches?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
+            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/batches?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}&sort=Batch_id:asc`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -212,8 +212,18 @@ export default function PlantingBatchesPage() {
                 throw new Error('Failed to fetch planting batches');
             }
             const data = await response.json();
+
+            // เรียงลำดับตาม Batch_id (T-Batch-001, T-Batch-002, T-Batch-003, ...)
+            const sortedBatches = data.data.sort((a: any, b: any) => {
+                const getNumber = (batchId: string) => {
+                    const match = batchId.match(/T-Batch-(\d+)/);
+                    return match ? parseInt(match[1], 10) : 0;
+                };
+                return getNumber(a.Batch_id) - getNumber(b.Batch_id);
+            });
+
             setPlantingBatches(
-                data.data.map((batch: any) => ({
+                sortedBatches.map((batch: any) => ({
                     Batch_id: batch.Batch_id,
                     documentId: batch.documentId,
                     Date_of_Planting: batch.Date_of_Planting,
@@ -223,7 +233,7 @@ export default function PlantingBatchesPage() {
                     Farm_Name: batch.Farm.Farm_Name,
                     Farm_Cultivation_Method: batch.Farm.Cultivation_Method,
                     Batch_Status: batch.Batch_Status,
-                    Batch_image: getBatchImageUrl(batch.Batch_image), // ใช้ฟังก์ชันใหม่
+                    Batch_image: getBatchImageUrl(batch.Batch_image),
                 }))
             );
             return data;
@@ -248,6 +258,31 @@ export default function PlantingBatchesPage() {
         } catch (error) {
             console.error('Error fetching all batches:', error);
             return [];
+        }
+    };
+
+    const getDisplayStatus = (batchStatus: string): string => {
+        switch (batchStatus) {
+            case "Pending Actions":
+                return "Planted";
+            case "Completed Successfully":
+            case "Completed Past Data":
+                return "End Planted";
+            default:
+                return "Planted";
+        }
+    };
+
+    const getCircleColor = (batchStatus: string): string => {
+        switch (batchStatus) {
+            case "Completed Successfully":
+                return "text-green-600 fill-green-600";
+            case "Pending Actions":
+                return "text-yellow-600 fill-yellow-600";
+            case "Completed Past Data":
+                return "text-gray-600 fill-gray-600";
+            default:
+                return "text-red-600 fill-red-600";
         }
     };
 
@@ -582,26 +617,20 @@ export default function PlantingBatchesPage() {
                                         More Detail
                                     </div>
                                     <img
-                                        src={batch.Batch_image || "/batch1.png"} // เพิ่ม fallback
+                                        src={batch.Batch_image || "/batch1.png"}
                                         alt="Batch Image"
                                         className={`w-full h-37.5 object-cover ${batch.Batch_Status === "Completed Past Data" ? "grayscale-100" : ""}`}
                                         onError={(e) => {
                                             console.error("❌ Error loading batch image, using default:", batch.Batch_image);
-                                            e.currentTarget.src = "/batch1.png"; // ใช้รูป default เมื่อโหลดไม่ได้
+                                            e.currentTarget.src = "/batch1.png";
                                         }}
                                         onLoad={() => {
                                             console.log("✅ Batch image loaded successfully:", batch.Batch_image);
                                         }}
                                     />
+                                    {/* 🎯 ใช้ฟังก์ชัน getCircleColor */}
                                     <Circle
-                                        className={`absolute top-2 right-2 w-6 h-6 ${batch.Batch_Status === "Completed Successfully"
-                                            ? "text-green-600 fill-green-600"
-                                            : batch.Batch_Status === "Pending Actions"
-                                                ? "text-yellow-600 fill-yellow-600"
-                                                : batch.Batch_Status === "Completed Past Data"
-                                                    ? "text-gray-600 fill-gray-600"
-                                                    : "text-red-600 fill-red-600"
-                                            }`}
+                                        className={`absolute top-2 right-2 w-6 h-6 ${getCircleColor(batch.Batch_Status)}`}
                                     />
                                     <CardContent className="flex flex-col items-start w-full">
                                         <div className="flex flex-col gap-2">
@@ -619,7 +648,8 @@ export default function PlantingBatchesPage() {
                                         <div className="flex flex-col lg:flex-row gap-2">
                                             <p className="text-sm text-gray-500">Status:</p>
                                             <h1 className="text-sm font-semibold">
-                                                {batch.Farm_Status}
+                                                {/* 🎯 ใช้ฟังก์ชัน getDisplayStatus */}
+                                                {getDisplayStatus(batch.Batch_Status)}
                                             </h1>
                                         </div>
                                         <div className="flex flex-col lg:flex-row gap-2">

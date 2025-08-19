@@ -162,6 +162,20 @@ export default function DashboardPage() {
       return !prev;
     });
   };
+  
+  const getDisplayStatus = (batchStatus: string | undefined): string => {
+    if (!batchStatus) return "Planted"; // ถ้าไม่มีค่า default เป็น "Planted"
+
+    switch (batchStatus) {
+      case "Pending Actions":
+        return "Planted";
+      case "Completed Successfully":
+      case "Completed Past Data":
+        return "End Planted";
+      default:
+        return "Planted";
+    }
+  };
 
   const fetchUserData = async () => {
     try {
@@ -422,7 +436,7 @@ export default function DashboardPage() {
                 <span className="text-lg"><CalendarClock className="text-green-600" /></span>
               </div>
               <div className="text-xl font-bold text-gray-800 mt-1">
-                {dashboardData?.Farm_Status === "End Planted"
+                {getDisplayStatus(dashboardData?.status) === "End Planted"
                   ? "Harvested"
                   : dashboardData?.planting_date
                     ? (() => {
@@ -493,8 +507,10 @@ export default function DashboardPage() {
                 Status
                 <span className="text-lg"><Sprout className="text-green-600" /></span>
               </div>
-              <div className="text-xl font-bold text-gray-800 mt-1">{dashboardData?.Farm_Status}</div>
-              {dashboardData?.Farm_Status !== "End Planted" && (
+              <div className="text-xl font-bold text-gray-800 mt-1">
+                {getDisplayStatus(dashboardData?.status)}
+              </div>
+              {getDisplayStatus(dashboardData?.status) !== "End Planted" && (
                 <div className="text-xs text-gray-400 mt-0.5">
                   {dashboardData?.planting_date
                     ? `${Math.max(0, Math.ceil(
@@ -511,15 +527,15 @@ export default function DashboardPage() {
                 <span className="text-lg"><ClipboardList className="text-green-600" /></span>
               </div>
               <div className="text-xl font-bold text-gray-800 mt-1">
-                {dashboardData?.Farm_Status === "Planted" && "Plant"}
+                {getDisplayStatus(dashboardData?.status) === "Planted" && "Plant"}
                 {dashboardData?.Farm_Status === "Fertilized" && "Fertilization"}
                 {dashboardData?.Farm_Status === "Harvested" && "Harvest"}
-                {dashboardData?.Farm_Status === "End Planted" && "End Planted"}
+                {getDisplayStatus(dashboardData?.status) === "End Planted" && "End Planted"}
               </div>
               <div className="text-xs text-gray-400 mt-0.5">
-                {dashboardData?.Farm_Status === "Planted" && "Next: Fertilization"}
+                {getDisplayStatus(dashboardData?.status) === "Planted" && "Next: Fertilization"}
                 {dashboardData?.Farm_Status === "Fertilized" && "Next: Harvest"}
-                {dashboardData?.Farm_Status === "Harvested" && "Next: End Planted"}
+                {getDisplayStatus(dashboardData?.status) === "End Planted" && "Not have any tasks"}
                 {dashboardData?.Farm_Status === "End Planted" && "Not have any tasks"}
               </div>
             </div>
