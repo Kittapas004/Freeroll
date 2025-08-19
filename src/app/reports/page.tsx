@@ -416,29 +416,29 @@ export default function ReportsPage() {
   }, []);
 
   // Auto-refresh processedRecords and exportHistory every 30 seconds (flicker-free)
-  useEffect(() => {
-    let isMounted = true;
-    let intervalId: NodeJS.Timeout;
+  // useEffect(() => {
+  //   let isMounted = true;
+  //   let intervalId: NodeJS.Timeout;
 
-    const refreshData = async () => {
-      setLoading(true);
-      try {
-        await fetchCompletedRecords();
-        await fetchExportHistory();
-      } catch (err) {
-        // Error handled in fetch functions
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
+  //   const refreshData = async () => {
+  //     setLoading(true);
+  //     try {
+  //       await fetchCompletedRecords();
+  //       await fetchExportHistory();
+  //     } catch (err) {
+  //       // Error handled in fetch functions
+  //     } finally {
+  //       if (isMounted) setLoading(false);
+  //     }
+  //   };
 
-    intervalId = setInterval(refreshData, 30000);
+  //   intervalId = setInterval(refreshData, 30000);
 
-    return () => {
-      isMounted = false;
-      clearInterval(intervalId);
-    };
-  }, []);
+  //   return () => {
+  //     isMounted = false;
+  //     clearInterval(intervalId);
+  //   };
+  // }, []);
 
   const clearExportHistory = async () => {
     const confirmed = confirm('Clear all export history?\n\nThis will remove all records from the database.');
@@ -672,6 +672,18 @@ export default function ReportsPage() {
             }),
           });
           await fetchUserData();
+          console.log('batch_ids:', mapping.apiId);
+          console.log('export_date:', new Date().toISOString());
+          console.log('export_status:', 'Export Success');
+          console.log('lab:', labID);
+          console.log('exported_by:', UserName);
+          console.log('exported:', true);
+          console.log('batch_name:', String(mapping.batchId));
+          console.log('farm_name:', String(mapping.farmName));
+          console.log('test_type:', String(mapping.testType));
+          console.log('quality_grade:', String(mapping.qualityGrade));
+          console.log('yield:', Number(mapping.yield));
+          console.log('yield_unit:', String(mapping.yieldUnit));
           const createExportHistoryRes = await fetch('https://api-freeroll-production.up.railway.app/api/export-histories', {
           method: 'POST',
           headers: {
@@ -680,7 +692,7 @@ export default function ReportsPage() {
           },
           body: JSON.stringify({
             data: {
-              batch_ids: mapping.apiId,
+              batch_ids: [mapping.apiId],
               export_date: new Date().toISOString(),
               export_status: 'Export Success',
               lab: Number(labID),
