@@ -138,7 +138,7 @@ export default function QualityInspectionReportView() {
             console.log('🔍 Fetching data for ID:', recordId);
 
             // ดึงข้อมูล lab submission record พร้อม populate ทุกอย่าง
-            const recordUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records/${recordId}?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&populate[result_image][populate]=*&populate[Report][populate]=*`;
+            const recordUrl = `https://api-freeroll-production.up.railway.app/api/lab-submission-records/${recordId}?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&populate[result_image][populate]=*&populate[Report][populate]=*`;
             console.log('📋 Record URL:', recordUrl);
 
             const recordRes = await fetch(recordUrl, {
@@ -151,7 +151,7 @@ export default function QualityInspectionReportView() {
                 console.log('🔄 Direct fetch failed, trying alternative approach...');
 
                 // Alternative: ดึงข้อมูลทั้งหมดแล้วค้นหา พร้อม populate เต็ม
-                const allRecordsUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&populate[result_image][populate]=*&populate[Report][populate]=*`;
+                const allRecordsUrl = `https://api-freeroll-production.up.railway.app/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&populate[result_image][populate]=*&populate[Report][populate]=*`;
 
                 const allRecordsRes = await fetch(allRecordsUrl, {
                     headers: {
@@ -174,7 +174,7 @@ export default function QualityInspectionReportView() {
                         console.log('🔍 Target record harvest:', targetRecord.attributes?.harvest_record);
 
                         // ดึงข้อมูล Farm ของ User เพื่อเปรียบเทียบสิทธิ์เข้าถึง
-                        const farmRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms?documentId=${localStorage.getItem("userId")}`, {
+                        const farmRes = await fetch(`https://api-freeroll-production.up.railway.app/api/farms?documentId=${localStorage.getItem("userId")}`, {
                             headers: {
                                 Authorization: `Bearer ${localStorage.getItem('jwt')}`,
                             },
@@ -206,7 +206,7 @@ export default function QualityInspectionReportView() {
             console.log('📋 Record data:', recordData);
 
             // ดึงข้อมูล Farm ของ User เพื่อเปรียบเทียบสิทธิ์เข้าถึง
-            const farmRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms?documentId=${localStorage.getItem("userId")}`, {
+            const farmRes = await fetch(`https://api-freeroll-production.up.railway.app/api/farms?documentId=${localStorage.getItem("userId")}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem('jwt')}`,
                 },
@@ -257,7 +257,7 @@ export default function QualityInspectionReportView() {
             if (validUrl.startsWith('http')) {
                 return validUrl;
             } else {
-                return `https://popular-trust-9012d3ebd9.strapiapp.com${validUrl}`;
+                return `https://api-freeroll-production.up.railway.app${validUrl}`;
             }
         }
 

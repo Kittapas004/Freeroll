@@ -84,7 +84,7 @@ export default function SettingsPage() {
 
                 console.log("📦 Uploading file:", imageInputRef.current.files[0]);
 
-                const uploadRes = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/upload", {
+                const uploadRes = await fetch("https://api-freeroll-production.up.railway.app/api/upload", {
                     method: "POST",
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem("jwt")}`,
@@ -116,7 +116,7 @@ export default function SettingsPage() {
 
             // Fetch the numeric user ID
             const jwt = localStorage.getItem("jwt");
-            const userRes = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/users/me", {
+            const userRes = await fetch("https://api-freeroll-production.up.railway.app/api/users/me", {
                 headers: {
                     Authorization: `Bearer ${jwt}`,
                 },
@@ -130,7 +130,7 @@ export default function SettingsPage() {
             const userId = userDataResponse.id; // Numeric user ID
 
             // Update the user
-            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/users/${userId}`, {
+            const res = await fetch(`https://api-freeroll-production.up.railway.app/api/users/${userId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -162,7 +162,7 @@ export default function SettingsPage() {
                 const jwt = localStorage.getItem("jwt");
                 console.log("JWT token:", jwt);
 
-                const res = await fetch('https://popular-trust-9012d3ebd9.strapiapp.com/api/users/me?populate=*', {
+                const res = await fetch('https://api-freeroll-production.up.railway.app/api/users/me?populate=*', {
                     headers: {
                         Authorization: `Bearer ${jwt}`,
                     },
@@ -214,7 +214,7 @@ export default function SettingsPage() {
             if (validUrl.startsWith('http')) {
                 return validUrl;
             } else {
-                return `https://popular-trust-9012d3ebd9.strapiapp.com${validUrl}`;
+                return `https://api-freeroll-production.up.railway.app${validUrl}`;
             }
         }
 
@@ -418,7 +418,7 @@ export default function SettingsPage() {
                                             }
                                             try {
                                                 const jwt = localStorage.getItem("jwt");
-                                                const res = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/auth/change-password", {
+                                                const res = await fetch("https://api-freeroll-production.up.railway.app/api/auth/change-password", {
                                                     method: "POST",
                                                     headers: {
                                                         "Content-Type": "application/json",

@@ -48,7 +48,7 @@ const generateReportNumber = async () => {
     const currentYear = new Date().getFullYear();
 
     // ดึงข้อมูล Lab ID ก่อน
-    const labRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/labs?documentId=${localStorage.getItem("userId")}`, {
+    const labRes = await fetch(`https://api-freeroll-production.up.railway.app/api/labs?documentId=${localStorage.getItem("userId")}`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('jwt')}`,
       },
@@ -66,7 +66,7 @@ const generateReportNumber = async () => {
     }
 
     // ดึงจำนวน reports ที่มีอยู่ในปีปัจจุบันสำหรับ lab นี้
-    const reportsCountUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_report_code][$startsWith]=RP ${currentYear}-&pagination[pageSize]=1000`;
+    const reportsCountUrl = `https://api-freeroll-production.up.railway.app/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_report_code][$startsWith]=RP ${currentYear}-&pagination[pageSize]=1000`;
 
     console.log('📊 Fetching existing reports:', reportsCountUrl);
 
@@ -241,7 +241,7 @@ const generateRequestNumber = async () => {
     console.log('🔢 Generating request number...');
     const currentYear = new Date().getFullYear().toString().slice(-2); // ปี 2 หลัก
 
-    const labRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/labs?documentId=${localStorage.getItem("userId")}`, {
+    const labRes = await fetch(`https://api-freeroll-production.up.railway.app/api/labs?documentId=${localStorage.getItem("userId")}`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('jwt')}`,
       },
@@ -259,7 +259,7 @@ const generateRequestNumber = async () => {
     }
 
     // ดึงจำนวน requests ที่มีอยู่ในปีปัจจุบัน
-    const requestsCountUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_testing_no][$startsWith]=MPIC006-ACK${currentYear}-&pagination[pageSize]=1000`;
+    const requestsCountUrl = `https://api-freeroll-production.up.railway.app/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_testing_no][$startsWith]=MPIC006-ACK${currentYear}-&pagination[pageSize]=1000`;
 
     const requestsRes = await fetch(requestsCountUrl, {
       headers: {
@@ -306,7 +306,7 @@ const generateSampleId = async () => {
     console.log('🔢 Generating sample ID...');
     const currentYear = new Date().getFullYear().toString().slice(-2); // ปี 2 หลัก
 
-    const labRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/labs?documentId=${localStorage.getItem("userId")}`, {
+    const labRes = await fetch(`https://api-freeroll-production.up.railway.app/api/labs?documentId=${localStorage.getItem("userId")}`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('jwt')}`,
       },
@@ -324,7 +324,7 @@ const generateSampleId = async () => {
     }
 
     // ดึงจำนวน samples ที่มีอยู่ในปีปัจจุบัน
-    const samplesCountUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_sample_code][$startsWith]=MPIC-TS${currentYear}-&pagination[pageSize]=1000`;
+    const samplesCountUrl = `https://api-freeroll-production.up.railway.app/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_sample_code][$startsWith]=MPIC-TS${currentYear}-&pagination[pageSize]=1000`;
 
     const samplesRes = await fetch(samplesCountUrl, {
       headers: {
@@ -371,7 +371,7 @@ const generateSampleCode = async () => {
     console.log('🔢 Generating sample code...');
     const currentYear = new Date().getFullYear().toString().slice(-2); // ปี 2 หลัก
 
-    const labRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/labs?documentId=${localStorage.getItem("userId")}`, {
+    const labRes = await fetch(`https://api-freeroll-production.up.railway.app/api/labs?documentId=${localStorage.getItem("userId")}`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('jwt')}`,
       },
@@ -389,7 +389,7 @@ const generateSampleCode = async () => {
     }
 
     // ดึงจำนวน sample codes ที่มีอยู่ในปีปัจจุบัน
-    const codesCountUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_sample_preparation][$startsWith]=T${currentYear}-&pagination[pageSize]=1000`;
+    const codesCountUrl = `https://api-freeroll-production.up.railway.app/api/lab-submission-records?filters[lab][documentId][$eq]=${labId}&filters[hplc_sample_preparation][$startsWith]=T${currentYear}-&pagination[pageSize]=1000`;
 
     const codesRes = await fetch(codesCountUrl, {
       headers: {
@@ -1059,7 +1059,7 @@ export default function QualityInspectionPage() {
       if (validUrl.startsWith('http')) {
         return validUrl;
       } else {
-        return `https://popular-trust-9012d3ebd9.strapiapp.com${validUrl}`;
+        return `https://api-freeroll-production.up.railway.app${validUrl}`;
       }
     }
 
@@ -1089,7 +1089,7 @@ export default function QualityInspectionPage() {
         console.log('📄 FormData entry:', pair[0], pair[1]);
       }
 
-      const uploadRes = await fetch('https://popular-trust-9012d3ebd9.strapiapp.com/api/upload', {
+      const uploadRes = await fetch('https://api-freeroll-production.up.railway.app/api/upload', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -1118,7 +1118,7 @@ export default function QualityInspectionPage() {
         if (uploadedUrl) {
           const fullUrl = uploadedUrl.startsWith('http')
             ? uploadedUrl
-            : `https://popular-trust-9012d3ebd9.strapiapp.com${uploadedUrl}`;
+            : `https://api-freeroll-production.up.railway.app${uploadedUrl}`;
           console.log('🔗 Uploaded file URL:', fullUrl);
         }
 
@@ -1143,7 +1143,7 @@ export default function QualityInspectionPage() {
 
       // Use the same API approach as Inspection Details page
       console.log('Step 1: Getting lab info...');
-      const labRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/labs?documentId=${localStorage.getItem("userId")}`, {
+      const labRes = await fetch(`https://api-freeroll-production.up.railway.app/api/labs?documentId=${localStorage.getItem("userId")}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('jwt')}`,
         },
@@ -1162,7 +1162,7 @@ export default function QualityInspectionPage() {
 
       // Step 2: Get lab submission records using simple populate first
       console.log('Step 2: Getting lab submission records...');
-      const recordsUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&populate[result_image][populate]=*&filters[lab][documentId][$eq]=${labId}`;
+      const recordsUrl = `https://api-freeroll-production.up.railway.app/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&populate[result_image][populate]=*&filters[lab][documentId][$eq]=${labId}`;
       console.log('Records API URL:', recordsUrl);
 
       const recordsRes = await fetch(recordsUrl, {
@@ -1682,7 +1682,7 @@ export default function QualityInspectionPage() {
       console.log('Test parameters:', testParameters);
 
       // First, let's get the record details to understand the structure
-      const checkUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records/${record.id}?populate=*`;
+      const checkUrl = `https://api-freeroll-production.up.railway.app/api/lab-submission-records/${record.id}?populate=*`;
       console.log('Checking record URL:', checkUrl);
 
       const checkRes = await fetch(checkUrl, {
@@ -1698,7 +1698,7 @@ export default function QualityInspectionPage() {
         console.log('Record not found with regular ID, trying alternative approaches...');
 
         // Try to find the record by searching all records and matching
-        const labRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/labs?documentId=${localStorage.getItem("userId")}`, {
+        const labRes = await fetch(`https://api-freeroll-production.up.railway.app/api/labs?documentId=${localStorage.getItem("userId")}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('jwt')}`,
           },
@@ -1710,7 +1710,7 @@ export default function QualityInspectionPage() {
 
           if (labId) {
             // Get all records and find the one we want
-            const allRecordsUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?populate=*&filters[lab][documentId][$eq]=${labId}`;
+            const allRecordsUrl = `https://api-freeroll-production.up.railway.app/api/lab-submission-records?populate=*&filters[lab][documentId][$eq]=${labId}`;
             const allRecordsRes = await fetch(allRecordsUrl, {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -1770,7 +1770,7 @@ export default function QualityInspectionPage() {
         const formData = new FormData();
         formData.append("files", testResults.uploadedFile);
 
-        const uploadRes = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/upload", {
+        const uploadRes = await fetch("https://api-freeroll-production.up.railway.app/api/upload", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${localStorage.getItem("jwt")}`,
@@ -1905,7 +1905,7 @@ export default function QualityInspectionPage() {
 
     console.log('📤 Update data to send:', updateData);
 
-    const saveUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records/${saveId}`;
+    const saveUrl = `https://api-freeroll-production.up.railway.app/api/lab-submission-records/${saveId}`;
     const res = await fetch(saveUrl, {
       method: 'PUT',
       headers: {
@@ -2101,32 +2101,6 @@ export default function QualityInspectionPage() {
                 <Label><LucideCheck className="h-4 w-4" /></Label> Completed - Read Only
               </span>
             )}
-          </div>
-          <div className="flex items-center gap-2">
-            {/* ⭐ แก้ปุ่ม Save */}
-            <Button
-              onClick={handleSave}
-              disabled={saving || isReadOnly}
-              className={`flex items-center gap-2 ${isReadOnly ? 'opacity-50' : ''}`}
-              variant={isReadOnly ? 'secondary' : 'default'}
-            >
-              {isReadOnly ? (
-                <>
-                  <Save size={16} />
-                  Save Results
-                </>
-              ) : saving ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save size={16} />
-                  Save Results
-                </>
-              )}
-            </Button>
           </div>
         </header>
 
@@ -2456,7 +2430,7 @@ export default function QualityInspectionPage() {
                           <SelectTrigger>
                             <SelectValue placeholder="Select temperature condition" />
                           </SelectTrigger>
-                          <SelectContent> 
+                          <SelectContent>
                             <SelectItem value="Room Temperature, Normal Condition">Room Temperature, Normal Condition</SelectItem>
                             <SelectItem value="Cool/Dry Place">Cool/Dry Place</SelectItem>
                             <SelectItem value="Refrigerated">Refrigerated</SelectItem>
@@ -3093,6 +3067,43 @@ export default function QualityInspectionPage() {
               </div>
             </CardContent>
           </Card>
+          <div className="flex items-center justify-end gap-2 left-1 bottom-0 w-full p-4 bg-white border-t">
+            {/* ปุ่ม Cancel */}
+            <Button
+              onClick={() => router.push('/inspection-details')}
+              disabled={saving || isReadOnly}
+              variant="outline"
+              className="flex items-center gap-2 bg-red-600 text-white hover:bg-red-500 hover:text-white"
+            >
+              <X size={16} />
+              Cancel
+            </Button>
+
+            {/* ⭐ แก้ปุ่ม Save ให้อยู่ขวา */}
+            <Button
+              onClick={handleSave}
+              disabled={saving || isReadOnly}
+              className={`flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white ${isReadOnly ? 'opacity-50' : ''}`}
+              variant={isReadOnly ? 'secondary' : 'default'}
+            >
+              {isReadOnly ? (
+                <>
+                  <Save size={16} />
+                  Save Results
+                </>
+              ) : saving ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save size={16} />
+                  Save Results
+                </>
+              )}
+            </Button>
+          </div>
         </main>
       </SidebarInset>
     </SidebarProvider>

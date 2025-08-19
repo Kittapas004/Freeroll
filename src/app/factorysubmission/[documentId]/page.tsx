@@ -30,7 +30,7 @@ export default function FactoryFeedbackDetailPage() {
         }
 
         try {
-            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/upload/files/${attachmentsId}`, {
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/upload/files/${attachmentsId}`, {
                 method: "GET",
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
@@ -43,7 +43,7 @@ export default function FactoryFeedbackDetailPage() {
 
             const attachment = await response.json();
 
-            const downloadUrl = `https://popular-trust-9012d3ebd9.strapiapp.com${attachment.url}`;
+            const downloadUrl = `https://api-freeroll-production.up.railway.app${attachment.url}`;
 
             const fileRes = await fetch(downloadUrl);
             const blob = await fileRes.blob();
@@ -66,7 +66,7 @@ export default function FactoryFeedbackDetailPage() {
     const fetchFactoryData = async () => {
         try {
             const response = await fetch(
-                `https://popular-trust-9012d3ebd9.strapiapp.com/api/factory-submissions/${batchdocumentId}?populate=*`,
+                `https://api-freeroll-production.up.railway.app/api/factory-submissions/${batchdocumentId}?populate=*`,
                 {
                     method: "GET",
                     headers: {

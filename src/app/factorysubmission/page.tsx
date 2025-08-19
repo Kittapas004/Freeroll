@@ -30,7 +30,7 @@ export default function FactorySubmissionPage() {
 
     const fetchAllBatchData = async () => {
         try {
-            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/factory-submissions?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-submissions?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -67,7 +67,7 @@ export default function FactorySubmissionPage() {
             }
 
             console.log("Query Params:", queryParams.toString());
-            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/factory-submissions?populate=*&${queryParams.toString()}`, {
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-submissions?populate=*&${queryParams.toString()}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -101,7 +101,7 @@ export default function FactorySubmissionPage() {
             return;
         }
         try {
-            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/factory-submissions/${documentId}`, {
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-submissions/${documentId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -139,7 +139,7 @@ export default function FactorySubmissionPage() {
     const [farmdata, setFarmdata] = useState<Farm[]>([]);
     const fetchFarms = async () => {
         try {
-            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/farms?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -175,7 +175,7 @@ export default function FactorySubmissionPage() {
 
     const fetchFeedbackData = async () => {
         try {
-            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/factory-submissions?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}&filters[Submission_status][$ne]=Waiting`, {
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-submissions?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}&filters[Submission_status][$ne]=Waiting`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },

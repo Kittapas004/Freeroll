@@ -128,7 +128,7 @@ export default function PlantingBatchDetail() {
 
     const fetchLabData = async () => {
         try {
-            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/labs?populate=*`, {
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/labs?populate=*`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -148,7 +148,7 @@ export default function PlantingBatchDetail() {
 
     const fetchFarms = async () => {
         try {
-            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/farms?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -199,7 +199,7 @@ export default function PlantingBatchDetail() {
             if (validUrl.startsWith('http')) {
                 return validUrl;
             } else {
-                return `https://popular-trust-9012d3ebd9.strapiapp.com${validUrl}`;
+                return `https://api-freeroll-production.up.railway.app${validUrl}`;
             }
         }
 
@@ -211,7 +211,7 @@ export default function PlantingBatchDetail() {
         try {
             console.log("Fetching data for documentId:", documentId);
             const res = await fetch(
-                `https://popular-trust-9012d3ebd9.strapiapp.com/api/batches/${documentId}?` +
+                `https://api-freeroll-production.up.railway.app/api/batches/${documentId}?` +
                 `populate[Farm][populate]=*&` +
                 `populate[Batch_image][populate]=*&` +
                 `populate[lab_submission_records][populate]=*&` +
@@ -288,7 +288,7 @@ export default function PlantingBatchDetail() {
                     status: record.Submission_status,
                     harvest_record: record.harvest_record.documentId,
                     report: record.Report?.[0]?.url
-                        ? `https://popular-trust-9012d3ebd9.strapiapp.com${record.Report[0].url}`
+                        ? `https://api-freeroll-production.up.railway.app${record.Report[0].url}`
                         : "",
                     exported: record.exported || false,
                     export_status: record.export_status || 'Unknown',
@@ -311,7 +311,7 @@ export default function PlantingBatchDetail() {
                 return;
             }
 
-            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/fertilizer-records`, {
+            const res = await fetch(`https://api-freeroll-production.up.railway.app/api/fertilizer-records`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -331,7 +331,7 @@ export default function PlantingBatchDetail() {
                 })
             });
             try {
-                const res_notification = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/notifications`, {
+                const res_notification = await fetch(`https://api-freeroll-production.up.railway.app/api/notifications`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -348,7 +348,7 @@ export default function PlantingBatchDetail() {
                     })
                 });
                 if (!res_notification.ok) throw new Error("Failed to create notification record");
-                const update_status_res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms/${PlantingBatches?.farm_id}`, {
+                const update_status_res = await fetch(`https://api-freeroll-production.up.railway.app/api/farms/${PlantingBatches?.farm_id}`, {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
@@ -398,7 +398,7 @@ export default function PlantingBatchDetail() {
                 return;
             }
 
-            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/harvest-records`, {
+            const res = await fetch(`https://api-freeroll-production.up.railway.app/api/harvest-records`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -433,7 +433,7 @@ export default function PlantingBatchDetail() {
                 })
             });
             try {
-                const res_notification = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/notifications`, {
+                const res_notification = await fetch(`https://api-freeroll-production.up.railway.app/api/notifications`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -454,7 +454,7 @@ export default function PlantingBatchDetail() {
                 console.error("Error creating notification record:", error);
             }
 
-            const update_status_res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms/${PlantingBatches?.farm_id}`, {
+            const update_status_res = await fetch(`https://api-freeroll-production.up.railway.app/api/farms/${PlantingBatches?.farm_id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -549,7 +549,7 @@ export default function PlantingBatchDetail() {
 
                     console.log('Submission data:', submitData);
 
-                    const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records`, {
+                    const res = await fetch(`https://api-freeroll-production.up.railway.app/api/lab-submission-records`, {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
@@ -571,7 +571,7 @@ export default function PlantingBatchDetail() {
 
                     // Update the harvest record status to "Pending"
                     console.log('Updating harvest record status...');
-                    const updateRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/harvest-records/${sampleId}`, {
+                    const updateRes = await fetch(`https://api-freeroll-production.up.railway.app/api/harvest-records/${sampleId}`, {
                         method: "PUT",
                         headers: {
                             "Content-Type": "application/json",
@@ -592,7 +592,7 @@ export default function PlantingBatchDetail() {
 
                     // Create notification
                     try {
-                        const submitted_notification = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/notifications`, {
+                        const submitted_notification = await fetch(`https://api-freeroll-production.up.railway.app/api/notifications`, {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
@@ -635,7 +635,7 @@ export default function PlantingBatchDetail() {
                 return;
             }
 
-            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records/${recordId}`, {
+            const res = await fetch(`https://api-freeroll-production.up.railway.app/api/lab-submission-records/${recordId}`, {
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json",
@@ -643,7 +643,7 @@ export default function PlantingBatchDetail() {
                 },
             });
             if (res.ok) {
-                const updateRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/harvest-records/${harvest_record}`, {
+                const updateRes = await fetch(`https://api-freeroll-production.up.railway.app/api/harvest-records/${harvest_record}`, {
                     method: "PUT",
                     headers: {
                         "Content-Type": "application/json",
@@ -679,7 +679,7 @@ export default function PlantingBatchDetail() {
                 return;
             }
 
-            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/harvest-records/${recordId}`, {
+            const res = await fetch(`https://api-freeroll-production.up.railway.app/api/harvest-records/${recordId}`, {
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json",
@@ -705,7 +705,7 @@ export default function PlantingBatchDetail() {
                 return;
             }
 
-            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/fertilizer-records/${recordId}`, {
+            const res = await fetch(`https://api-freeroll-production.up.railway.app/api/fertilizer-records/${recordId}`, {
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json",
@@ -731,7 +731,7 @@ export default function PlantingBatchDetail() {
                 return;
             }
 
-            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/batches/${documentId}`, {
+            const res = await fetch(`https://api-freeroll-production.up.railway.app/api/batches/${documentId}`, {
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json",
@@ -757,7 +757,7 @@ export default function PlantingBatchDetail() {
                 return;
             }
 
-            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/fertilizer-records/${editingRecord.documentId}`, {
+            const res = await fetch(`https://api-freeroll-production.up.railway.app/api/fertilizer-records/${editingRecord.documentId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -802,7 +802,7 @@ export default function PlantingBatchDetail() {
                 const formData = new FormData();
                 formData.append("files", imageInputRef.current.files[0]);
 
-                const uploadRes = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/upload", {
+                const uploadRes = await fetch("https://api-freeroll-production.up.railway.app/api/upload", {
                     method: "POST",
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem("jwt")}`,
@@ -831,7 +831,7 @@ export default function PlantingBatchDetail() {
                 updatedData.Batch_image = imageId;
             }
 
-            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/batches/${documentId}`, {
+            const res = await fetch(`https://api-freeroll-production.up.railway.app/api/batches/${documentId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -862,7 +862,7 @@ export default function PlantingBatchDetail() {
                 return;
             }
 
-            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/harvest-records/${editingRecord.documentId}`, {
+            const res = await fetch(`https://api-freeroll-production.up.railway.app/api/harvest-records/${editingRecord.documentId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -1050,7 +1050,7 @@ export default function PlantingBatchDetail() {
             }
 
             // Update Batch_Status to "Completed Successfully"
-            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/batches/${documentId}`, {
+            const res = await fetch(`https://api-freeroll-production.up.railway.app/api/batches/${documentId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -1086,7 +1086,7 @@ export default function PlantingBatchDetail() {
                     batch: documentId,
                     harvest_records: records,
                 });
-                const fac_submission_res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/factory-submissions`, {
+                const fac_submission_res = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-submissions`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -1115,7 +1115,7 @@ export default function PlantingBatchDetail() {
 
             if (!res.ok) throw new Error("Failed to update Batch_Status to Completed Successfully");
 
-            const farm_res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms/${PlantingBatches.farm_id}`, {
+            const farm_res = await fetch(`https://api-freeroll-production.up.railway.app/api/farms/${PlantingBatches.farm_id}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -1130,7 +1130,7 @@ export default function PlantingBatchDetail() {
 
             if (!farm_res.ok) throw new Error("Failed to update Farm Batch_Status to End Planted");
 
-            const notification_res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/notifications`, {
+            const notification_res = await fetch(`https://api-freeroll-production.up.railway.app/api/notifications`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -1153,7 +1153,7 @@ export default function PlantingBatchDetail() {
             // Automatically update Batch_Status to "Completed Past Data" after 10 minutes
             setTimeout(async () => {
                 try {
-                    const updateRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/batches/${documentId}`, {
+                    const updateRes = await fetch(`https://api-freeroll-production.up.railway.app/api/batches/${documentId}`, {
                         method: "PUT",
                         headers: {
                             "Content-Type": "application/json",
@@ -1241,7 +1241,7 @@ export default function PlantingBatchDetail() {
                 },
             };
 
-            const res = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records`, {
+            const res = await fetch(`https://api-freeroll-production.up.railway.app/api/lab-submission-records`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -1256,7 +1256,7 @@ export default function PlantingBatchDetail() {
             }
 
             // Update the harvest record status to "Pending"
-            const updateRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/harvest-records/${labSubmissionModal.harvestRecordId}`, {
+            const updateRes = await fetch(`https://api-freeroll-production.up.railway.app/api/harvest-records/${labSubmissionModal.harvestRecordId}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
@@ -1275,7 +1275,7 @@ export default function PlantingBatchDetail() {
 
             // Create notification
             try {
-                await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/notifications`, {
+                await fetch(`https://api-freeroll-production.up.railway.app/api/notifications`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",

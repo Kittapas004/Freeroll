@@ -61,7 +61,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       if (validUrl.startsWith('http')) {
         return validUrl;
       } else {
-        return `https://popular-trust-9012d3ebd9.strapiapp.com${validUrl}`;
+        return `https://api-freeroll-production.up.railway.app${validUrl}`;
       }
     }
     
@@ -70,7 +70,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const fetchUserData = async () => {
     try {
-      const response = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/users/me?populate=*", {
+      const response = await fetch("https://api-freeroll-production.up.railway.app/api/users/me?populate=*", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("jwt")}`,
         },

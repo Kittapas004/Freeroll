@@ -53,7 +53,7 @@ export default function FarmInformationPage() {
 
     const fetchFarms = async () => {
         try {
-            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/farms?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -166,7 +166,7 @@ export default function FarmInformationPage() {
                                             const farmSize = parseFloat((document.getElementById("farm-size") as HTMLInputElement).value);
 
                                             try {
-                                                const response = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/farms", {
+                                                const response = await fetch("https://api-freeroll-production.up.railway.app/api/farms", {
                                                     method: 'POST',
                                                     headers: {
                                                         'Content-Type': 'application/json',
@@ -312,7 +312,7 @@ export default function FarmInformationPage() {
                                                             className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-800"
                                                             onClick={async () => {
                                                                 try {
-                                                                    const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms/${yourfarm.documentId}`, {
+                                                                    const response = await fetch(`https://api-freeroll-production.up.railway.app/api/farms/${yourfarm.documentId}`, {
                                                                         method: 'PUT',
                                                                         headers: {
                                                                             'Content-Type': 'application/json',
@@ -351,7 +351,7 @@ export default function FarmInformationPage() {
                                                 if (window.confirm("Are you sure you want to delete this farm? This action cannot be undone.")) {
                                                     (async () => {
                                                         try {
-                                                            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms/${yourfarm.documentId}`, {
+                                                            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/farms/${yourfarm.documentId}`, {
                                                                 method: 'DELETE',
                                                                 headers: {
                                                                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,

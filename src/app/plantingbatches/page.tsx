@@ -110,7 +110,7 @@ export default function PlantingBatchesPage() {
 
     const fetchFarms = async () => {
         try {
-            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/farms?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -154,7 +154,7 @@ export default function PlantingBatchesPage() {
 
             formData.append("files", file);
 
-            const uploadRes = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/upload", {
+            const uploadRes = await fetch("https://api-freeroll-production.up.railway.app/api/upload", {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${jwt}`,
@@ -194,7 +194,7 @@ export default function PlantingBatchesPage() {
             if (validUrl.startsWith('http')) {
                 return validUrl;
             } else {
-                return `https://popular-trust-9012d3ebd9.strapiapp.com${validUrl}`;
+                return `https://api-freeroll-production.up.railway.app${validUrl}`;
             }
         }
 
@@ -203,7 +203,7 @@ export default function PlantingBatchesPage() {
 
     const fetchPlantingBatches = async () => {
         try {
-            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/batches?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}&sort=Batch_id:asc`, {
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/batches?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}&sort=Batch_id:asc`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -245,7 +245,7 @@ export default function PlantingBatchesPage() {
 
     const fetchAllBatchesForIDGeneration = async () => {
         try {
-            const response = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/batches`, {
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/batches`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -328,7 +328,7 @@ export default function PlantingBatchesPage() {
                 const formData = new FormData();
                 formData.append("files", imageInputRef.current.files[0]);
 
-                const uploadRes = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/upload", {
+                const uploadRes = await fetch("https://api-freeroll-production.up.railway.app/api/upload", {
                     method: "POST",
                     headers: {
                         Authorization: `Bearer ${jwt}`,
@@ -364,7 +364,7 @@ export default function PlantingBatchesPage() {
 
             console.log('🚀 Creating batch with payload:', batchPayload);
 
-            const response = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/batches", {
+            const response = await fetch("https://api-freeroll-production.up.railway.app/api/batches", {
                 method: "POST",
                 headers: {
                     Authorization: `Bearer ${jwt}`,
@@ -384,7 +384,7 @@ export default function PlantingBatchesPage() {
                     },
                 };
 
-                const farmUpdateResponse = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/farms/${selectedFarm?.documentId}`, {
+                const farmUpdateResponse = await fetch(`https://api-freeroll-production.up.railway.app/api/farms/${selectedFarm?.documentId}`, {
                     method: "PUT",
                     headers: {
                         Authorization: `Bearer ${jwt}`,

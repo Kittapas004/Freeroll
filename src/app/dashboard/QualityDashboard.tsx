@@ -259,7 +259,7 @@ export default function QualityDashboard() {
       }
 
       // Get ALL lab submission records with the SAME populate strategy as fetchDashboardData
-      const recordsUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&sort=createdAt:desc`;
+      const recordsUrl = `https://api-freeroll-production.up.railway.app/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&sort=createdAt:desc`;
       console.log('🔗 Fetching from URL:', recordsUrl);
 
       const recordsRes = await fetch(recordsUrl, {
@@ -410,7 +410,7 @@ export default function QualityDashboard() {
       console.log('=== Fetching Dashboard Data ===');
 
       // Get lab info first
-      const labRes = await fetch(`https://popular-trust-9012d3ebd9.strapiapp.com/api/labs?documentId=${localStorage.getItem("userId")}`, {
+      const labRes = await fetch(`https://api-freeroll-production.up.railway.app/api/labs?documentId=${localStorage.getItem("userId")}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('jwt')}`,
         },
@@ -429,7 +429,7 @@ export default function QualityDashboard() {
       console.log('Lab ID:', labId);
 
       // Get lab submission records with enhanced populate
-      const recordsUrl = `https://popular-trust-9012d3ebd9.strapiapp.com/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&filters[lab][documentId][$eq]=${labId}&sort=createdAt:desc`;
+      const recordsUrl = `https://api-freeroll-production.up.railway.app/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&filters[lab][documentId][$eq]=${labId}&sort=createdAt:desc`;
       console.log('Fetching from URL:', recordsUrl);
 
       const recordsRes = await fetch(recordsUrl, {
@@ -821,7 +821,7 @@ export default function QualityDashboard() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch("https://popular-trust-9012d3ebd9.strapiapp.com/api/users/me?populate=*", {
+        const response = await fetch("https://api-freeroll-production.up.railway.app/api/users/me?populate=*", {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("jwt")}`,
           },
@@ -834,7 +834,7 @@ export default function QualityDashboard() {
           name: userData.username || "",
           email: userData.email || "",
           avatar: userData.avatar?.url
-            ? `https://popular-trust-9012d3ebd9.strapiapp.com${userData.avatar.url}`
+            ? `https://api-freeroll-production.up.railway.app${userData.avatar.url}`
             : "",
           role: userData.user_role || "",
         });

@@ -99,7 +99,7 @@ export default function ReportsPage() {
       try {
         const userId = localStorage.getItem("userId");
         if (!userId) return;
-        const response = await fetch(`http://localhost:1337/api/labs?documentId=${userId}`, {
+        const response = await fetch(`https://api-freeroll-production.up.railway.app/api/labs?documentId=${userId}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('jwt')}`,
           },
@@ -128,7 +128,7 @@ export default function ReportsPage() {
       console.log('Step 1: Fetching all completed lab submission records...');
 
       const response = await fetch(
-        `http://localhost:1337/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&filters[Submission_status][$eq]=Completed`,
+        `https://api-freeroll-production.up.railway.app/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&filters[Submission_status][$eq]=Completed`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -447,7 +447,7 @@ export default function ReportsPage() {
 
     try {
       for (const item of exportHistory) {
-        await fetch(`http://localhost:1337/api/export-histories/${item.documentId}`, {
+        await fetch(`https://api-freeroll-production.up.railway.app/api/export-histories/${item.documentId}`, {
           method: 'DELETE',
           headers: {
             Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -466,7 +466,7 @@ export default function ReportsPage() {
 
   const fetchUserData = async (): Promise<void> => {
     try {
-      const res = await fetch('http://localhost:1337/api/users/me?populate=*', {
+      const res = await fetch('https://api-freeroll-production.up.railway.app/api/users/me?populate=*', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -491,7 +491,7 @@ export default function ReportsPage() {
   const fetchExportHistory = async (): Promise<void> => {
     try {
       console.log('=== Loading Export History from API ===');
-      const res = await fetch('http://localhost:1337/api/export-histories?populate=*', {
+      const res = await fetch('https://api-freeroll-production.up.railway.app/api/export-histories?populate=*', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -657,7 +657,7 @@ export default function ReportsPage() {
 
         // Step 1: Update exported status
         for (const mapping of idMapping) {
-          const updateRes = await fetch(`http://localhost:1337/api/lab-submission-records/${mapping.apiId}`, {
+          const updateRes = await fetch(`https://api-freeroll-production.up.railway.app/api/lab-submission-records/${mapping.apiId}`, {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
@@ -672,7 +672,7 @@ export default function ReportsPage() {
             }),
           });
           await fetchUserData();
-          const createExportHistoryRes = await fetch('http://localhost:1337/api/export-histories', {
+          const createExportHistoryRes = await fetch('https://api-freeroll-production.up.railway.app/api/export-histories', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
