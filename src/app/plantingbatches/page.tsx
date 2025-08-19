@@ -297,7 +297,20 @@ export default function PlantingBatchesPage() {
         return `T-Batch-${String(maxBatchNumber + 1).padStart(3, "0")}`;
     };
 
+    const [isAddingBatch, setIsAddingBatch] = useState(false);
+
     const handleAddBatch = async () => {
+        // ป้องกันการเรียกซ้ำถ้ากำลัง process อยู่
+        if (isAddingBatch) return;
+
+        // ตรวจสอบข้อมูลที่จำเป็น
+        if (!plantingDate || !plantVariety || !cultivationMethod || !location || !selectedFarm) {
+            alert("Please fill in all required fields");
+            return;
+        }
+
+        setIsAddingBatch(true); // เริ่ม loading
+
         try {
             const jwt = localStorage.getItem("jwt");
             const userId = localStorage.getItem("userId");
@@ -344,7 +357,7 @@ export default function PlantingBatchesPage() {
                     Batch_Status: "Pending Actions",
                     user_documentId: userId,
                     Farm: selectedFarm.documentId,
-                    Batch_image: imageId, // จะเป็น ID ของรูปที่ user เลือก หรือรูป default
+                    Batch_image: imageId,
                     Cultivation_Method: cultivationMethod,
                 },
             };
@@ -387,17 +400,28 @@ export default function PlantingBatchesPage() {
 
             const result = await response.json();
             console.log("✅ Batch added successfully:", result);
+
+            // รีเซ็ตฟอร์ม
             await fetchPlantingBatches();
             setIsDialogOpen(false);
-            setImagePreview(null); // reset preview
+            setImagePreview(null);
+            setPlantingDate("");
+            setPlantVariety("");
+            setCultivationMethod(undefined);
+            setLocation(undefined);
+            setSelectedFarm(undefined);
+
             if (imageInputRef.current) {
                 imageInputRef.current.value = '';
             }
+
             alert("Batch added successfully!");
 
         } catch (error) {
             console.error("❌ Error adding batch:", error);
-            alert("Something went wrong while adding the batch.");
+            alert("Something went wrong while adding the batch. Please try again.");
+        } finally {
+            setIsAddingBatch(false); // จบ loading
         }
     };
 
@@ -584,28 +608,41 @@ export default function PlantingBatchesPage() {
                                     </div>
                                 </div>
                                 <DialogFooter className="flex justify-end">
-                                    <Button variant="outline" className="bg-red-600 text-white" onClick={() => {
-                                        setImagePreview(null);
-                                        if (imageInputRef.current) {
-                                            imageInputRef.current.value = '';
-                                        }
-                                        setCultivationMethod("");
-                                        setLocation("");
-                                        const inputs = document.querySelectorAll('#planting-date, #plant-variety');
-                                        inputs.forEach(input => (input as HTMLInputElement).value = '');
-
-                                    }}>
+                                    <Button
+                                        variant="outline"
+                                        className="bg-red-600 text-white"
+                                        disabled={isAddingBatch} // disable เมื่อกำลัง loading
+                                        onClick={() => {
+                                            setImagePreview(null);
+                                            if (imageInputRef.current) {
+                                                imageInputRef.current.value = '';
+                                            }
+                                            setCultivationMethod(undefined);
+                                            setLocation(undefined);
+                                            setSelectedFarm(undefined);
+                                            setPlantingDate("");
+                                            setPlantVariety("");
+                                        }}
+                                    >
                                         Clear
                                     </Button>
                                     <Button
                                         type="submit"
-                                        className="bg-green-600 dark:text-white"
+                                        className="bg-green-600 dark:text-white min-w-[100px]"
+                                        disabled={isAddingBatch || !plantingDate || !plantVariety || !cultivationMethod || !location}
                                         onClick={(e) => {
                                             e.preventDefault();
                                             handleAddBatch();
                                         }}
                                     >
-                                        Add Batch
+                                        {isAddingBatch ? (
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                Adding...
+                                            </div>
+                                        ) : (
+                                            "Add Batch"
+                                        )}
                                     </Button>
                                 </DialogFooter>
                             </DialogContent>

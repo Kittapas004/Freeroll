@@ -376,37 +376,37 @@ export default function InspectionHistory() {
     }, [role]);
 
     // Auto-refresh data every 30 seconds
-    useEffect(() => {
-        if (role !== 'loading' && ALLOWED_ROLES.includes(role)) {
-            const interval = setInterval(() => {
-                fetchInspectionHistory();
-            }, 30000);
+    // useEffect(() => {
+    //     if (role !== 'loading' && ALLOWED_ROLES.includes(role)) {
+    //         const interval = setInterval(() => {
+    //             fetchInspectionHistory();
+    //         }, 30000);
 
-            return () => clearInterval(interval);
-        }
-    }, [role]);
+    //         return () => clearInterval(interval);
+    //     }
+    // }, [role]);
 
     if (role === 'loading' || loading) {
         return (
-            <div className="flex h-full bg-gray-50">
-                <SidebarProvider open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
-                    <AppSidebar />
-                    <SidebarInset>
-                        <div className="p-5">
-                            <div className="flex items-center gap-2 mb-6">
-                                <SidebarTrigger onClick={() => setIsSidebarOpen(!isSidebarOpen)} />
-                                <h1 className="text-2xl font-semibold text-gray-800">Quality Inspection History</h1>
-                            </div>
-                            <div className="flex items-center justify-center h-64">
-                                <div className="animate-pulse">
-                                    <div className="w-8 h-8 bg-blue-500 rounded-full mb-2"></div>
-                                    <p className="text-gray-500">Loading inspection history...</p>
-                                </div>
+            <SidebarProvider open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+                <AppSidebar />
+                <SidebarInset>
+                    <header className="flex justify-between h-16 items-center gap-2 px-4 border-b bg-white">
+                        <div className="flex items-center gap-2">
+                            <SidebarTrigger onClick={() => setIsSidebarOpen(!isSidebarOpen)} />
+                            <h1 className="text-2xl font-semibold text-gray-800">Quality Inspection History</h1>
+                        </div>
+                    </header>
+                    <main className="flex-1 p-6 bg-gray-50 overflow-auto">
+                        <div className="flex items-center justify-center h-64">
+                            <div className="text-center">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+                                <p className="text-gray-600">Loading completed test results...</p>
                             </div>
                         </div>
-                    </SidebarInset>
-                </SidebarProvider>
-            </div>
+                    </main>
+                </SidebarInset>
+            </SidebarProvider>
         );
     }
 
@@ -447,14 +447,6 @@ export default function InspectionHistory() {
                         <div className="flex items-center gap-2 mb-6">
                             <SidebarTrigger onClick={() => setIsSidebarOpen(!isSidebarOpen)} />
                             <h1 className="text-2xl font-semibold text-gray-800">Quality Inspection History</h1>
-                            {/* <Button
-                                onClick={fetchInspectionHistory}
-                                variant="outline"
-                                size="sm"
-                                className="ml-auto"
-                            >
-                                Refresh
-                            </Button> */}
                         </div>
 
                         {/* Search and Filters */}
