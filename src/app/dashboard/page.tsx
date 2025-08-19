@@ -446,24 +446,30 @@ export default function DashboardPage() {
                 <span className="text-lg"><CalendarClock className="text-green-600" /></span>
               </div>
               <div className="text-xl font-bold text-gray-800 mt-1">
-                {getDisplayStatus(dashboardData?.status) === "End Planted"
-                  ? "Harvested"
-                  : dashboardData?.planting_date
-                    ? (() => {
-                      const harvestDate = new Date(dashboardData.planting_date).getTime() + 270 * 24 * 60 * 60 * 1000;
-                      const daysLeft = Math.ceil((harvestDate - Date.now()) / (1000 * 60 * 60 * 24));
-                      return daysLeft > 0 ? `${daysLeft} days` : "Ready to harvest";
-                    })()
-                    : "N/A"}
+                {dashboardData ? (
+                  getDisplayStatus(dashboardData?.status) === "End Planted"
+                    ? "Harvested"
+                    : dashboardData?.planting_date
+                      ? (() => {
+                        const harvestDate = new Date(dashboardData.planting_date).getTime() + 270 * 24 * 60 * 60 * 1000;
+                        const daysLeft = Math.ceil((harvestDate - Date.now()) / (1000 * 60 * 60 * 24));
+                        return daysLeft > 0 ? `${daysLeft} days` : "Ready to harvest";
+                      })()
+                      : "N/A"
+                ) : (
+                  "No Data"
+                )}
               </div>
               <div className="text-xs text-gray-400 mt-0.5">
-                Expected: {dashboardData?.planting_date
-                  ? new Date(new Date(dashboardData.planting_date).getTime() + 270 * 24 * 60 * 60 * 1000)
-                    .toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
-                  : "N/A"}
+                {dashboardData?.planting_date ? (
+                  `Expected: ${new Date(new Date(dashboardData.planting_date).getTime() + 270 * 24 * 60 * 60 * 1000)
+                    .toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                ) : (
+                  "Please select a batch"
+                )}
               </div>
-
             </div>
+
             <div className="bg-white border rounded-2xl shadow-sm p-4">
               <div className="text-sm text-gray-500 flex items-center justify-between gap-2">
                 Harvest Quality
@@ -507,10 +513,9 @@ export default function DashboardPage() {
                       </div>
                     ))
                 ) : (
-                  "N/A"
+                  "No Data"
                 )}
               </div>
-              {/* <div className="text-xl font-bold text-gray-800 mt-1"></div> */}
             </div>
             <div className="bg-white border rounded-2xl shadow-sm p-4">
               <div className="text-sm text-gray-500 flex items-center justify-between gap-2">
@@ -518,9 +523,11 @@ export default function DashboardPage() {
                 <span className="text-lg"><Sprout className="text-green-600" /></span>
               </div>
               <div className="text-xl font-bold text-gray-800 mt-1">
-                {getDisplayStatus(dashboardData?.status)}
+                {/* เพิ่มการเช็คว่ามี dashboardData หรือไม่ */}
+                {dashboardData ? getDisplayStatus(dashboardData?.status) : "No Batch Selected"}
               </div>
-              {getDisplayStatus(dashboardData?.status) !== "End Planted" && (
+              {/* เพิ่มการเช็คว่ามี dashboardData และ status ไม่ใช่ "End Planted" */}
+              {dashboardData && getDisplayStatus(dashboardData?.status) !== "End Planted" && (
                 <div className="text-xs text-gray-400 mt-0.5">
                   {dashboardData?.planting_date
                     ? `${Math.max(0, Math.ceil(
@@ -537,16 +544,29 @@ export default function DashboardPage() {
                 <span className="text-lg"><ClipboardList className="text-green-600" /></span>
               </div>
               <div className="text-xl font-bold text-gray-800 mt-1">
-                {getDisplayStatus(dashboardData?.status) === "Planted" && "Plant"}
-                {dashboardData?.Farm_Status === "Fertilized" && "Fertilization"}
-                {dashboardData?.Farm_Status === "Harvested" && "Harvest"}
-                {getDisplayStatus(dashboardData?.status) === "End Planted" && "End Planted"}
+                {/* เพิ่มการเช็คว่ามี dashboardData หรือไม่ */}
+                {dashboardData ? (
+                  <>
+                    {getDisplayStatus(dashboardData?.status) === "Planted" && "Plant"}
+                    {dashboardData?.Farm_Status === "Fertilized" && "Fertilization"}
+                    {dashboardData?.Farm_Status === "Harvested" && "Harvest"}
+                    {getDisplayStatus(dashboardData?.status) === "End Planted" && "Completed"}
+                  </>
+                ) : (
+                  "No Tasks"
+                )}
               </div>
               <div className="text-xs text-gray-400 mt-0.5">
-                {getDisplayStatus(dashboardData?.status) === "Planted" && "Next: Fertilization"}
-                {dashboardData?.Farm_Status === "Fertilized" && "Next: Harvest"}
-                {getDisplayStatus(dashboardData?.status) === "End Planted" && "Not have any tasks"}
-                {dashboardData?.Farm_Status === "End Planted" && "Not have any tasks"}
+                {dashboardData ? (
+                  <>
+                    {getDisplayStatus(dashboardData?.status) === "Planted" && "Next: Fertilization"}
+                    {dashboardData?.Farm_Status === "Fertilized" && "Next: Harvest"}
+                    {getDisplayStatus(dashboardData?.status) === "End Planted" && "All tasks completed"}
+                    {dashboardData?.Farm_Status === "End Planted" && "All tasks completed"}
+                  </>
+                ) : (
+                  "Please select a batch to view tasks"
+                )}
               </div>
             </div>
           </div>
