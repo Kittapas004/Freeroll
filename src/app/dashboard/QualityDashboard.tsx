@@ -62,6 +62,7 @@ interface LabNotification {
   farmName: string;
   submissionDate: string;
   submissionStatus: 'Pending' | 'Draft' | 'Completed';
+  notification_status?: 'unread' | 'read';
   qualityGrade: string;
   read: boolean;
   documentId: string;
@@ -242,6 +243,30 @@ export default function QualityDashboard() {
 
     return finalResult;
   };
+  
+  let userlabName = '';
+
+  const fetchUserData = async (): Promise<void> => {
+    try {
+      const res = await fetch('http://localhost:1337/api/users/me?populate=*', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to fetch user data');
+      }
+
+      const user = await res.json();
+      userlabName = user.lab?.Lab_Name;
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
 
   // ✅ ULTRA SIMPLIFIED: Lab Notifications without complex filters
@@ -259,7 +284,7 @@ export default function QualityDashboard() {
       }
 
       // Get ALL lab submission records with the SAME populate strategy as fetchDashboardData
-      const recordsUrl = `https://api-freeroll-production.up.railway.app/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&sort=createdAt:desc`;
+      const recordsUrl = `http://localhost:1337/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[lab][populate]=*&populate[harvest_record][populate]=*&sort=createdAt:desc`;
       console.log('🔗 Fetching from URL:', recordsUrl);
 
       const recordsRes = await fetch(recordsUrl, {
@@ -271,10 +296,18 @@ export default function QualityDashboard() {
       if (!recordsRes.ok) {
         throw new Error(`Failed to load records: ${recordsRes.status}`);
       }
+      await fetchUserData();
 
       const recordsData = await recordsRes.json();
-      console.log('📊 Raw API Response:', recordsData);
 
+      // Only keep records where Lab_Name matches userlabName
+      if (recordsData.data && userlabName) {
+        recordsData.data = recordsData.data.filter((record: any) => {
+          const labName = record?.lab?.Lab_Name || 'unknow lab';
+          return labName === userlabName;
+        });
+      }
+      console.log('📊 Raw API Response:', recordsData);
       if (!recordsData.data || recordsData.data.length === 0) {
         console.log('ℹ️ No lab submission records found');
         setLabNotifications([]);
@@ -284,106 +317,113 @@ export default function QualityDashboard() {
       console.log(`📊 Total records found: ${recordsData.data.length}`);
 
       // Process records using EXACT SAME LOGIC as fetchDashboardData
-      const notifications: LabNotification[] = recordsData.data.slice(0, 10).map((record: any, index: number) => {
-        console.log(`\n=== Processing Record ${index + 1} (ID: ${record.id}) ===`);
+      // Filter only records where exported != true
+      const notifications: LabNotification[] = recordsData.data
+        .filter((record: any) => {
+          const attrs = record.attributes || record;
+            return attrs?.exported !== true && attrs?.notification_status === 'unread';
+        })
+        .slice(0, 10)
+        .map((record: any, index: number) => {
+          console.log(`\n=== Processing Record ${index + 1} (ID: ${record.id}) ===`);
 
-        const attrs = record.attributes || record;
-        console.log('Record attributes keys:', Object.keys(attrs));
+          const attrs = record.attributes || record;
+          console.log('Record attributes keys:', Object.keys(attrs));
 
-        let batchId = 'N/A';
-        let farmName = 'Unknown Farm';
+          let batchId = 'N/A';
+          let farmName = 'Unknown Farm';
 
-        // 🔥 USE EXACT SAME EXTRACTION LOGIC AS fetchDashboardData
-        console.log('🔍 Extracting batch and farm info...');
+          // 🔥 USE EXACT SAME EXTRACTION LOGIC AS fetchDashboardData
+          console.log('🔍 Extracting batch and farm info...');
 
-        // Extract batch and farm info - Method 1: Standard nested structure
-        if (attrs?.batch?.data?.attributes) {
-          const batchData = attrs.batch.data.attributes;
-          console.log('📋 Found batch data:', batchData);
+          // Extract batch and farm info - Method 1: Standard nested structure
+          if (attrs?.batch?.data?.attributes) {
+        const batchData = attrs.batch.data.attributes;
+        console.log('📋 Found batch data:', batchData);
 
-          batchId = batchData?.Batch_id || batchData?.batch_id || 'N/A';
-          console.log('✅ Batch ID from method 1:', batchId);
+        batchId = batchData?.Batch_id || batchData?.batch_id || 'N/A';
+        console.log('✅ Batch ID from method 1:', batchId);
 
-          if (batchData?.Farm?.data?.attributes) {
-            const farmData = batchData.Farm.data.attributes;
-            console.log('📋 Found farm data:', farmData);
-            farmName = farmData.Farm_Name || farmData.farm_name || 'Unknown Farm';
-            console.log('✅ Farm Name from method 1:', farmName);
-          } else {
-            console.log('❌ No nested farm data in method 1');
+        if (batchData?.Farm?.data?.attributes) {
+          const farmData = batchData.Farm.data.attributes;
+          console.log('📋 Found farm data:', farmData);
+          farmName = farmData.Farm_Name || farmData.farm_name || 'Unknown Farm';
+          console.log('✅ Farm Name from method 1:', farmName);
+        } else {
+          console.log('❌ No nested farm data in method 1');
+        }
+          }
+
+          // Method 2: Direct batch access (fallback from fetchDashboardData)
+          if (batchId === 'N/A' || farmName === 'Unknown Farm') {
+        console.log('🔍 Trying method 2: Direct batch access...');
+        if (attrs?.batch) {
+          console.log('📋 Direct batch object:', attrs.batch);
+
+          if (batchId === 'N/A') {
+            batchId = attrs.batch?.Batch_id || attrs.batch?.batch_id || 'N/A';
+            console.log('✅ Batch ID from method 2:', batchId);
+          }
+
+          if (farmName === 'Unknown Farm') {
+            farmName = attrs.batch?.Farm?.Farm_Name || attrs.batch?.Farm?.farm_name || 'Unknown Farm';
+            console.log('✅ Farm Name from method 2:', farmName);
           }
         }
-
-        // Method 2: Direct batch access (fallback from fetchDashboardData)
-        if (batchId === 'N/A' || farmName === 'Unknown Farm') {
-          console.log('🔍 Trying method 2: Direct batch access...');
-          if (attrs?.batch) {
-            console.log('📋 Direct batch object:', attrs.batch);
-
-            if (batchId === 'N/A') {
-              batchId = attrs.batch?.Batch_id || attrs.batch?.batch_id || 'N/A';
-              console.log('✅ Batch ID from method 2:', batchId);
-            }
-
-            if (farmName === 'Unknown Farm') {
-              farmName = attrs.batch?.Farm?.Farm_Name || attrs.batch?.Farm?.farm_name || 'Unknown Farm';
-              console.log('✅ Farm Name from method 2:', farmName);
-            }
           }
-        }
 
-        // Method 3: Log what we actually have for debugging
-        console.log('🔍 Final extraction results:');
-        console.log('- Batch ID:', batchId);
-        console.log('- Farm Name:', farmName);
-        console.log('- Full batch structure:', JSON.stringify(attrs?.batch, null, 2));
+          // Method 3: Log what we actually have for debugging
+          console.log('🔍 Final extraction results:');
+          console.log('- Batch ID:', batchId);
+          console.log('- Farm Name:', farmName);
+          console.log('- Full batch structure:', JSON.stringify(attrs?.batch, null, 2));
 
-        // Extract other fields
-        const submissionStatus = attrs?.Submission_status || 'Pending';
-        const qualityGrade = attrs?.Quality_grade || 'Not Graded';
-        const submissionDate = attrs?.Date || attrs?.createdAt || new Date().toISOString();
+          // Extract other fields
+          const submissionStatus = attrs?.Submission_status || 'Pending';
+          const qualityGrade = attrs?.Quality_grade || 'Not Graded';
+          const submissionDate = attrs?.Date || attrs?.createdAt || new Date().toISOString();
 
-        console.log('📋 Other extracted data:', {
-          submissionStatus,
-          qualityGrade,
-          submissionDate
+          console.log('📋 Other extracted data:', {
+        submissionStatus,
+        qualityGrade,
+        submissionDate
+          });
+
+          // Determine notification type
+          let notificationType: 'new_submission' | 'pending' | 'completed' = 'new_submission';
+          let title = 'New Sample Received';
+
+          if (submissionStatus === 'Pending') {
+        notificationType = 'pending';
+        title = 'Inspection Pending';
+          } else if (submissionStatus === 'Completed') {
+        notificationType = 'completed';
+        title = 'Inspection Completed';
+          }
+
+          const notification: LabNotification = {
+        id: `lab-${record.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        type: notificationType,
+        title,
+        message: `Batch ${batchId} from ${farmName}`,
+        batchId,
+        farmName,
+        submissionDate,
+        submissionStatus: submissionStatus as 'Pending' | 'Draft' | 'Completed',
+        qualityGrade,
+        read: submissionStatus === 'Completed',
+        documentId: record.documentId || record.id?.toString() || `record-${index}`
+          };
+
+          console.log('✅ Final notification created:', {
+        id: notification.id.substring(0, 20) + '...',
+        batchId: notification.batchId,
+        farmName: notification.farmName,
+        message: notification.message
+          });
+
+          return notification;
         });
-
-        // Determine notification type
-        let notificationType: 'new_submission' | 'pending' | 'completed' = 'new_submission';
-        let title = 'New Sample Received';
-
-        if (submissionStatus === 'Pending') {
-          notificationType = 'pending';
-          title = 'Inspection Pending';
-        } else if (submissionStatus === 'Completed') {
-          notificationType = 'completed';
-          title = 'Inspection Completed';
-        }
-
-        const notification: LabNotification = {
-          id: `lab-${record.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          type: notificationType,
-          title,
-          message: `Batch ${batchId} from ${farmName}`,
-          batchId,
-          farmName,
-          submissionDate,
-          submissionStatus: submissionStatus as 'Pending' | 'Draft' | 'Completed',
-          qualityGrade,
-          read: submissionStatus === 'Completed',
-          documentId: record.documentId || record.id?.toString() || `record-${index}`
-        };
-
-        console.log('✅ Final notification created:', {
-          id: notification.id.substring(0, 20) + '...',
-          batchId: notification.batchId,
-          farmName: notification.farmName,
-          message: notification.message
-        });
-
-        return notification;
-      });
 
       console.log('\n=== FINAL SUMMARY ===');
       console.log(`✅ Total notifications: ${notifications.length}`);
@@ -410,7 +450,7 @@ export default function QualityDashboard() {
       console.log('=== Fetching Dashboard Data ===');
 
       // Get lab info first
-      const labRes = await fetch(`https://api-freeroll-production.up.railway.app/api/labs?documentId=${localStorage.getItem("userId")}`, {
+      const labRes = await fetch(`http://localhost:1337/api/labs?documentId=${localStorage.getItem("userId")}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('jwt')}`,
         },
@@ -429,7 +469,7 @@ export default function QualityDashboard() {
       console.log('Lab ID:', labId);
 
       // Get lab submission records with enhanced populate
-      const recordsUrl = `https://api-freeroll-production.up.railway.app/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&filters[lab][documentId][$eq]=${labId}&sort=createdAt:desc`;
+      const recordsUrl = `http://localhost:1337/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&filters[lab][documentId][$eq]=${labId}&sort=createdAt:desc`;
       console.log('Fetching from URL:', recordsUrl);
 
       const recordsRes = await fetch(recordsUrl, {
@@ -795,12 +835,68 @@ export default function QualityDashboard() {
     );
   };
 
-  const removeNotification = (id: string) => {
-    setLabNotifications(prev => prev.filter(n => n.id !== id));
+  const removeNotification = async (id: string) => {
+    try {
+      const notification = labNotifications.find(n => n.id === id);
+      if (!notification) return;
+      const jwt = localStorage.getItem("jwt");
+      await fetch(`http://localhost:1337/api/lab-submission-records/${notification.documentId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({
+          data: {
+            notification_status: "read",
+          },
+        }),
+      });
+      // Refresh notifications after update
+      fetchLabNotifications();
+      // If current notifications page is empty after removal, go to previous page
+      const newVisibleNotifications = labNotifications.filter(n => n.id !== id)
+        .slice(notificationsPage * ITEMS_PER_PAGE, notificationsPage * ITEMS_PER_PAGE + ITEMS_PER_PAGE);
+      if (newVisibleNotifications.length === 0 && notificationsPage > 0) {
+        setNotificationsPage(notificationsPage - 1);
+      }
+    } catch (err) {
+      console.error("Failed to remove notification:", err);
+    }
   };
 
-  const clearAllNotifications = () => {
-    setLabNotifications([]);
+  const clearAllNotifications = async () => {
+    if (!window.confirm("Are you sure you want to clear all notifications?")) {
+      return;
+    }
+    try {
+      const jwt = localStorage.getItem("jwt");
+      // Update notification_status to 'read' for all unread notifications
+      const unreadNotifications = labNotifications.filter(n => n.notification_status !== 'read');
+      await Promise.all(
+        unreadNotifications.map(async (notification) => {
+          console.log(`Clearing notification for record ID: ${notification.documentId}`);
+          await fetch(`http://localhost:1337/api/lab-submission-records/${notification.documentId}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${jwt}`,
+            },
+            body: JSON.stringify({
+              data: {
+                notification_status: "read",
+              },
+            }),
+          });
+        })
+      );
+      // Refresh notifications after update
+      fetchLabNotifications();
+      // reset notifications page to 0
+      setNotificationsPage(0);
+    } catch (err) {
+      console.error("Failed to clear notifications:", err);
+    }
   };
 
   // ✅ NEW: Get notification icon based on type
@@ -821,7 +917,7 @@ export default function QualityDashboard() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch("https://api-freeroll-production.up.railway.app/api/users/me?populate=*", {
+        const response = await fetch("http://localhost:1337/api/users/me?populate=*", {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("jwt")}`,
           },
@@ -834,7 +930,7 @@ export default function QualityDashboard() {
           name: userData.username || "",
           email: userData.email || "",
           avatar: userData.avatar?.url
-            ? `https://api-freeroll-production.up.railway.app${userData.avatar.url}`
+            ? `http://localhost:1337${userData.avatar.url}`
             : "",
           role: userData.user_role || "",
         });
@@ -1291,7 +1387,7 @@ export default function QualityDashboard() {
           </div>
 
           {/* Fixed height container */}
-          <div className="h-72 flex flex-col justify-between">
+          <div className="h-85 flex flex-col justify-between">
             {/* Notifications container */}
             <div className="space-y-3 flex-1 overflow-y-auto">
               {labNotifications.length === 0 ? (
