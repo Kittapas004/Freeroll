@@ -248,7 +248,7 @@ export default function QualityDashboard() {
 
   const fetchUserData = async (): Promise<void> => {
     try {
-      const res = await fetch('http://localhost:1337/api/users/me?populate=*', {
+      const res = await fetch('https://api-freeroll-production.up.railway.app/api/users/me?populate=*', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -284,7 +284,7 @@ export default function QualityDashboard() {
       }
 
       // Get ALL lab submission records with the SAME populate strategy as fetchDashboardData
-      const recordsUrl = `http://localhost:1337/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[lab][populate]=*&populate[harvest_record][populate]=*&sort=createdAt:desc`;
+      const recordsUrl = `https://api-freeroll-production.up.railway.app/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[lab][populate]=*&populate[harvest_record][populate]=*&sort=createdAt:desc`;
       console.log('🔗 Fetching from URL:', recordsUrl);
 
       const recordsRes = await fetch(recordsUrl, {
@@ -450,7 +450,7 @@ export default function QualityDashboard() {
       console.log('=== Fetching Dashboard Data ===');
 
       // Get lab info first
-      const labRes = await fetch(`http://localhost:1337/api/labs?documentId=${localStorage.getItem("userId")}`, {
+      const labRes = await fetch(`https://api-freeroll-production.up.railway.app/api/labs?documentId=${localStorage.getItem("userId")}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('jwt')}`,
         },
@@ -469,7 +469,7 @@ export default function QualityDashboard() {
       console.log('Lab ID:', labId);
 
       // Get lab submission records with enhanced populate
-      const recordsUrl = `http://localhost:1337/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&filters[lab][documentId][$eq]=${labId}&sort=createdAt:desc`;
+      const recordsUrl = `https://api-freeroll-production.up.railway.app/api/lab-submission-records?populate[batch][populate][Farm][populate]=*&populate[harvest_record][populate]=*&filters[lab][documentId][$eq]=${labId}&sort=createdAt:desc`;
       console.log('Fetching from URL:', recordsUrl);
 
       const recordsRes = await fetch(recordsUrl, {
@@ -840,7 +840,7 @@ export default function QualityDashboard() {
       const notification = labNotifications.find(n => n.id === id);
       if (!notification) return;
       const jwt = localStorage.getItem("jwt");
-      await fetch(`http://localhost:1337/api/lab-submission-records/${notification.documentId}`, {
+      await fetch(`https://api-freeroll-production.up.railway.app/api/lab-submission-records/${notification.documentId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -876,7 +876,7 @@ export default function QualityDashboard() {
       await Promise.all(
         unreadNotifications.map(async (notification) => {
           console.log(`Clearing notification for record ID: ${notification.documentId}`);
-          await fetch(`http://localhost:1337/api/lab-submission-records/${notification.documentId}`, {
+          await fetch(`https://api-freeroll-production.up.railway.app/api/lab-submission-records/${notification.documentId}`, {
             method: "PUT",
             headers: {
               "Content-Type": "application/json",
@@ -917,7 +917,7 @@ export default function QualityDashboard() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch("http://localhost:1337/api/users/me?populate=*", {
+        const response = await fetch("https://api-freeroll-production.up.railway.app/api/users/me?populate=*", {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("jwt")}`,
           },
@@ -930,7 +930,7 @@ export default function QualityDashboard() {
           name: userData.username || "",
           email: userData.email || "",
           avatar: userData.avatar?.url
-            ? `http://localhost:1337${userData.avatar.url}`
+            ? `https://api-freeroll-production.up.railway.app${userData.avatar.url}`
             : "",
           role: userData.user_role || "",
         });
