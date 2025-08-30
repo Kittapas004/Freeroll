@@ -4,7 +4,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 import { AppSidebar } from "@/components/app-sidebar";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, Calendar, Sprout, Leaf, Plus, Wrench, FlaskConical, Notebook, Check, ChartSpline, Star, SquarePen, Trash, Circle, ChevronDown, ChevronUp, Pencil, EllipsisVertical, Tractor, Settings, Package, BarChart, FileText, Scale, Beaker, BarChart3, Droplets, RotateCcw, Timer, Repeat, History, ChevronRight, ChevronLeft, SprayCan, Microscope, Clock } from "lucide-react";
+import { MapPin, Calendar, Sprout, Leaf, Plus, Wrench, FlaskConical, Notebook, Check, ChartSpline, Star, SquarePen, Trash, Circle, ChevronDown, ChevronUp, Pencil, EllipsisVertical, Tractor, Settings, Package, BarChart, FileText, Scale, Beaker, BarChart3, Droplets, RotateCcw, Timer, Repeat, History, ChevronRight, ChevronLeft, SprayCan, Microscope, Clock, User, Printer } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -35,6 +35,14 @@ export default function PlantingBatchDetail() {
         farm_id: string;
         image: string;
         Farm_Status: string;
+        completion_timestamp?: string; // Add completion timestamp field
+        soil_pH?: number;
+        soil_quality?: string;
+        water_source?: string;
+        labor_cost?: number;
+        material_cost?: number;
+        other_costs?: number;
+        total_planting_cost?: number;
         recent_fertilizer_record: {
             id: string;
             documentId: string;
@@ -45,6 +53,9 @@ export default function PlantingBatchDetail() {
             note: string;
             method: string;
             unit: string;
+            fertilizer_cost?: number;
+            application_labor_cost?: number;
+            total_fertilizer_cost?: number;
         }[];
         recent_harvest_record: {
             id: string;
@@ -59,6 +70,10 @@ export default function PlantingBatchDetail() {
             yleld_unit: string;
             status: string;
             lab_status: string;
+            // Cost tracking fields
+            labor_cost?: number;
+            equipment_cost?: number;
+            total_harvest_cost?: number;
             // KaminCAL fields
             kamincal_sample_name?: string;
             kamincal_plant_weight?: number;
@@ -119,12 +134,58 @@ export default function PlantingBatchDetail() {
     const tabs = [
         { name: "Fertilizer", icon: <Sprout size={16} />, key: "fertilizer" },
         { name: "Harvest", icon: <Wrench size={16} />, key: "harvest" },
-        { name: "Lab History", icon: <History size={16} />, key: "lab" }
+        { name: "Lab History", icon: <History size={16} />, key: "lab" },
+        { name: "GAP", icon: <FileText size={16} />, key: "gap" }
     ];
 
     const [PlantingBatches, setPlantingBatches] = useState<Batches | null>(null);
     const [farmdata, setFarmdata] = useState<Farm[]>([]);
+    const [currentFarm, setCurrentFarm] = useState<any>(null);
+    const [currentUser, setCurrentUser] = useState<any>(null);
     const [labdata, setLabdata] = useState<any[]>([]);
+
+    const fetchUserData = async () => {
+        try {
+            const userId = localStorage.getItem("userId");
+            const jwt = localStorage.getItem("jwt");
+            
+            if (!userId) {
+                console.log("No userId found in localStorage");
+                return;
+            }
+
+            if (!jwt) {
+                console.log("No JWT token found in localStorage");
+                return;
+            }
+
+            console.log("Fetching user data for userId:", userId);
+            
+            // ลอง endpoint ที่ง่ายกว่าก่อน
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/users/me`, {
+                headers: {
+                    'Authorization': `Bearer ${jwt}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+            
+            console.log("Response status:", response.status);
+            console.log("Response headers:", response.headers);
+            
+            if (!response.ok) {
+                console.error("API request failed with status:", response.status);
+                const errorText = await response.text();
+                console.error("Error response:", errorText);
+                return;
+            }
+            
+            const data = await response.json();
+            setCurrentUser(data);
+            console.log("User data fetched successfully:", data);
+        } catch (error) {
+            console.error("Error in fetchUserData:", error);
+        }
+    };
 
     const fetchLabData = async () => {
         try {
@@ -229,6 +290,20 @@ export default function PlantingBatchDetail() {
             const data = await res.json();
             console.log("Fetched data:", data);
             console.log("🖼️ Batch_image structure:", data.data.Batch_image);
+            console.log("🧪 Batch additional data:", {
+                soil_pH: data.data.soil_pH,
+                Soil_pH: data.data.Soil_pH,
+                soil_quality: data.data.soil_quality,
+                Soil_Quality: data.data.Soil_Quality,
+                water_source: data.data.water_source,
+                Water_Source: data.data.Water_Source,
+                labor_cost: data.data.labor_cost,
+                Labor_Cost: data.data.Labor_Cost,
+                material_cost: data.data.material_cost,
+                Material_Cost: data.data.Material_Cost,
+                other_costs: data.data.other_costs,
+                Other_Costs: data.data.Other_Costs
+            });
 
             const batch = data.data;
 
@@ -241,7 +316,16 @@ export default function PlantingBatchDetail() {
                 farm_id: batch.Farm.documentId,
                 location: batch.Farm.Farm_Name ?? "N/A",
                 Farm_Status: batch.Farm.Farm_Status,
+                completion_timestamp: batch.completion_timestamp, // Add completion timestamp
                 image: getBatchImageUrl(batch.Batch_image),
+                // เพิ่มข้อมูลใหม่ที่เพิ่มใน Add dialog - ใช้ชื่อ field ที่ถูกต้องจาก Strapi
+                soil_pH: batch.soil_pH || batch.Soil_pH || 0,
+                soil_quality: batch.soil_quality || batch.Soil_Quality || "",
+                water_source: batch.water_source || batch.Water_Source || "",
+                labor_cost: batch.labor_cost || batch.Labor_Cost || 0,
+                material_cost: batch.material_cost || batch.Material_Cost || 0,
+                other_costs: batch.other_costs || batch.Other_Costs || 0,
+                total_planting_cost: batch.total_planting_cost || batch.Total_Planting_Cost || 0,
                 recent_fertilizer_record: batch.fertilizer_records.map((record: any) => ({
                     id: record.id,
                     documentId: record.documentId,
@@ -252,6 +336,9 @@ export default function PlantingBatchDetail() {
                     note: record.Note || "",
                     method: record.Method,
                     unit: record.Quantity_applied_unit,
+                    fertilizer_cost: record.Fertilizer_Cost || 0,
+                    application_labor_cost: record.Application_Labor_Cost || 0,
+                    total_fertilizer_cost: record.Total_Fertilizer_Cost || 0,
                 })),
                 recent_harvest_record: batch.harvest_records.map((record: any) => ({
                     id: record.id,
@@ -278,6 +365,10 @@ export default function PlantingBatchDetail() {
                     kamincal_curcuminoid_content: record.kamincal_curcuminoid_content || "Pass",
                     kamincal_curcuminoid_percentage: record.kamincal_curcuminoid_percentage || 0,
                     kamincal_third_time: record.kamincal_third_time || 0,
+                    // เพิ่ม Harvest Cost Tracking
+                    labor_cost: record.labor_cost || 0,
+                    equipment_cost: record.equipment_cost || 0,
+                    total_harvest_cost: record.total_harvest_cost || 0,
                 })),
                 lab_submission_record: batch.lab_submission_records.map((record: any) => ({
                     id: record.id,
@@ -296,6 +387,24 @@ export default function PlantingBatchDetail() {
                     testing_method: record.testing_method
                 })),
             });
+            
+            // Fetch farm data for this batch
+            if (batch.Farm?.documentId) {
+                try {
+                    const farmRes = await fetch(`https://api-freeroll-production.up.railway.app/api/farms/${batch.Farm.documentId}?populate=*`, {
+                        headers: {
+                            Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                        },
+                    });
+                    if (farmRes.ok) {
+                        const farmData = await farmRes.json();
+                        setCurrentFarm(farmData.data);
+                    }
+                } catch (error) {
+                    console.error("Error fetching farm data:", error);
+                }
+            }
+            
             return data
         }
         catch (error) {
@@ -326,6 +435,9 @@ export default function PlantingBatchDetail() {
                         Method: fertilizer_formData.method,
                         Note: fertilizer_formData.note || "",
                         Quantity_applied_unit: fertilizer_formData.unit,
+                        Fertilizer_Cost: parseFloat(fertilizer_formData.fertilizer_cost) || 0,
+                        Application_Labor_Cost: parseFloat(fertilizer_formData.application_labor_cost) || 0,
+                        Total_Fertilizer_Cost: (parseFloat(fertilizer_formData.fertilizer_cost) || 0) + (parseFloat(fertilizer_formData.application_labor_cost) || 0),
                         batch: documentId,
                     }
                 })
@@ -377,6 +489,8 @@ export default function PlantingBatchDetail() {
                 method: "",
                 note: "",
                 unit: "kg",
+                fertilizer_cost: "",
+                application_labor_cost: "",
             });
             // Optionally, you can show a success message or perform any other actions here
             console.log("Fertilizer record created successfully!");
@@ -429,6 +543,10 @@ export default function PlantingBatchDetail() {
                         kamincal_curcuminoid_content: kaminCALData.curcuminoid_content || "Pass",
                         kamincal_curcuminoid_percentage: parseFloat(kaminCALData.curcuminoid_percentage) || 0,
                         kamincal_third_time: parseFloat(kaminCALData.third_time) || 0,
+                        // เพิ่ม Harvest Cost Tracking
+                        labor_cost: parseFloat(harvest_formData.labor_cost) || 0,
+                        equipment_cost: parseFloat(harvest_formData.equipment_cost) || 0,
+                        total_harvest_cost: (parseFloat(harvest_formData.labor_cost) || 0) + (parseFloat(harvest_formData.equipment_cost) || 0),
                     }
                 })
             });
@@ -481,6 +599,8 @@ export default function PlantingBatchDetail() {
                 result_type: "UV Spectroscopy",
                 curcumin_quality: "",
                 yleld_unit: "kg",
+                labor_cost: "",
+                equipment_cost: "",
             });
             // Optionally, you can show a success message or perform any other actions here
             console.log("Harvest record created successfully!");
@@ -772,6 +892,9 @@ export default function PlantingBatchDetail() {
                         Method: fertilizer_formData.method,
                         Note: fertilizer_formData.note || "",
                         Quantity_applied_unit: fertilizer_formData.unit,
+                        Fertilizer_Cost: parseFloat(fertilizer_formData.fertilizer_cost) || 0,
+                        Application_Labor_Cost: parseFloat(fertilizer_formData.application_labor_cost) || 0,
+                        Total_Fertilizer_Cost: (parseFloat(fertilizer_formData.fertilizer_cost) || 0) + (parseFloat(fertilizer_formData.application_labor_cost) || 0),
                     },
                 }),
             });
@@ -782,6 +905,7 @@ export default function PlantingBatchDetail() {
             setIsEditing(false);
             setEditingRecord(null);
             await fetchPlantingBatches(); // Refresh the data
+            await fetchUserData(); // Refresh user data
         } catch (error) {
             console.error("Error updating fertilizer record:", error);
             alert("Failed to update fertilizer record. Please try again.");
@@ -818,13 +942,22 @@ export default function PlantingBatchDetail() {
                 imageId = uploadData[0]?.id; // Get the uploaded image ID
             }
 
-            // Prepare the updated data
+            // Prepare the updated data - รวม cost fields ที่ผู้ใช้อาจแก้ไข
             const updatedData: any = {
                 Date_of_Planting: PlantingBatches.planting_date,
                 Plant_Variety: PlantingBatches.plant_variety,
                 Cultivation_Method: PlantingBatches.cultivation_method,
-                Farm: PlantingBatches.farm_id,
+                // Cost tracking fields
+                Soil_pH: PlantingBatches.soil_pH,
+                Soil_Quality: PlantingBatches.soil_quality,
+                Water_Source: PlantingBatches.water_source,
+                Labor_Cost: PlantingBatches.labor_cost,
+                Material_Cost: PlantingBatches.material_cost,
+                Other_Costs: PlantingBatches.other_costs,
+                Total_Planting_Cost: PlantingBatches.total_planting_cost
             };
+
+            console.log("Complete data being sent:", updatedData);
 
             // Include the uploaded image ID if available
             if (imageId) {
@@ -843,16 +976,34 @@ export default function PlantingBatchDetail() {
             if (!res.ok) {
                 const errorData = await res.json(); // Parse the error response
                 console.error("Server error:", errorData);
-                throw new Error("Failed to update batch");
+                console.error("Status:", res.status);
+                console.error("Status Text:", res.statusText);
+                throw new Error(`Failed to update batch: ${JSON.stringify(errorData)}`);
             }
 
             alert("Batch updated successfully!");
             setIsDialogOpen(false);
+            setCurrentStep(1);
+            setImagePreview(null);
             await fetchPlantingBatches(); // Refresh the data
         } catch (error) {
             console.error("Error updating batch:", error);
             alert("Failed to update batch. Please try again.");
         }
+    };
+
+    const handleNext = () => {
+        setCurrentStep(2);
+    };
+
+    const handleBack = () => {
+        setCurrentStep(1);
+    };
+
+    const handleCancel = () => {
+        setIsDialogOpen(false);
+        setCurrentStep(1);
+        setImagePreview(null);
     };
 
     const handleUpdateHarvestRecord = async () => {
@@ -891,6 +1042,10 @@ export default function PlantingBatchDetail() {
                         kamincal_curcuminoid_content: kaminCALData.curcuminoid_content || "Pass",
                         kamincal_curcuminoid_percentage: parseFloat(kaminCALData.curcuminoid_percentage) || 0,
                         kamincal_third_time: parseFloat(kaminCALData.third_time) || 0,
+                        // เพิ่ม Harvest Cost Tracking
+                        labor_cost: parseFloat(harvest_formData.labor_cost) || 0,
+                        equipment_cost: parseFloat(harvest_formData.equipment_cost) || 0,
+                        total_harvest_cost: (parseFloat(harvest_formData.labor_cost) || 0) + (parseFloat(harvest_formData.equipment_cost) || 0),
                     },
                 }),
             });
@@ -927,12 +1082,526 @@ export default function PlantingBatchDetail() {
         fetchLabData();
         fetchFarms();
         fetchPlantingBatches();
-    }
-        , []);
+        fetchUserData(); // เปิดกลับมา
+    }, []);
+
+    // Add periodic check for expired batches
+    React.useEffect(() => {
+        // Check immediately when component mounts
+        checkAndUpdateExpiredBatches();
+        
+        // Set up interval to check every minute
+        const intervalId = setInterval(() => {
+            checkAndUpdateExpiredBatches();
+        }, 60000); // Check every 60 seconds
+
+        // Cleanup interval on component unmount
+        return () => clearInterval(intervalId);
+    }, [PlantingBatches]); // Re-run when PlantingBatches data changes
     const [activeTab, setActiveTab] = useState("fertilizer");
     const [expandedRow, setExpandedRow] = useState<string | number | null>(null);
     const toggleRow = (id: string | number) => {
         setExpandedRow(expandedRow === id ? null : id);
+    };
+
+    const handleTabChange = (tabKey: string) => {
+        setActiveTab(tabKey);
+    };
+
+    const handlePrintGAP = () => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            alert('Please allow popups to print the GAP report');
+            return;
+        }
+
+        const gapContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>GAP Certification Report</title>
+    <style>
+        @page {
+            margin: 20mm;
+            size: A4;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.4;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            font-size: 12px;
+        }
+        .header {
+            background-color: #16a34a;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        .section {
+            margin-bottom: 25px;
+            page-break-inside: avoid;
+        }
+        .section-header {
+            background-color: #dcfce7;
+            padding: 10px;
+            border-left: 4px solid #16a34a;
+            margin-bottom: 15px;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #166534;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .info-item {
+            margin-bottom: 10px;
+        }
+        .info-label {
+            font-size: 11px;
+            color: #666;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            font-weight: bold;
+            padding: 8px 12px;
+            background-color: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+        }
+        .cost-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .cost-item {
+            background-color: #f9fafb;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .cost-total {
+            background-color: #dcfce7;
+            border: 1px solid #22c55e;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            margin-top: 10px;
+        }
+        .cost-label {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .cost-value {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .record-item {
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 12px;
+            background-color: #f9fafb;
+            margin-bottom: 10px;
+        }
+        .record-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 10px;
+        }
+        .record-field {
+            margin-bottom: 8px;
+        }
+        .record-label {
+            font-size: 10px;
+            color: #666;
+            margin-bottom: 3px;
+        }
+        .record-value {
+            font-weight: 500;
+        }
+        .cert-statement {
+            background-color: #dcfce7;
+            border: 1px solid #22c55e;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .signature-area {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 50px;
+            margin-top: 40px;
+            text-align: center;
+        }
+        .signature-box {
+            border-top: 1px solid #333;
+            padding-top: 10px;
+            margin-top: 50px;
+        }
+        .no-data {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 20px;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            body { print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>GAP Certification Report</h1>
+        <p>Good Agricultural Practices Certification</p>
+        <p>Comprehensive documentation of farming practices</p>
+    </div>
+
+    <!-- 1. Farmer Information -->
+    <div class="section">
+        <div class="section-header">
+            <h3 class="section-title">👨‍🌾 Farmer Information</h3>
+        </div>
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">Full Name</div>
+                <div class="info-value">${currentUser?.username || localStorage.getItem("username") || "Kittapas Viriyapipatpoor"}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Email Address</div>
+                <div class="info-value">${currentUser?.email || localStorage.getItem("email") || "littlefarm@gmail.com"}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Contact Number</div>
+                <div class="info-value">${currentUser?.phone || localStorage.getItem("contactNumber") || "089-123-4567"}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Report Date</div>
+                <div class="info-value">${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. Farm Information -->
+    <div class="section">
+        <div class="section-header">
+            <h3 class="section-title">🚜 Farm Information</h3>
+        </div>
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">Farm Name</div>
+                <div class="info-value">${currentFarm?.Farm_Name || PlantingBatches?.location || "Little Farm"}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Farm Size</div>
+                <div class="info-value">${currentFarm ? `${currentFarm.Farm_Size} ${currentFarm.Farm_Size_Unit}` : "15 Rai"}</div>
+            </div>
+            <div class="info-item" style="grid-column: 1 / -1;">
+                <div class="info-label">Farm Address</div>
+                <div class="info-value">${currentFarm?.Farm_Address || "123 Moo 5, Mae Rim Luang, Muang District, Chiang Rai"}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Crop Type</div>
+                <div class="info-value">${currentFarm?.Crop_Type || "Turmeric"}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Cultivation Method</div>
+                <div class="info-value">${currentFarm?.Cultivation_Method || PlantingBatches?.cultivation_method || "Organic Cultivation"}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Planting Information -->
+    <div class="section">
+        <div class="section-header">
+            <h3 class="section-title">🌱 Planting Information</h3>
+        </div>
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">Batch ID</div>
+                <div class="info-value">${PlantingBatches?.batches_id || "Kittapas Viriyapipatpoor"}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Date of Planting</div>
+                <div class="info-value">${PlantingBatches?.planting_date ? new Date(PlantingBatches.planting_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : "August 21, 2025"}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Plant Variety</div>
+                <div class="info-value">${PlantingBatches?.plant_variety || "LittleFarm@gmail.com"}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Cultivation Method</div>
+                <div class="info-value">${PlantingBatches?.cultivation_method || "Organic"}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Soil pH</div>
+                <div class="info-value">${PlantingBatches?.soil_pH || "4.0"}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Soil Quality</div>
+                <div class="info-value">${PlantingBatches?.soil_quality || "Good"}</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Water Source</div>
+                <div class="info-value">${PlantingBatches?.water_source || "Rainwater Harvesting"}</div>
+            </div>
+        </div>
+        
+        <div style="border-left: 4px solid #22c55e; padding-left: 15px; margin-top: 20px;">
+            <h4 style="color: #166534; margin-bottom: 15px; font-weight: bold;">Planting Cost</h4>
+            <div class="cost-grid">
+                <div class="cost-item">
+                    <div class="cost-label">Labor Cost (THB)</div>
+                    <div class="cost-value">฿${PlantingBatches?.labor_cost || "2,000"}</div>
+                </div>
+                <div class="cost-item">
+                    <div class="cost-label">Material Cost (THB)</div>
+                    <div class="cost-value">฿${PlantingBatches?.material_cost || "6,000"}</div>
+                </div>
+                <div class="cost-item">
+                    <div class="cost-label">Other Cost (THB)</div>
+                    <div class="cost-value">฿${PlantingBatches?.other_costs || "0"}</div>
+                </div>
+            </div>
+            <div class="cost-total">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: bold;">Total Planting Cost</span>
+                    <span style="font-weight: bold; font-size: 16px;">฿${PlantingBatches?.total_planting_cost || "8,000"}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. Fertilizer Information -->
+    <div class="section">
+        <div class="section-header">
+            <h3 class="section-title">🌿 Fertilizer Information</h3>
+        </div>
+        ${PlantingBatches?.recent_fertilizer_record && PlantingBatches.recent_fertilizer_record.length > 0 ? `
+            <div style="margin-bottom: 20px;">
+                <h4 style="margin-bottom: 10px;">Application 1</h4>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Date</div>
+                        <div class="info-value">${PlantingBatches.recent_fertilizer_record[0] ? new Date(PlantingBatches.recent_fertilizer_record[0].date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : "08/22/2025"}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Fertilizer Type</div>
+                        <div class="info-value">${PlantingBatches.recent_fertilizer_record[0]?.fertilizer_type || "Organic"}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Quantity Applied</div>
+                        <div class="info-value">${PlantingBatches.recent_fertilizer_record[0]?.amount || "100"}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">How to Apply</div>
+                        <div class="info-value">${PlantingBatches.recent_fertilizer_record[0]?.method || "Spray"}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Acres</div>
+                        <div class="info-value">${PlantingBatches.recent_fertilizer_record[0]?.size || "20"}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Notes</div>
+                        <div class="info-value">${PlantingBatches.recent_fertilizer_record[0]?.note || "-"}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Total Fertilizer Cost</div>
+                        <div class="info-value">${PlantingBatches.recent_fertilizer_record[0]?.total_fertilizer_cost || "3,000"} Baht</div>
+                    </div>
+                </div>
+            </div>
+            ${PlantingBatches.recent_fertilizer_record.length > 1 ? `
+                <div style="margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 10px;">Application 2</h4>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Date</div>
+                            <div class="info-value">${new Date(PlantingBatches.recent_fertilizer_record[1].date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Fertilizer Type</div>
+                            <div class="info-value">${PlantingBatches.recent_fertilizer_record[1].fertilizer_type}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Quantity Applied</div>
+                            <div class="info-value">${PlantingBatches.recent_fertilizer_record[1].amount}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">How to Apply</div>
+                            <div class="info-value">${PlantingBatches.recent_fertilizer_record[1].method}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Acres</div>
+                            <div class="info-value">${PlantingBatches.recent_fertilizer_record[1].size}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Notes</div>
+                            <div class="info-value">${PlantingBatches.recent_fertilizer_record[1].note || "-"}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Total Fertilizer Cost</div>
+                            <div class="info-value">${PlantingBatches.recent_fertilizer_record[1].total_fertilizer_cost || "2000"} Baht</div>
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
+        ` : `
+            <div class="no-data">No fertilizer application records available</div>
+        `}
+    </div>
+
+    <!-- 5. Harvest Information -->
+    <div class="section">
+        <div class="section-header">
+            <h3 class="section-title">🌾 Harvest Information</h3>
+        </div>
+        ${PlantingBatches?.recent_harvest_record && PlantingBatches.recent_harvest_record.length > 0 ? `
+            <div style="margin-bottom: 20px;">
+                <h4 style="margin-bottom: 10px;">Application 1</h4>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Harvest Date</div>
+                        <div class="info-value">${PlantingBatches.recent_harvest_record[0] ? new Date(PlantingBatches.recent_harvest_record[0].date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : "08/22/2025"}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Harvest Method</div>
+                        <div class="info-value">${PlantingBatches.recent_harvest_record[0]?.method || "Manual Harvesting"}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Yield Amount</div>
+                        <div class="info-value">${PlantingBatches.recent_harvest_record[0]?.yleld || "100"} kg</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Curcuminoid Quality</div>
+                        <div class="info-value">${PlantingBatches.recent_harvest_record[0]?.curcumin_quality || "3.5"}%</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Quality Grade</div>
+                        <div class="info-value">${PlantingBatches.recent_harvest_record[0]?.quality_grade || "Grade A"}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Result Type</div>
+                        <div class="info-value">${PlantingBatches.recent_harvest_record[0]?.result_type || "UV Spectroscopy"}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Notes</div>
+                        <div class="info-value">${PlantingBatches.recent_harvest_record[0]?.note || "-"}</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Total Harvest Cost</div>
+                        <div class="info-value">${PlantingBatches.recent_harvest_record[0]?.total_harvest_cost || "5,000"} Baht</div>
+                    </div>
+                </div>
+            </div>
+            ${PlantingBatches.recent_harvest_record.length > 1 ? `
+                <div style="margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 10px;">Application 2</h4>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Harvest Date</div>
+                            <div class="info-value">${new Date(PlantingBatches.recent_harvest_record[1].date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Harvest Method</div>
+                            <div class="info-value">${PlantingBatches.recent_harvest_record[1].method}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Yield Amount</div>
+                            <div class="info-value">${PlantingBatches.recent_harvest_record[1].yleld} kg</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Curcuminoid Quality</div>
+                            <div class="info-value">${PlantingBatches.recent_harvest_record[1].curcumin_quality}%</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Quality Grade</div>
+                            <div class="info-value">${PlantingBatches.recent_harvest_record[1].quality_grade}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Result Type</div>
+                            <div class="info-value">${PlantingBatches.recent_harvest_record[1].result_type || "UV Spectroscopy"}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Notes</div>
+                            <div class="info-value">${PlantingBatches.recent_harvest_record[1].note || "-"}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Total Harvest Cost</div>
+                            <div class="info-value">${PlantingBatches.recent_harvest_record[1].total_harvest_cost || "6000"} Baht</div>
+                        </div>
+                    </div>
+                </div>
+            ` : ''}
+        ` : `
+            <div class="no-data">No harvest records available</div>
+        `}
+    </div>
+
+    <!-- 6. Certification Statement -->
+    <div class="section">
+        <div class="section-header">
+            <h3 class="section-title">📋 Certification Statement</h3>
+        </div>
+        <div class="cert-statement">
+            <p style="margin: 0; font-weight: 500;">
+                This report certifies that Little Farm, managed by Mr. Kittapas Viriyapipatpoor, has followed 
+                Good Agricultural Practices (GAP) under organic cultivation standards. All planting, fertilizer 
+                application, and harvest activities are documented in detail for compliance, traceability, and 
+                product quality assurance.
+            </p>
+        </div>
+        
+        <div class="signature-area">
+            <div>
+                <div class="signature-box">
+                    <strong>Farmer</strong><br>
+                    <span>Kittapas Viriyapipatpoor</span>
+                </div>
+            </div>
+            <div>
+                <div class="signature-box">
+                    <strong>Official Reviewer</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+
+        printWindow.document.write(gapContent);
+        printWindow.document.close();
+        printWindow.focus();
+        
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 250);
     };
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -954,6 +1623,8 @@ export default function PlantingBatchDetail() {
         method: "",
         note: "",
         unit: "kg",
+        fertilizer_cost: "",
+        application_labor_cost: "",
     });
 
     const [harvest_formData, setHarvestFormData] = useState({
@@ -965,6 +1636,8 @@ export default function PlantingBatchDetail() {
         result_type: "UV-Vis",
         curcumin_quality: "",
         yleld_unit: "kg",
+        labor_cost: "",
+        equipment_cost: "",
     });
 
     const [kaminCALData, setKaminCALData] = useState<KaminCALData>({
@@ -994,6 +1667,7 @@ export default function PlantingBatchDetail() {
         selectedLab: ""
     });
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [currentStep, setCurrentStep] = useState(1);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const imageInputRef = useRef<HTMLInputElement>(null);
     // เพิ่ม state สำหรับ Lab pagination
@@ -1042,6 +1716,70 @@ export default function PlantingBatchDetail() {
         });
     };
 
+    // Function to check if a batch should be moved to "Completed Past Data"
+    const checkAndUpdateExpiredBatches = async () => {
+        try {
+            if (!PlantingBatches) return;
+
+            // Check if current batch is "Completed Successfully"
+            if (PlantingBatches.status === "Completed Successfully") {
+                
+                // If no completion_timestamp exists, it's old data - update immediately to "Completed Past Data"
+                if (!PlantingBatches.completion_timestamp) {
+                    console.log("Old completed batch without timestamp detected, updating to 'Completed Past Data'");
+                    
+                    const updateRes = await fetch(`https://api-freeroll-production.up.railway.app/api/batches/${documentId}`, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                        },
+                        body: JSON.stringify({
+                            data: {
+                                Batch_Status: "Completed Past Data",
+                            },
+                        }),
+                    });
+
+                    if (updateRes.ok) {
+                        console.log("Old batch updated to 'Completed Past Data'");
+                        await fetchPlantingBatches(); // Refresh the data
+                    }
+                    return;
+                }
+
+                // If completion_timestamp exists, check if 10 minutes have passed
+                const completionTime = new Date(PlantingBatches.completion_timestamp).getTime();
+                const currentTime = new Date().getTime();
+                const tenMinutesInMs = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+                if (currentTime - completionTime >= tenMinutesInMs) {
+                    console.log("Batch has expired (10+ minutes), updating to 'Completed Past Data'");
+                    
+                    const updateRes = await fetch(`https://api-freeroll-production.up.railway.app/api/batches/${documentId}`, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                        },
+                        body: JSON.stringify({
+                            data: {
+                                Batch_Status: "Completed Past Data",
+                            },
+                        }),
+                    });
+
+                    if (updateRes.ok) {
+                        console.log("Batch_Status updated to 'Completed Past Data'");
+                        await fetchPlantingBatches(); // Refresh the data
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("Error checking/updating expired batches:", error);
+        }
+    };
+
     const handleMarkAsComplete = async () => {
         try {
             if (!PlantingBatches) {
@@ -1049,7 +1787,8 @@ export default function PlantingBatchDetail() {
                 return;
             }
 
-            // Update Batch_Status to "Completed Successfully"
+            // Update Batch_Status to "Completed Successfully" with completion timestamp
+            const completionTimestamp = new Date().toISOString();
             const res = await fetch(`https://api-freeroll-production.up.railway.app/api/batches/${documentId}`, {
                 method: "PUT",
                 headers: {
@@ -1059,6 +1798,7 @@ export default function PlantingBatchDetail() {
                 body: JSON.stringify({
                     data: {
                         Batch_Status: "Completed Successfully",
+                        completion_timestamp: completionTimestamp,
                     },
                 }),
             });
@@ -1149,32 +1889,6 @@ export default function PlantingBatchDetail() {
             if (!notification_res.ok) throw new Error("Failed to create notification record");
 
             alert("Batch marked as Completed Successfully!");
-
-            // Automatically update Batch_Status to "Completed Past Data" after 10 minutes
-            setTimeout(async () => {
-                try {
-                    const updateRes = await fetch(`https://api-freeroll-production.up.railway.app/api/batches/${documentId}`, {
-                        method: "PUT",
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${localStorage.getItem("jwt")}`,
-                        },
-                        body: JSON.stringify({
-                            data: {
-                                Batch_Status: "Completed Past Data",
-                            },
-                        }),
-                    });
-
-                    if (!updateRes.ok) throw new Error("Failed to update Batch_Status to Completed Past Data");
-
-                    console.log("Batch_Status updated to Completed Past Data after 10 minutes.");
-                    await fetchPlantingBatches(); // Refresh the data
-                } catch (error) {
-                    console.error("Error updating Batch_Status to Completed Past Data:", error);
-                }
-            }, 10 * 60 * 1000); // 10 minutes in milliseconds
-
             await fetchPlantingBatches(); // Refresh the data
         } catch (error) {
             console.error("Error marking batch as complete:", error);
@@ -1322,9 +2036,6 @@ export default function PlantingBatchDetail() {
             setActiveTab("lab");
         }
     }, [searchParams]);
-    const handleTabChange = (newTab: string) => {
-        setActiveTab(newTab);
-    };
 
     if (!PlantingBatches) {
         return <p>Loading...</p>;
@@ -1414,7 +2125,9 @@ export default function PlantingBatchDetail() {
             quality_grade: "",
             curcumin_quality: "",
             note: "",
-            result_type: ""
+            result_type: "",
+            labor_cost: "",
+            equipment_cost: "",
         });
     };
 
@@ -1494,175 +2207,361 @@ export default function PlantingBatchDetail() {
                                             className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
                                             onClick={() => {
                                                 setIsDialogOpen(true);
+                                                setCurrentStep(1);
                                                 setImagePreview(PlantingBatches?.image || null);
                                             }}
                                         >
                                             Edit
                                         </div>
-                                        <DialogContent className="w-fit">
+                                        <DialogContent className="w-fit max-w-2xl">
                                             <DialogHeader className="flex flex-col gap-2 items-start">
                                                 <DialogTitle>Edit Batch</DialogTitle>
+                                                <DialogDescription>
+                                                    Update the details for this cultivation batch (Step {currentStep} of 2)
+                                                </DialogDescription>
                                             </DialogHeader>
                                             <div className="flex flex-col gap-4 p-4">
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <div>
-                                                        <Label htmlFor="batch-id" className="text-sm font-medium">
-                                                            Batch ID
-                                                        </Label>
-                                                        <Input
-                                                            id="batch-id"
-                                                            value={PlantingBatches?.batches_id || ""}
-                                                            disabled
-                                                            className="cursor-not-allowed bg-gray-100"
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <Label htmlFor="planting-date" className="text-sm font-medium">
-                                                            Planting Date
-                                                        </Label>
-                                                        <Input
-                                                            id="planting-date"
-                                                            type="date"
-                                                            value={PlantingBatches?.planting_date || ""}
-                                                            onChange={(e) =>
-                                                                setPlantingBatches((prev) =>
-                                                                    prev ? { ...prev, planting_date: e.target.value } : prev
-                                                                )
-                                                            }
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <Label htmlFor="plant-variety" className="text-sm font-medium">
-                                                            Plant Variety
-                                                        </Label>
-                                                        <Input
-                                                            id="plant-variety"
-                                                            value={PlantingBatches?.plant_variety || ""}
-                                                            onChange={(e) =>
-                                                                setPlantingBatches((prev) =>
-                                                                    prev ? { ...prev, plant_variety: e.target.value } : prev
-                                                                )
-                                                            }
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <Label htmlFor="cultivation-method" className="text-sm font-medium">
-                                                            Cultivation Method
-                                                        </Label>
-                                                        <Select
-                                                            value={PlantingBatches?.cultivation_method || ""}
-                                                            onValueChange={(value) =>
-                                                                setPlantingBatches((prev) =>
-                                                                    prev ? { ...prev, cultivation_method: value } : prev
-                                                                )
-                                                            }
-                                                        >
-                                                            <SelectTrigger className="w-full">
-                                                                <SelectValue placeholder="Select Method" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="Organic">Organic</SelectItem>
-                                                                <SelectItem value="Conventional">Conventional</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-                                                    <div>
-                                                        <Label htmlFor="location" className="text-sm font-medium">
-                                                            Location
-                                                        </Label>
-                                                        <Select
-                                                            value={PlantingBatches?.location || ""}
-                                                            onValueChange={(value) =>
-                                                                setPlantingBatches((prev) =>
-                                                                    prev ? { ...prev, location: value } : prev
-                                                                )
-                                                            }
-                                                        >
-                                                            <SelectTrigger className="w-full">
-                                                                <SelectValue placeholder="Select Farm" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {farmdata.map((farm) => (
-                                                                    <SelectItem key={farm.id} value={farm.Farm_Name}>
-                                                                        {farm.Farm_Name}
-                                                                    </SelectItem>
-                                                                ))}
-
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-                                                    {/* <div>
-                                                        <Label htmlFor="status" className="text-sm font-medium">
-                                                            Status
-                                                        </Label>
-                                                        <Select
-                                                            value={PlantingBatches?.Farm_Status || ""}
-                                                            onValueChange={(value) =>
-                                                                setPlantingBatches((prev) =>
-                                                                    prev ? { ...prev, status: value } : prev
-                                                                )
-                                                            }
-                                                        >
-                                                            <SelectTrigger className="w-full">
-                                                                <SelectValue placeholder="Select Status" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                <SelectItem value="Planted">Planted</SelectItem>
-                                                                <SelectItem value="End Planted">End Planted</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div> */}
-                                                    <div className="col-span-2">
-                                                        <Label className="text-sm font-medium mb-2 block">Image</Label>
-                                                        <div
-                                                            className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-blue-500 transition cursor-pointer bg-gray-50 relative"
-                                                            onClick={() => imageInputRef.current?.click()}
-                                                            onDrop={handleDrop}
-                                                            onDragOver={handleDragOver}
-                                                        >
-                                                            {imagePreview ? (
-                                                                <img
-                                                                    src={imagePreview}
-                                                                    alt="Preview"
-                                                                    className="absolute inset-0 object-cover w-full h-full rounded-lg"
-                                                                />
-                                                            ) : (
-                                                                <div className="flex flex-col items-center gap-2 z-10">
-                                                                    <p className="text-sm">Drag & drop an image here</p>
-                                                                    <p className="text-xs text-gray-400">or click to browse</p>
-                                                                </div>
-                                                            )}
-                                                            <input
-                                                                type="file"
-                                                                accept="image/*"
-                                                                ref={imageInputRef}
-                                                                onChange={(e) => {
-                                                                    const file = e.target.files?.[0];
-                                                                    if (file) {
-                                                                        handleFile(file);
-                                                                    }
-                                                                }}
-                                                                className="hidden"
+                                                {currentStep === 1 && (
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div>
+                                                            <Label htmlFor="batch-id" className="text-sm font-medium">
+                                                                Batch ID
+                                                            </Label>
+                                                            <Input
+                                                                id="batch-id"
+                                                                value={PlantingBatches?.batches_id || ""}
+                                                                disabled
+                                                                className="cursor-not-allowed bg-gray-100"
                                                             />
                                                         </div>
+                                                        <div>
+                                                            <Label htmlFor="planting-date" className="text-sm font-medium">
+                                                                Planting Date
+                                                            </Label>
+                                                            <Input
+                                                                id="planting-date"
+                                                                type="date"
+                                                                value={PlantingBatches?.planting_date || ""}
+                                                                onChange={(e) =>
+                                                                    setPlantingBatches((prev) =>
+                                                                        prev ? { ...prev, planting_date: e.target.value } : prev
+                                                                    )
+                                                                }
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <Label htmlFor="plant-variety" className="text-sm font-medium">
+                                                                Plant Variety
+                                                            </Label>
+                                                            <Input
+                                                                id="plant-variety"
+                                                                value={PlantingBatches?.plant_variety || ""}
+                                                                onChange={(e) =>
+                                                                    setPlantingBatches((prev) =>
+                                                                        prev ? { ...prev, plant_variety: e.target.value } : prev
+                                                                    )
+                                                                }
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <Label htmlFor="cultivation-method" className="text-sm font-medium">
+                                                                Cultivation Method
+                                                            </Label>
+                                                            <Select
+                                                                value={PlantingBatches?.cultivation_method || ""}
+                                                                onValueChange={(value) =>
+                                                                    setPlantingBatches((prev) =>
+                                                                        prev ? { ...prev, cultivation_method: value } : prev
+                                                                    )
+                                                                }
+                                                            >
+                                                                <SelectTrigger className="w-full">
+                                                                    <SelectValue placeholder="Select Method" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="Organic">Organic</SelectItem>
+                                                                    <SelectItem value="Conventional">Conventional</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                        <div>
+                                                            <Label htmlFor="location" className="text-sm font-medium">
+                                                                Location
+                                                            </Label>
+                                                            <Select
+                                                                value={PlantingBatches?.location || ""}
+                                                                onValueChange={(value) =>
+                                                                    setPlantingBatches((prev) =>
+                                                                        prev ? { ...prev, location: value } : prev
+                                                                    )
+                                                                }
+                                                            >
+                                                                <SelectTrigger className="w-full">
+                                                                    <SelectValue placeholder="Select Farm" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    {farmdata.map((farm) => (
+                                                                        <SelectItem key={farm.id} value={farm.Farm_Name}>
+                                                                            {farm.Farm_Name}
+                                                                        </SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                        <div>
+                                                            <Label htmlFor="status" className="text-sm font-medium">
+                                                                Status
+                                                            </Label>
+                                                            <Input
+                                                                id="status"
+                                                                value="Planted"
+                                                                disabled
+                                                                className="cursor-not-allowed bg-gray-100"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <Label htmlFor="soil-ph" className="text-sm font-medium">
+                                                                Soil pH
+                                                            </Label>
+                                                            <Input
+                                                                id="soil-ph"
+                                                                type="number"
+                                                                step="0.1"
+                                                                min="0"
+                                                                max="14"
+                                                                placeholder="Enter numeric value"
+                                                                value={PlantingBatches?.soil_pH || ""}
+                                                                onChange={(e) =>
+                                                                    setPlantingBatches((prev) =>
+                                                                        prev ? { ...prev, soil_pH: parseFloat(e.target.value) } : prev
+                                                                    )
+                                                                }
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <Label htmlFor="soil-quality" className="text-sm font-medium">
+                                                                Soil Quality
+                                                            </Label>
+                                                            <Input
+                                                                id="soil-quality"
+                                                                placeholder="Enter Soil Quality"
+                                                                value={PlantingBatches?.soil_quality || ""}
+                                                                onChange={(e) =>
+                                                                    setPlantingBatches((prev) =>
+                                                                        prev ? { ...prev, soil_quality: e.target.value } : prev
+                                                                    )
+                                                                }
+                                                            />
+                                                        </div>
+                                                        <div className="col-span-2">
+                                                            <Label htmlFor="water-source" className="text-sm font-medium">
+                                                                Water Source
+                                                            </Label>
+                                                            <Select
+                                                                value={PlantingBatches?.water_source || ""}
+                                                                onValueChange={(value) =>
+                                                                    setPlantingBatches((prev) =>
+                                                                        prev ? { ...prev, water_source: value } : prev
+                                                                    )
+                                                                }
+                                                            >
+                                                                <SelectTrigger className="w-full">
+                                                                    <SelectValue placeholder="Select one" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="River / Stream">
+                                                                        River / Stream
+                                                                    </SelectItem>
+                                                                    <SelectItem value="Pond / Lake">
+                                                                        Pond / Lake
+                                                                    </SelectItem>
+                                                                    <SelectItem value="Groundwater">
+                                                                        Groundwater
+                                                                    </SelectItem>
+                                                                    <SelectItem value="Rainwater Harvesting">
+                                                                        Rainwater Harvesting
+                                                                    </SelectItem>
+                                                                    <SelectItem value="Irrigation Canal">
+                                                                        Irrigation Canal
+                                                                    </SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                )}
+
+                                                {currentStep === 2 && (
+                                                    <div className="space-y-4">
+                                                        {/* Planting Cost Tracking Section */}
+                                                        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                                            <div className="flex items-center gap-2 mb-4">
+                                                                <div>
+                                                                    <h3 className="text-lg font-semibold">Planting Cost Tracking</h3>
+                                                                    <p className="text-sm text-gray-500">Edit planting costs for this batch</p>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                                                <div>
+                                                                    <Label htmlFor="labor-cost" className="text-sm font-medium">
+                                                                        Labor Cost (THB)
+                                                                    </Label>
+                                                                    <Input
+                                                                        id="labor-cost"
+                                                                        type="number"
+                                                                        min="0"
+                                                                        value={PlantingBatches?.labor_cost || 0}
+                                                                        onChange={(e) => {
+                                                                            const newValue = parseFloat(e.target.value) || 0;
+                                                                            setPlantingBatches((prev) => {
+                                                                                if (!prev) return prev;
+                                                                                const newLaborCost = newValue;
+                                                                                const totalCost = newLaborCost + (prev.material_cost || 0) + (prev.other_costs || 0);
+                                                                                return {
+                                                                                    ...prev,
+                                                                                    labor_cost: newLaborCost,
+                                                                                    total_planting_cost: totalCost
+                                                                                };
+                                                                            });
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <Label htmlFor="material-cost" className="text-sm font-medium">
+                                                                        Material Cost (THB)
+                                                                    </Label>
+                                                                    <Input
+                                                                        id="material-cost"
+                                                                        type="number"
+                                                                        min="0"
+                                                                        value={PlantingBatches?.material_cost || 0}
+                                                                        onChange={(e) => {
+                                                                            const newValue = parseFloat(e.target.value) || 0;
+                                                                            setPlantingBatches((prev) => {
+                                                                                if (!prev) return prev;
+                                                                                const newMaterialCost = newValue;
+                                                                                const totalCost = (prev.labor_cost || 0) + newMaterialCost + (prev.other_costs || 0);
+                                                                                return {
+                                                                                    ...prev,
+                                                                                    material_cost: newMaterialCost,
+                                                                                    total_planting_cost: totalCost
+                                                                                };
+                                                                            });
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="mb-4">
+                                                                <Label htmlFor="other-costs" className="text-sm font-medium">
+                                                                    Other Costs (THB)
+                                                                </Label>
+                                                                <Input
+                                                                    id="other-costs"
+                                                                    type="number"
+                                                                    min="0"
+                                                                    value={PlantingBatches?.other_costs || 0}
+                                                                    onChange={(e) => {
+                                                                        const newValue = parseFloat(e.target.value) || 0;
+                                                                        setPlantingBatches((prev) => {
+                                                                            if (!prev) return prev;
+                                                                            const newOtherCosts = newValue;
+                                                                            const totalCost = (prev.labor_cost || 0) + (prev.material_cost || 0) + newOtherCosts;
+                                                                            return {
+                                                                                ...prev,
+                                                                                other_costs: newOtherCosts,
+                                                                                total_planting_cost: totalCost
+                                                                            };
+                                                                        });
+                                                                    }}
+                                                                />
+                                                            </div>
+
+                                                            <div className="border-t border-gray-200 pt-3">
+                                                                <div className="flex justify-between items-center">
+                                                                    <span className="font-medium">Total Planting Cost:</span>
+                                                                    <span className="font-bold text-lg">
+                                                                        ฿{((PlantingBatches?.labor_cost || 0) + (PlantingBatches?.material_cost || 0) + (PlantingBatches?.other_costs || 0)).toFixed(2)}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="col-span-2">
+                                                            <Label className="text-sm font-medium mb-2 block">Image</Label>
+                                                            <div
+                                                                className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-blue-500 transition cursor-pointer bg-gray-50 relative"
+                                                                onClick={() => imageInputRef.current?.click()}
+                                                                onDrop={handleDrop}
+                                                                onDragOver={handleDragOver}
+                                                            >
+                                                                {imagePreview ? (
+                                                                    <img
+                                                                        src={imagePreview}
+                                                                        alt="Preview"
+                                                                        className="absolute inset-0 object-cover w-full h-full rounded-lg"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="flex flex-col items-center gap-2 z-10">
+                                                                        <img
+                                                                            src="/batch1.png"
+                                                                            alt="Default Preview"
+                                                                            className="w-24 h-24 object-cover rounded-lg opacity-50"
+                                                                        />
+                                                                        <p className="text-sm">Drag & drop an image here</p>
+                                                                        <p className="text-xs text-gray-400">or click to browse (default: batch1.png)</p>
+                                                                    </div>
+                                                                )}
+                                                                <input
+                                                                    type="file"
+                                                                    accept="image/*"
+                                                                    ref={imageInputRef}
+                                                                    onChange={(e) => {
+                                                                        const file = e.target.files?.[0];
+                                                                        if (file) {
+                                                                            handleFile(file);
+                                                                        }
+                                                                    }}
+                                                                    className="hidden"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
-                                            <DialogFooter className="flex justify-end">
-                                                <Button
-                                                    variant="outline"
-                                                    className="bg-red-600 text-white"
-                                                    onClick={() => setIsDialogOpen(false)}
-                                                >
-                                                    Cancel
-                                                </Button>
-                                                <Button
-                                                    type="submit"
-                                                    className="bg-green-600 text-white"
-                                                    onClick={() => handleUpdateBatch()}
-                                                >
-                                                    Save
-                                                </Button>
+                                            <DialogFooter className="flex justify-between">
+                                                <div>
+                                                    {currentStep === 2 && (
+                                                        <Button variant="outline" onClick={handleBack}>
+                                                            Back
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        className="bg-red-600 text-white hover:bg-red-500"
+                                                        onClick={handleCancel}
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                    {currentStep === 1 ? (
+                                                        <Button
+                                                            className="bg-green-600 text-white hover:bg-green-700"
+                                                            onClick={handleNext}
+                                                        >
+                                                            Next
+                                                        </Button>
+                                                    ) : (
+                                                        <Button
+                                                            type="submit"
+                                                            className="bg-green-600 text-white hover:bg-green-700"
+                                                            onClick={() => handleUpdateBatch()}
+                                                        >
+                                                            Save
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </DialogFooter>
                                         </DialogContent>
                                     </Dialog>
@@ -1745,7 +2644,21 @@ export default function PlantingBatchDetail() {
                             {!isAdding && !isEditing && (
                                 <div className="flex justify-between items-center">
                                     <h2 className="text-lg font-semibold">Recent Fertilizer Records</h2>
-                                    <Button onClick={() => setIsAdding(true)} className="bg-green-600 hover:bg-green-700" disabled={PlantingBatches.status === "Completed Successfully" || PlantingBatches.status === "Completed Past Data"}>
+                                    <Button onClick={() => {
+                                        setIsAdding(true);
+                                        // รีเซ็ตฟอร์มเมื่อเปิด Add Record
+                                        setfertilizerFormData({
+                                            date: "",
+                                            amount: "",
+                                            size: "",
+                                            fertilizer_type: "",
+                                            method: "",
+                                            note: "",
+                                            unit: "kg",
+                                            fertilizer_cost: "",
+                                            application_labor_cost: "",
+                                        });
+                                    }} className="bg-green-600 hover:bg-green-700" disabled={PlantingBatches.status === "Completed Successfully" || PlantingBatches.status === "Completed Past Data"}>
                                         <Plus size={16} /> Add Record
                                     </Button>
                                 </div>
@@ -1825,6 +2738,55 @@ export default function PlantingBatchDetail() {
                                                 <Textarea name="note" placeholder="Enter Notes here ... (Optional)" value={fertilizer_formData.note} onChange={fertilizer_handleChange} />
                                             </div>
                                         </div>
+                                        
+                                        {/* Fertilizer Cost Tracking Section */}
+                                        <div className="border-t pt-4">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="h-6 w-6 bg-green-600 rounded-sm flex items-center justify-center">
+                                                    <span className="text-white text-sm font-bold">฿</span>
+                                                </div>
+                                                <h3 className="text-lg font-semibold text-green-600">Fertilizer Cost Tracking</h3>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground mb-4">Fill in Fertilizer Cost Tracking Information</p>
+                                            
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="flex flex-col gap-1">
+                                                    <Label>Fertilizer Cost ( THB )</Label>
+                                                    <Input 
+                                                        type="number" 
+                                                        name="fertilizer_cost" 
+                                                        placeholder="0" 
+                                                        min={0} 
+                                                        step="0.01"
+                                                        value={fertilizer_formData.fertilizer_cost} 
+                                                        onChange={fertilizer_handleChange} 
+                                                    />
+                                                </div>
+                                                <div className="flex flex-col gap-1">
+                                                    <Label>Application Labor Cost ( THB )</Label>
+                                                    <Input 
+                                                        type="number" 
+                                                        name="application_labor_cost" 
+                                                        placeholder="0" 
+                                                        min={0} 
+                                                        step="0.01"
+                                                        value={fertilizer_formData.application_labor_cost} 
+                                                        onChange={fertilizer_handleChange} 
+                                                    />
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="font-semibold">Total Fertilizer Cost :</span>
+                                                    <span className="text-lg font-bold text-green-600">
+                                                        {((parseFloat(fertilizer_formData.fertilizer_cost) || 0) + 
+                                                          (parseFloat(fertilizer_formData.application_labor_cost) || 0)).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         <div className="flex justify-end gap-2">
                                             <Button onClick={() => setIsAdding(false)} className="bg-red-500 hover:bg-red-600">Cancel</Button>
                                             <Button className="bg-green-600 hover:bg-green-700"
@@ -1931,6 +2893,55 @@ export default function PlantingBatchDetail() {
                                                 />
                                             </div>
                                         </div>
+                                        
+                                        {/* Fertilizer Cost Tracking Section */}
+                                        <div className="border-t pt-4">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="h-6 w-6 bg-green-600 rounded-sm flex items-center justify-center">
+                                                    <span className="text-white text-sm font-bold">฿</span>
+                                                </div>
+                                                <h3 className="text-lg font-semibold text-green-600">Fertilizer Cost Tracking</h3>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground mb-4">Fill in Fertilizer Cost Tracking Information</p>
+                                            
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="flex flex-col gap-1">
+                                                    <Label>Fertilizer Cost ( THB )</Label>
+                                                    <Input 
+                                                        type="number" 
+                                                        name="fertilizer_cost" 
+                                                        placeholder="0" 
+                                                        min={0} 
+                                                        step="0.01"
+                                                        value={fertilizer_formData.fertilizer_cost} 
+                                                        onChange={fertilizer_handleChange} 
+                                                    />
+                                                </div>
+                                                <div className="flex flex-col gap-1">
+                                                    <Label>Application Labor Cost ( THB )</Label>
+                                                    <Input 
+                                                        type="number" 
+                                                        name="application_labor_cost" 
+                                                        placeholder="0" 
+                                                        min={0} 
+                                                        step="0.01"
+                                                        value={fertilizer_formData.application_labor_cost} 
+                                                        onChange={fertilizer_handleChange} 
+                                                    />
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="font-semibold">Total Fertilizer Cost :</span>
+                                                    <span className="text-lg font-bold text-green-600">
+                                                        {((parseFloat(fertilizer_formData.fertilizer_cost) || 0) + 
+                                                          (parseFloat(fertilizer_formData.application_labor_cost) || 0)).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
                                         <div className="flex justify-end gap-2">
                                             <Button
                                                 onClick={() => {
@@ -1982,6 +2993,8 @@ export default function PlantingBatchDetail() {
                                                                                 method: rec.method,
                                                                                 note: rec.note || "",
                                                                                 unit: rec.unit,
+                                                                                fertilizer_cost: rec.fertilizer_cost?.toString() || "",
+                                                                                application_labor_cost: rec.application_labor_cost?.toString() || "",
                                                                             });
                                                                             setEditingRecord(rec);
                                                                         }}
@@ -2430,6 +3443,54 @@ export default function PlantingBatchDetail() {
                                         </div>
                                     </Card>
 
+                                    {/* Harvest Cost Tracking */}
+                                    <div className="border-t pt-4">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div className="h-6 w-6 bg-green-600 rounded-sm flex items-center justify-center">
+                                                <span className="text-white text-sm font-bold">฿</span>
+                                            </div>
+                                            <h3 className="text-lg font-semibold text-green-600">Harvest Cost Tracking</h3>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground mb-4">Fill in Harvest Cost Tracking Information</p>
+                                        
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Labor Cost ( THB )</Label>
+                                                <Input 
+                                                    type="number" 
+                                                    name="labor_cost" 
+                                                    placeholder="0" 
+                                                    min={0} 
+                                                    step="0.01"
+                                                    value={harvest_formData.labor_cost} 
+                                                    onChange={harvest_handleChange} 
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Equipment Cost ( THB )</Label>
+                                                <Input 
+                                                    type="number" 
+                                                    name="equipment_cost" 
+                                                    placeholder="0" 
+                                                    min={0} 
+                                                    step="0.01"
+                                                    value={harvest_formData.equipment_cost} 
+                                                    onChange={harvest_handleChange} 
+                                                />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                            <div className="flex justify-between items-center">
+                                                <span className="font-semibold">Total Harvest Cost :</span>
+                                                <span className="text-lg font-bold text-green-600">
+                                                    {((parseFloat(harvest_formData.labor_cost) || 0) + 
+                                                      (parseFloat(harvest_formData.equipment_cost) || 0)).toFixed(2)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     {/* Buttons Section - เหลือแค่ Cancel และ Save */}
                                     <div className="flex justify-end gap-2">
                                         <Button
@@ -2761,6 +3822,54 @@ export default function PlantingBatchDetail() {
                                         </div>
                                     </Card>
 
+                                    {/* Harvest Cost Tracking */}
+                                    <div className="border-t pt-4">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <div className="h-6 w-6 bg-green-600 rounded-sm flex items-center justify-center">
+                                                <span className="text-white text-sm font-bold">฿</span>
+                                            </div>
+                                            <h3 className="text-lg font-semibold text-green-600">Harvest Cost Tracking</h3>
+                                        </div>
+                                        <p className="text-sm text-muted-foreground mb-4">Fill in Harvest Cost Tracking Information</p>
+                                        
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Labor Cost ( THB )</Label>
+                                                <Input 
+                                                    type="number" 
+                                                    name="labor_cost" 
+                                                    placeholder="0" 
+                                                    min={0} 
+                                                    step="0.01"
+                                                    value={harvest_formData.labor_cost} 
+                                                    onChange={harvest_handleChange} 
+                                                />
+                                            </div>
+                                            <div className="flex flex-col gap-1">
+                                                <Label>Equipment Cost ( THB )</Label>
+                                                <Input 
+                                                    type="number" 
+                                                    name="equipment_cost" 
+                                                    placeholder="0" 
+                                                    min={0} 
+                                                    step="0.01"
+                                                    value={harvest_formData.equipment_cost} 
+                                                    onChange={harvest_handleChange} 
+                                                />
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                            <div className="flex justify-between items-center">
+                                                <span className="font-semibold">Total Harvest Cost :</span>
+                                                <span className="text-lg font-bold text-green-600">
+                                                    {((parseFloat(harvest_formData.labor_cost) || 0) + 
+                                                      (parseFloat(harvest_formData.equipment_cost) || 0)).toFixed(2)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     {/* Buttons Section - เหลือแค่ Cancel และ Save */}
                                     <div className="flex justify-end gap-2">
                                         <Button
@@ -2770,7 +3879,7 @@ export default function PlantingBatchDetail() {
                                             }}
                                             className="bg-red-500 hover:bg-red-600"
                                         >Cancel</Button>
-                                        <Button onClick={() => harvest_createdata()} className="bg-green-600 hover:bg-green-700">Save</Button>
+                                        <Button onClick={() => handleUpdateHarvestRecord()} className="bg-green-600 hover:bg-green-700">Save</Button>
                                     </div>
                                 </div>
                             )}
@@ -2900,6 +4009,8 @@ export default function PlantingBatchDetail() {
                                                                         result_type: harvest_record.result_type || "UV-Vis",
                                                                         curcumin_quality: harvest_record.curcumin_quality.toString(),
                                                                         yleld_unit: harvest_record.yleld_unit || "kg",
+                                                                        labor_cost: harvest_record.labor_cost?.toString() || "",
+                                                                        equipment_cost: harvest_record.equipment_cost?.toString() || "",
                                                                     });
 
                                                                     setKaminCALData({
@@ -3306,6 +4417,409 @@ export default function PlantingBatchDetail() {
                                     >
                                         <ChevronRight size={16} />
                                     </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === "gap" && (
+                        <div className="px-4 py-6 bg-gray-50 min-h-screen">
+                            {/* Header with Print Button */}
+                            <div className="bg-green-600 text-white p-6 rounded-t-lg flex justify-between items-center">
+                                <div>
+                                    <h1 className="text-2xl font-bold">Good Agricultural Practices (GAP) Certification Report</h1>
+                                    <p className="text-green-100 mt-2">Comprehensive documentation of farming practices for GAP certification</p>
+                                </div>
+                                <Button 
+                                    onClick={handlePrintGAP}
+                                    className="bg-white text-green-600 hover:bg-gray-100 border-2 border-white hover:border-gray-200 font-semibold px-6 py-2"
+                                    size="lg"
+                                >
+                                    <Printer className="w-5 h-5 mr-2" />
+                                    Print Report
+                                </Button>
+                            </div>
+                            
+                            {/* Report Content */}
+                            <div className="bg-white p-8 rounded-b-lg shadow-lg space-y-8">
+                                {/* Farmer Information */}
+                                <div>
+                                    <div className="bg-green-100 p-3 rounded-lg mb-4">
+                                        <h3 className="text-lg font-semibold text-green-700 flex items-center gap-2">
+                                            <span><User className="text-green-600" /></span> Farmer Information
+                                        </h3>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-600">Full Name</label>
+                                            <div className="bg-gray-100 p-3 rounded border">
+                                                <p className="font-medium">{currentUser?.username || localStorage.getItem("username") || "Kittapas Viriyapipatpoor"}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-600">Email Address</label>
+                                            <div className="bg-gray-100 p-3 rounded border">
+                                                <p className="font-medium">{currentUser?.email || localStorage.getItem("email") || "farmer@gmail.com"}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-600">Contact Number</label>
+                                            <div className="bg-gray-100 p-3 rounded border">
+                                                <p className="font-medium">{currentUser?.phone || localStorage.getItem("contactNumber") || "089-123-4567"}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-600">Report Date</label>
+                                            <div className="bg-gray-100 p-3 rounded border">
+                                                <p className="font-medium">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Farm Information */}
+                                <div>
+                                    <div className="bg-green-100 p-3 rounded-lg mb-4">
+                                        <h3 className="text-lg font-semibold text-green-700 flex items-center gap-2">
+                                            <span><Tractor className="text-green-600"  /></span> Farm Information
+                                        </h3>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-600">Farm Name</label>
+                                            <div className="bg-gray-100 p-3 rounded border">
+                                                <p className="font-medium">{currentFarm?.Farm_Name || PlantingBatches?.location || "Little Farm"}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-600">Farm Size</label>
+                                            <div className="bg-gray-100 p-3 rounded border">
+                                                <p className="font-medium">{currentFarm ? `${currentFarm.Farm_Size} ${currentFarm.Farm_Size_Unit}` : "10 Rai"}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2 col-span-2">
+                                            <label className="text-sm font-medium text-gray-600">Farm Address</label>
+                                            <div className="bg-gray-100 p-3 rounded border">
+                                                <p className="font-medium">{currentFarm?.Farm_Address || "123 Moo 5, Mae Rim Luang, Muang 564855, Chiang Rai"}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-600">Crop Type</label>
+                                            <div className="bg-gray-100 p-3 rounded border">
+                                                <p className="font-medium">{currentFarm?.Crop_Type || "Turmeric"}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-600">Cultivation Method</label>
+                                            <div className="bg-gray-100 p-3 rounded border">
+                                                <p className="font-medium">{currentFarm?.Cultivation_Method || PlantingBatches?.cultivation_method || "Organic Cultivation"}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Planting Information */}
+                                <div>
+                                    <div className="bg-green-100 p-3 rounded-lg mb-4">
+                                        <h3 className="text-lg font-semibold text-green-700 flex items-center gap-2">
+                                            <span><Leaf className="text-green-600" /></span> Planting Information
+                                        </h3>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-600">Batch ID</label>
+                                            <div className="bg-gray-100 p-3 rounded border">
+                                                <p className="font-medium">{PlantingBatches?.batches_id || "T-Batch-001"}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-600">Date of Planting</label>
+                                            <div className="bg-gray-100 p-3 rounded border">
+                                                <p className="font-medium">{PlantingBatches?.planting_date ? new Date(PlantingBatches.planting_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : "05/22/2025"}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-600">Plant Variety</label>
+                                            <div className="bg-gray-100 p-3 rounded border">
+                                                <p className="font-medium">{PlantingBatches?.plant_variety || "curcumalonga"}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-600">Cultivation Method</label>
+                                            <div className="bg-gray-100 p-3 rounded border">
+                                                <p className="font-medium">{PlantingBatches?.cultivation_method || "Organic"}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-600">Plant Variety</label>
+                                            <div className="bg-gray-100 p-3 rounded border">
+                                                <p className="font-medium">{PlantingBatches?.plant_variety || "curcumalonga"}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-600">Soil pH</label>
+                                            <div className="bg-gray-100 p-3 rounded border">
+                                                <p className="font-medium">{PlantingBatches?.soil_pH || "4.0"}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-600">Soil Quality</label>
+                                            <div className="bg-gray-100 p-3 rounded border">
+                                                <p className="font-medium">{PlantingBatches?.soil_quality || "Good"}</p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-medium text-gray-600">Water Source</label>
+                                            <div className="bg-gray-100 p-3 rounded border">
+                                                <p className="font-medium">{PlantingBatches?.water_source || "Rainwater Harvesting"}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Planting Cost */}
+                                    <div className="mt-6">
+                                        <div className="border-l-4 border-green-500 pl-4">
+                                            <h4 className="font-semibold text-green-700 mb-3">Planting Cost</h4>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div className="bg-gray-50 p-3 rounded">
+                                                    <p className="text-sm text-gray-600">Labor Cost ( THB )</p>
+                                                    <p className="font-bold">฿{PlantingBatches?.labor_cost || "2,000"}</p>
+                                                </div>
+                                                <div className="bg-gray-50 p-3 rounded">
+                                                    <p className="text-sm text-gray-600">Material Cost ( THB )</p>
+                                                    <p className="font-bold">฿{PlantingBatches?.material_cost || "3,500"}</p>
+                                                </div>
+                                                <div className="bg-gray-50 p-3 rounded">
+                                                    <p className="text-sm text-gray-600">Other Cost ( THB )</p>
+                                                    <p className="font-bold">฿{PlantingBatches?.other_costs || "0"}</p>
+                                                </div>
+                                            </div>
+                                            <div className="bg-green-50 border border-green-200 p-3 rounded mt-3">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="font-semibold">Total Planting Cost</span>
+                                                    <span className="font-bold text-lg">฿{PlantingBatches?.total_planting_cost || "5,500"}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Fertilizer Information */}
+                                <div>
+                                    <div className="bg-green-100 p-3 rounded-lg mb-4">
+                                        <h3 className="text-lg font-semibold text-green-700 flex items-center gap-2">
+                                            <span><Sprout className="text-green-600" /></span> Fertilizer Information
+                                        </h3>
+                                    </div>
+                                    {PlantingBatches?.recent_fertilizer_record && PlantingBatches.recent_fertilizer_record.length > 0 ? (
+                                        <div>
+                                            {/* Summary Statistics */}
+                                            <div className="grid grid-cols-3 gap-6 mb-6">
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-gray-600">Total Applications</label>
+                                                    <div className="bg-gray-100 p-3 rounded border">
+                                                        <p className="font-medium">{PlantingBatches.recent_fertilizer_record.length}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-gray-600">Total Quantity Applied</label>
+                                                    <div className="bg-gray-100 p-3 rounded border">
+                                                        <p className="font-medium">
+                                                            {PlantingBatches.recent_fertilizer_record.reduce((total, record) => total + record.amount, 0)} kg
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-gray-600">Most Recent Application</label>
+                                                    <div className="bg-gray-100 p-3 rounded border">
+                                                        <p className="font-medium">
+                                                            {new Date(PlantingBatches.recent_fertilizer_record.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* All Fertilizer Records */}
+                                            <div className="space-y-4">
+                                                <h4 className="font-semibold text-gray-700">Application History</h4>
+                                                <div className="grid gap-3">
+                                                    {PlantingBatches.recent_fertilizer_record
+                                                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                                        .map((record, index) => (
+                                                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                                            <div className="grid grid-cols-4 gap-4">
+                                                                <div>
+                                                                    <p className="text-xs text-gray-500">Date</p>
+                                                                    <p className="font-medium">{new Date(record.date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs text-gray-500">Type</p>
+                                                                    <p className="font-medium">{record.fertilizer_type}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs text-gray-500">Quantity</p>
+                                                                    <p className="font-medium">{record.amount} {record.unit}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs text-gray-500">Method</p>
+                                                                    <p className="font-medium">{record.method}</p>
+                                                                </div>
+                                                            </div>
+                                                            {record.note && (
+                                                                <div className="mt-2">
+                                                                    <p className="text-xs text-gray-500">Notes</p>
+                                                                    <p className="text-sm">{record.note}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Fertilizer Cost */}
+                                            <div className="mt-6">
+                                                <div className="border-l-4 border-green-500 pl-4">
+                                                    <h4 className="font-semibold text-green-700 mb-3">Fertilizer Cost</h4>
+                                                    <div className="grid grid-cols-3 gap-4">
+                                                        <div className="bg-gray-50 p-3 rounded">
+                                                            <p className="text-sm text-gray-600">Fertilizer Cost ( THB )</p>
+                                                            <p className="font-bold">฿{PlantingBatches.recent_fertilizer_record.reduce((total, record) => total + (record.fertilizer_cost || 0), 0).toFixed(0)}</p>
+                                                        </div>
+                                                        <div className="bg-gray-50 p-3 rounded">
+                                                            <p className="text-sm text-gray-600">Application Labor Cost ( THB )</p>
+                                                            <p className="font-bold">฿{PlantingBatches.recent_fertilizer_record.reduce((total, record) => total + (record.application_labor_cost || 0), 0).toFixed(0)}</p>
+                                                        </div>
+                                                        <div className="bg-green-50 border border-green-200 p-3 rounded">
+                                                            <p className="text-sm text-gray-600">Total Fertilizer Cost</p>
+                                                            <p className="font-bold">฿{PlantingBatches.recent_fertilizer_record.reduce((total, record) => total + (record.total_fertilizer_cost || 0), 0).toFixed(0)}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center p-8 text-gray-500">
+                                            <p>No fertilizer records available</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Harvest Information */}
+                                <div>
+                                    <div className="bg-green-100 p-3 rounded-lg mb-4">
+                                        <h3 className="text-lg font-semibold text-green-700 flex items-center gap-2">
+                                            <span><Wrench className="text-green-600" /></span> Harvest Information
+                                        </h3>
+                                    </div>
+                                    {PlantingBatches?.recent_harvest_record && PlantingBatches.recent_harvest_record.length > 0 ? (
+                                        <div>
+                                            {/* Summary Statistics */}
+                                            <div className="grid grid-cols-4 gap-6 mb-6">
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-gray-600">Total Harvests</label>
+                                                    <div className="bg-gray-100 p-3 rounded border">
+                                                        <p className="font-medium">{PlantingBatches.recent_harvest_record.length}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-gray-600">Total Yield</label>
+                                                    <div className="bg-gray-100 p-3 rounded border">
+                                                        <p className="font-medium">
+                                                            {PlantingBatches.recent_harvest_record.reduce((total, record) => total + record.yleld, 0)} kg
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-gray-600">Average Curcumin Quality</label>
+                                                    <div className="bg-gray-100 p-3 rounded border">
+                                                        <p className="font-medium">
+                                                            {(PlantingBatches.recent_harvest_record.reduce((total, record) => total + parseFloat(record.curcumin_quality), 0) / PlantingBatches.recent_harvest_record.length).toFixed(2)}%
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-sm font-medium text-gray-600">Latest Harvest</label>
+                                                    <div className="bg-gray-100 p-3 rounded border">
+                                                        <p className="font-medium">
+                                                            {new Date(PlantingBatches.recent_harvest_record.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0].date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* All Harvest Records */}
+                                            <div className="space-y-4">
+                                                <h4 className="font-semibold text-gray-700">Harvest History</h4>
+                                                <div className="grid gap-3">
+                                                    {PlantingBatches.recent_harvest_record
+                                                        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                                        .map((record, index) => (
+                                                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                                            <div className="grid grid-cols-4 gap-4">
+                                                                <div>
+                                                                    <p className="text-xs text-gray-500">Date</p>
+                                                                    <p className="font-medium">{new Date(record.date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs text-gray-500">Yield</p>
+                                                                    <p className="font-medium">{record.yleld} {record.yleld_unit}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs text-gray-500">Quality Grade</p>
+                                                                    <p className="font-medium">{record.quality_grade}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs text-gray-500">Method</p>
+                                                                    <p className="font-medium">{record.method}</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-4 mt-3">
+                                                                <div>
+                                                                    <p className="text-xs text-gray-500">Curcumin Quality</p>
+                                                                    <p className="font-medium">{record.curcumin_quality}%</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-xs text-gray-500">Result Type</p>
+                                                                    <p className="font-medium">{record.result_type || "UV Spectroscopy"}</p>
+                                                                </div>
+                                                            </div>
+                                                            {record.note && (
+                                                                <div className="mt-2">
+                                                                    <p className="text-xs text-gray-500">Notes</p>
+                                                                    <p className="text-sm">{record.note}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            
+                                            {/* Harvest Cost */}
+                                            <div className="mt-6">
+                                                <div className="border-l-4 border-green-500 pl-4">
+                                                    <h4 className="font-semibold text-green-700 mb-3">Harvest Cost</h4>
+                                                    <div className="grid grid-cols-3 gap-4">
+                                                        <div className="bg-gray-50 p-3 rounded">
+                                                            <p className="text-sm text-gray-600">Labor Cost ( THB )</p>
+                                                            <p className="font-bold">฿{PlantingBatches.recent_harvest_record.reduce((total, record) => total + (record.labor_cost || 0), 0).toFixed(0)}</p>
+                                                        </div>
+                                                        <div className="bg-gray-50 p-3 rounded">
+                                                            <p className="text-sm text-gray-600">Equipment Cost ( THB )</p>
+                                                            <p className="font-bold">฿{PlantingBatches.recent_harvest_record.reduce((total, record) => total + (record.equipment_cost || 0), 0).toFixed(0)}</p>
+                                                        </div>
+                                                        <div className="bg-green-50 border border-green-200 p-3 rounded">
+                                                            <p className="text-sm text-gray-600">Total Harvest Cost</p>
+                                                            <p className="font-bold">฿{PlantingBatches.recent_harvest_record.reduce((total, record) => total + (record.total_harvest_cost || 0), 0).toFixed(0)}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center p-8 text-gray-500">
+                                            <p>No harvest records available</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>

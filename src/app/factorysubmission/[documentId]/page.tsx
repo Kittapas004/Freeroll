@@ -78,25 +78,26 @@ export default function FactoryFeedbackDetailPage() {
             }
             const data = await response.json();
             setFactoryData({
-                id: data.data.Batch_id,
+                id: data.data.Batch_id || `batch-${data.data.id}`,
                 documentId: data.data.documentId,
-                farm_name: data.data.Farm_Name,
-                grade: data.data.Quality_Grade,
-                yield: data.data.Yield,
-                Date_Received: data.data.Date_Received,
-                Factory: data.data.Factory,
-                Output_Capsules: data.data.Output_Capsules,
-                Output_Essential_Oil: data.data.Output_Essential_Oil,
-                used: data.data.Turmeric_Utilization_Used,
-                remaining: data.data.Turmeric_Utilization_Remaining,
-                waste: data.data.Turmeric_Utilization_Waste,
-                Date_Processed: data.data.Date_Processed,
-                Processed_By: data.data.Processed_By,
+                farm_name: data.data.Farm_Name || 'Unknown Farm',
+                grade: data.data.Quality_Grade || 'N/A',
+                yield: data.data.Yield || 0,
+                Date_Received: data.data.Date_Received || data.data.createdAt,
+                Factory: data.data.Factory || 'Unknown Factory',
+                Output_Capsules: data.data.Output_Capsules || 0,
+                Output_Essential_Oil: data.data.Output_Essential_Oil || 0,
+                used: data.data.Turmeric_Utilization_Used || 0,
+                remaining: data.data.Turmeric_Utilization_Remaining || 0,
+                waste: data.data.Turmeric_Utilization_Waste || 0,
+                Date_Processed: data.data.Date_Processed || null,
+                Processed_By: data.data.Processed_By || 'Unknown',
                 Attachments: data.data.Attachments || [],
             });
-            console.log(data.data.Attachments.length);
+            console.log('Attachments:', data.data.Attachments?.length || 0);
         } catch (error) {
             console.error("Error fetching factory data:", error);
+            setFactoryData(null);
         }
     };
 
@@ -105,21 +106,35 @@ export default function FactoryFeedbackDetailPage() {
     }, [batchdocumentId]);
 
     if (!factoryData) {
-        return <p>Loading...</p>;
+        return (
+            <SidebarProvider open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+                <AppSidebar />
+                <SidebarInset>
+                    <header className="flex justify-between h-16 shrink-0 items-center gap-2 px-4">
+                        <div className="flex items-center gap-2">
+                            <SidebarTrigger onClick={toggleSidebar} />
+                            <h1 className="text-xl font-semibold">Factory Feedback Details</h1>
+                        </div>
+                    </header>
+                    <main className="flex-1 overflow-auto p-4">
+                        <div className="flex items-center justify-center min-h-[400px]">
+                            <p className="text-lg text-gray-500">Loading factory data...</p>
+                        </div>
+                    </main>
+                </SidebarInset>
+            </SidebarProvider>
+        );
     }
 
-    const usedpercent =
-        (factoryData.used /
-            (factoryData.used + factoryData.remaining + factoryData.waste)) *
-        100;
-    const remainingpercent =
-        (factoryData.remaining /
-            (factoryData.used + factoryData.remaining + factoryData.waste)) *
-        100;
-    const wastepercent =
-        (factoryData.waste /
-            (factoryData.used + factoryData.remaining + factoryData.waste)) *
-        100;
+    const usedpercent = factoryData.used + factoryData.remaining + factoryData.waste > 0 
+        ? (factoryData.used / (factoryData.used + factoryData.remaining + factoryData.waste)) * 100
+        : 0;
+    const remainingpercent = factoryData.used + factoryData.remaining + factoryData.waste > 0
+        ? (factoryData.remaining / (factoryData.used + factoryData.remaining + factoryData.waste)) * 100
+        : 0;
+    const wastepercent = factoryData.used + factoryData.remaining + factoryData.waste > 0
+        ? (factoryData.waste / (factoryData.used + factoryData.remaining + factoryData.waste)) * 100
+        : 0;
 
     const usedpercentString = `${usedpercent.toFixed(2)}%`;
     const remainingpercentString = `${remainingpercent.toFixed(2)}%`;
@@ -156,7 +171,7 @@ export default function FactoryFeedbackDetailPage() {
                                 <p>Yield: </p><p>{factoryData.yield} kg</p>
                             </div>
                             <div className="flex items-center justify-between">
-                                <p>Date Received: </p><p>{new Date(factoryData.Date_Received).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                                <p>Date Received: </p><p>{factoryData.Date_Received ? new Date(factoryData.Date_Received).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}</p>
                             </div>
                             <div className="flex items-center justify-between">
                                 <p>Destination Factory: </p><p>{factoryData.Factory}</p>
@@ -170,7 +185,7 @@ export default function FactoryFeedbackDetailPage() {
                                 <p>Processing Status: </p><p className="text-green-600">Completed</p>
                             </div>
                             <div className="flex items-center justify-between">
-                                <p>Date Processed: </p><p>{new Date(factoryData.Date_Processed).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                                <p>Date Processed: </p><p>{factoryData.Date_Processed ? new Date(factoryData.Date_Processed).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Not processed yet'}</p>
                             </div>
                             <div className="flex items-center justify-between">
                                 <p>Processed By: </p><p>{factoryData.Processed_By}</p>
@@ -241,22 +256,21 @@ export default function FactoryFeedbackDetailPage() {
                         <h2 className="font-semibold mb-4">Attachments</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {factoryData.Attachments && factoryData.Attachments.length > 0 ? (
-                                factoryData.Attachments.map((attachment: any) => (
-                                    console.log(attachment.id),
+                                factoryData.Attachments.map((attachment: any, index: number) => (
                                     <div
-                                        key={attachment.documentId}
-                                        className="flex items-center justify-between p-4 border rounded cursor-pointer"
+                                        key={attachment.id || index}
+                                        className="flex items-center justify-between p-4 border rounded cursor-pointer hover:bg-gray-50"
                                         onClick={() => handleDownloadAttachment(attachment.id)}
                                     >
                                         <div>
-                                            <p className="font-medium">{attachment.name}</p>
-                                            <p className="text-xs text-muted-foreground">{attachment.mime}</p>
+                                            <p className="font-medium">{attachment.name || 'Unknown file'}</p>
+                                            <p className="text-xs text-muted-foreground">{attachment.mime || 'Unknown type'}</p>
                                         </div>
                                         <Download className="w-5 h-5" />
                                     </div>
                                 ))
                             ) : (
-                                <p className="text-sm text-gray-500">No attachments available.</p>
+                                <p className="text-sm text-gray-500 col-span-2">No attachments available.</p>
                             )}
                         </div>
                     </div>

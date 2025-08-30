@@ -11,6 +11,9 @@ import {
   Factory,
   Shovel,
   History,
+  Cog,
+  Database,
+  BarChart3,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main"
@@ -106,6 +109,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       { title: "Planting Batches", url: "/plantingbatches", icon: Shovel },
       { title: "Factory Submission", url: "/factorysubmission", icon: Factory },
       { title: "Settings", url: "/settings", icon: Settings2 },
+    ],
+    Factory: [
+      { title: "Dashboard", url: "/dashboard", icon: LayoutGrid },
+      { title: "Processing Details", url: "/processing-details", icon: Cog },
+      { title: "Processing History", url: "/processing-history", icon: History },
+      { title: "Reports & Data Export", url: "/reports", icon: BarChart3 },
+      { title: "Setting", url: "/settings", icon: Settings2 },
     ],
     Admin: [
       { title: "Dashboard", url: "/dashboard", icon: SquareTerminal },

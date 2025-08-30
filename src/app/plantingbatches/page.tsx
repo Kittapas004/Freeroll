@@ -39,6 +39,71 @@ export default function PlantingBatchesPage() {
     const [selectedFarm, setSelectedFarm] = useState<Farm | undefined>();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [previewBatchId, setPreviewBatchId] = useState("");
+    const [currentStep, setCurrentStep] = useState(1); // เพิ่ม state สำหรับขั้นตอน
+    
+    // เพิ่ม state สำหรับฟิลด์ใหม่
+    const [soilPH, setSoilPH] = useState("");
+    const [soilQuality, setSoilQuality] = useState("");
+    const [waterSource, setWaterSource] = useState<string | undefined>();
+    const [laborCost, setLaborCost] = useState(0);
+    const [materialCost, setMaterialCost] = useState(0);
+    const [otherCosts, setOtherCosts] = useState(0);
+
+    // Function to check and update expired batches
+    const checkAndUpdateExpiredBatches = async () => {
+        try {
+            // Fetch all "Completed Successfully" batches
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/batches?filters[Batch_Status][$eq]=Completed Successfully&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+            });
+
+            if (!response.ok) return;
+
+            const data = await response.json();
+            const currentTime = new Date().getTime();
+            const tenMinutesInMs = 10 * 60 * 1000; // 10 minutes in milliseconds
+
+            // Check each batch and update if expired
+            for (const batch of data.data) {
+                let shouldUpdate = false;
+                
+                // If no completion_timestamp, it's old data - update immediately
+                if (!batch.completion_timestamp) {
+                    console.log(`Old completed batch ${batch.Batch_id} without timestamp detected, updating to 'Completed Past Data'`);
+                    shouldUpdate = true;
+                } else {
+                    // Check if 10 minutes have passed since completion
+                    const completionTime = new Date(batch.completion_timestamp).getTime();
+                    if (currentTime - completionTime >= tenMinutesInMs) {
+                        console.log(`Batch ${batch.Batch_id} has expired (10+ minutes), updating to 'Completed Past Data'`);
+                        shouldUpdate = true;
+                    }
+                }
+
+                if (shouldUpdate) {
+                    await fetch(`https://api-freeroll-production.up.railway.app/api/batches/${batch.documentId}`, {
+                        method: "PUT",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                        },
+                        body: JSON.stringify({
+                            data: {
+                                Batch_Status: "Completed Past Data",
+                            },
+                        }),
+                    });
+                }
+            }
+            
+            // Refresh the batches list after updates
+            await fetchPlantingBatches();
+        } catch (error) {
+            console.error("Error checking/updating expired batches:", error);
+        }
+    };
 
     React.useEffect(() => {
         const userRole = localStorage.getItem("userRole");
@@ -106,6 +171,13 @@ export default function PlantingBatchesPage() {
         Farm_Cultivation_Method: string;
         Batch_Status: string;
         Batch_image: string;
+        Soil_pH?: number;
+        Soil_Quality?: string;
+        Water_Source?: string;
+        Labor_Cost?: number;
+        Material_Cost?: number;
+        Other_Costs?: number;
+        Total_Planting_Cost?: number;
     };
 
     const fetchFarms = async () => {
@@ -299,12 +371,47 @@ export default function PlantingBatchesPage() {
 
     const [isAddingBatch, setIsAddingBatch] = useState(false);
 
+    // Functions สำหรับจัดการ steps
+    const handleNext = () => {
+        // ตรวจสอบข้อมูลของ step 1
+        if (!plantingDate || !plantVariety?.trim() || !cultivationMethod || !location || !selectedFarm || !soilPH || !soilQuality?.trim() || !waterSource) {
+            alert("Please fill in all required fields");
+            return;
+        }
+        setCurrentStep(2);
+    };
+
+    const handleBack = () => {
+        setCurrentStep(1);
+    };
+
+    const handleCancel = () => {
+        setIsDialogOpen(false);
+        setCurrentStep(1);
+        // รีเซ็ตฟอร์ม
+        setImagePreview(null);
+        setPlantingDate("");
+        setPlantVariety("");
+        setCultivationMethod(undefined);
+        setLocation(undefined);
+        setSelectedFarm(undefined);
+        setSoilPH("");
+        setSoilQuality("");
+        setWaterSource(undefined);
+        setLaborCost(0);
+        setMaterialCost(0);
+        setOtherCosts(0);
+        if (imageInputRef.current) {
+            imageInputRef.current.value = '';
+        }
+    };
+
     const handleAddBatch = async () => {
         // ป้องกันการเรียกซ้ำถ้ากำลัง process อยู่
         if (isAddingBatch) return;
 
         // ตรวจสอบข้อมูลที่จำเป็น
-        if (!plantingDate || !plantVariety || !cultivationMethod || !location || !selectedFarm) {
+        if (!plantingDate || !plantVariety?.trim() || !cultivationMethod || !location || !selectedFarm || !soilPH || !soilQuality?.trim() || !waterSource) {
             alert("Please fill in all required fields");
             return;
         }
@@ -348,6 +455,7 @@ export default function PlantingBatchesPage() {
             }
 
             const newBatchId = await generateNewBatchId();
+            const totalPlantingCost = laborCost + materialCost + otherCosts;
 
             const batchPayload = {
                 data: {
@@ -359,6 +467,13 @@ export default function PlantingBatchesPage() {
                     Farm: selectedFarm.documentId,
                     Batch_image: imageId,
                     Cultivation_Method: cultivationMethod,
+                    Soil_pH: parseFloat(soilPH),
+                    Soil_Quality: soilQuality,
+                    Water_Source: waterSource,
+                    Labor_Cost: laborCost,
+                    Material_Cost: materialCost,
+                    Other_Costs: otherCosts,
+                    Total_Planting_Cost: totalPlantingCost,
                 },
             };
 
@@ -404,12 +519,19 @@ export default function PlantingBatchesPage() {
             // รีเซ็ตฟอร์ม
             await fetchPlantingBatches();
             setIsDialogOpen(false);
+            setCurrentStep(1); // รีเซ็ต step กลับไปที่ 1
             setImagePreview(null);
             setPlantingDate("");
             setPlantVariety("");
             setCultivationMethod(undefined);
             setLocation(undefined);
             setSelectedFarm(undefined);
+            setSoilPH("");
+            setSoilQuality("");
+            setWaterSource(undefined);
+            setLaborCost(0);
+            setMaterialCost(0);
+            setOtherCosts(0);
 
             if (imageInputRef.current) {
                 imageInputRef.current.value = '';
@@ -433,8 +555,23 @@ export default function PlantingBatchesPage() {
     React.useEffect(() => {
         if (isDialogOpen) {
             generateNewBatchId().then(setPreviewBatchId);
+            setCurrentStep(1); // รีเซ็ต step เมื่อเปิด dialog
         }
     }, [isDialogOpen]);
+
+    // Add periodic check for expired batches
+    React.useEffect(() => {
+        // Check immediately when component mounts
+        checkAndUpdateExpiredBatches();
+        
+        // Set up interval to check every minute
+        const intervalId = setInterval(() => {
+            checkAndUpdateExpiredBatches();
+        }, 60000); // Check every 60 seconds
+
+        // Cleanup interval on component unmount
+        return () => clearInterval(intervalId);
+    }, []); // Run once on mount and cleanup on unmount
 
     return (
         <SidebarProvider open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
@@ -458,115 +595,246 @@ export default function PlantingBatchesPage() {
                                     </div>
                                 </Card>
                             </DialogTrigger>
-                            <DialogContent className="w-fit">
+                            <DialogContent className="w-fit max-w-2xl">
                                 <DialogHeader className="flex flex-col gap-2 items-start">
                                     <DialogTitle>Add New Batch</DialogTitle>
                                     <DialogDescription>
-                                        Fill in the details of the new batch below.
+                                        {currentStep === 1 
+                                            ? "Enter the details for the new cultivation batch"
+                                            : "Record planting costs and upload image"
+                                        }
                                     </DialogDescription>
                                 </DialogHeader>
-                                <div className="flex flex-col gap-4 p-4">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <Label htmlFor="batch-id" className="text-sm font-medium flex items-center gap-2">
-                                                Batch ID
-                                            </Label>
-                                            <Input
-                                                id="batch-id"
-                                                value={previewBatchId || "Loading..."}
-                                                disabled
-                                                className="cursor-not-allowed bg-gray-100"
-                                            />
-                                        </div>
-                                        <div>
-                                            <Label htmlFor="planting-date" className="text-sm font-medium">
-                                                Planting Date
-                                            </Label>
-                                            <Input
-                                                id="planting-date"
-                                                type="date"
-                                                value={plantingDate}
-                                                onChange={(e) => setPlantingDate(e.target.value)}
-                                            />
-                                        </div>
-                                        <div>
-                                            <Label htmlFor="plant-variety" className="text-sm font-medium">
-                                                Plant Variety
-                                            </Label>
-                                            <Input
-                                                id="plant-variety"
-                                                value={plantVariety}
-                                                onChange={(e) => setPlantVariety(e.target.value)}
-                                            />
-                                        </div>
-                                        <div>
-                                            <Label htmlFor="cultivation-method" className="text-sm font-medium">
-                                                Cultivation Method
-                                            </Label>
-                                            <Select value={cultivationMethod} onValueChange={setCultivationMethod}>
-                                                <SelectTrigger className="w-full">
-                                                    <SelectValue placeholder="Select Method" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="Organic">
-                                                        Organic
-                                                    </SelectItem>
-                                                    <SelectItem value="Conventional">
-                                                        Conventional
-                                                    </SelectItem>
-                                                </SelectContent>
-                                            </Select>
-
-                                        </div>
-                                        <div>
-                                            <Label htmlFor="location" className="text-sm font-medium">
-                                                Location
-                                            </Label>
-                                            <Select value={location} onValueChange={(value) => {
-                                                setLocation(value);
-                                                const farm = farmdata.find((f) => f.Farm_Name === value);
-                                                setSelectedFarm(farm);
-                                            }}>
-                                                <SelectTrigger className="w-full">
-                                                    <SelectValue placeholder="Select Farm" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    {farmdata.map((farm) => (
-                                                        <SelectItem key={farm.id} value={farm.Farm_Name}>
-                                                            {farm.Farm_Name}
+                                
+                                {/* Step 1: Basic Information */}
+                                {currentStep === 1 && (
+                                    <div className="flex flex-col gap-4 p-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <Label htmlFor="batch-id" className="text-sm font-medium flex items-center gap-2">
+                                                    Batch ID
+                                                </Label>
+                                                <Input
+                                                    id="batch-id"
+                                                    value={previewBatchId || "T-Batch-001"}
+                                                    disabled
+                                                    className="cursor-not-allowed bg-gray-100"
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label htmlFor="your-farms" className="text-sm font-medium">
+                                                    Your Farms
+                                                </Label>
+                                                <Select value={location} onValueChange={(value) => {
+                                                    setLocation(value);
+                                                    const farm = farmdata.find((f) => f.Farm_Name === value);
+                                                    setSelectedFarm(farm);
+                                                }}>
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue placeholder="Select Your Farms" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        {farmdata.map((farm) => (
+                                                            <SelectItem key={farm.id} value={farm.Farm_Name}>
+                                                                {farm.Farm_Name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div>
+                                                <Label htmlFor="planting-date" className="text-sm font-medium">
+                                                    Date of Planting
+                                                </Label>
+                                                <Input
+                                                    id="planting-date"
+                                                    type="date"
+                                                    value={plantingDate}
+                                                    onChange={(e) => setPlantingDate(e.target.value)}
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label htmlFor="plant-variety" className="text-sm font-medium">
+                                                    Plant Variety
+                                                </Label>
+                                                <Input
+                                                    id="plant-variety"
+                                                    placeholder="Enter plant variety"
+                                                    value={plantVariety}
+                                                    onChange={(e) => setPlantVariety(e.target.value)}
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label htmlFor="cultivation-method" className="text-sm font-medium">
+                                                    Cultivation Method
+                                                </Label>
+                                                <Select value={cultivationMethod} onValueChange={setCultivationMethod}>
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue placeholder="Select method" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="Organic">
+                                                            Organic
                                                         </SelectItem>
-                                                    ))}
-
-                                                </SelectContent>
-                                            </Select>
-
+                                                        <SelectItem value="Conventional">
+                                                            Conventional
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div>
+                                                <Label htmlFor="status" className="text-sm font-medium">
+                                                    Status
+                                                </Label>
+                                                <Input
+                                                    id="status"
+                                                    value="Planted"
+                                                    disabled
+                                                    className="cursor-not-allowed bg-gray-100"
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label htmlFor="soil-ph" className="text-sm font-medium">
+                                                    Soil pH
+                                                </Label>
+                                                <Input
+                                                    id="soil-ph"
+                                                    type="number"
+                                                    step="0.1"
+                                                    min="0"
+                                                    max="14"
+                                                    placeholder="Enter numeric value"
+                                                    value={soilPH}
+                                                    onChange={(e) => setSoilPH(e.target.value)}
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label htmlFor="soil-quality" className="text-sm font-medium">
+                                                    Soil Quality
+                                                </Label>
+                                                <Select value={soilQuality} onValueChange={setSoilQuality}>
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue placeholder="Select Soil Quality" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="Poor">
+                                                            Poor
+                                                        </SelectItem>
+                                                        <SelectItem value="Moderate">
+                                                            Moderate
+                                                        </SelectItem>
+                                                        <SelectItem value="Good">
+                                                            Good 
+                                                        </SelectItem>
+                                                        <SelectItem value="Excellent">
+                                                            Excellent
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                            <div className="col-span-2">
+                                                <Label htmlFor="water-source" className="text-sm font-medium">
+                                                    Water Source
+                                                </Label>
+                                                <Select value={waterSource} onValueChange={setWaterSource}>
+                                                    <SelectTrigger className="w-full">
+                                                        <SelectValue placeholder="Select one" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="River / Stream">
+                                                            River / Stream
+                                                        </SelectItem>
+                                                        <SelectItem value="Pond / Lake">
+                                                            Pond / Lake
+                                                        </SelectItem>
+                                                        <SelectItem value="Groundwater">
+                                                            Groundwater
+                                                        </SelectItem>
+                                                        <SelectItem value="Rainwater Harvesting">
+                                                            Rainwater Harvesting
+                                                        </SelectItem>
+                                                        <SelectItem value="Irrigation Canal">
+                                                            Irrigation Canal
+                                                        </SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
                                         </div>
+                                    </div>
+                                )}
+
+                                {/* Step 2: Cost Tracking and Image Upload */}
+                                {currentStep === 2 && (
+                                    <div className="flex flex-col gap-4 p-4">
+                                        {/* Planting Cost Tracking Section */}
+                                        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                            <div className="flex items-center gap-2 mb-4">
+                                                <div>
+                                                    <h3 className="text-lg font-semibold">Planting Cost Tracking</h3>
+                                                    <p className="text-sm text-gray-500">Record planting costs for this batch</p>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                                <div>
+                                                    <Label htmlFor="labor-cost" className="text-sm font-medium">
+                                                        Labor Cost (THB)
+                                                    </Label>
+                                                    <div className="relative">
+                                                        <Input
+                                                            id="labor-cost"
+                                                            type="number"
+                                                            min="0"
+                                                            value={laborCost}
+                                                            onChange={(e) => setLaborCost(parseFloat(e.target.value) || 0)}
+                                                            className="pr-8"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <Label htmlFor="material-cost" className="text-sm font-medium">
+                                                        Material Cost (THB)
+                                                    </Label>
+                                                    <div className="relative">
+                                                        <Input
+                                                            id="material-cost"
+                                                            type="number"
+                                                            min="0"
+                                                            value={materialCost}
+                                                            onChange={(e) => setMaterialCost(parseFloat(e.target.value) || 0)}
+                                                            className="pr-8"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="mb-4">
+                                                <Label htmlFor="other-costs" className="text-sm font-medium">
+                                                    Other Costs (THB)
+                                                </Label>
+                                                <div className="relative">
+                                                    <Input
+                                                        id="other-costs"
+                                                        type="number"
+                                                        min="0"
+                                                        value={otherCosts}
+                                                        onChange={(e) => setOtherCosts(parseFloat(e.target.value) || 0)}
+                                                        className="pr-8"
+                                                    />
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="border-t border-gray-200 pt-3">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="font-medium">Total Planting Cost:</span>
+                                                    <span className="font-bold text-lg">฿{(laborCost + materialCost + otherCosts).toFixed(2)}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Upload Image Section */}
                                         <div>
-                                            <Label htmlFor="status" className="text-sm font-medium">
-                                                Status
-                                            </Label>
-                                            <Select disabled defaultValue="Planted">
-                                                <SelectTrigger className="w-full">
-                                                    <SelectValue placeholder="Select Status" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="Planted">
-                                                        Planted
-                                                    </SelectItem>
-                                                    <SelectItem value="Fertilized">
-                                                        Fertilized
-                                                    </SelectItem>
-                                                    <SelectItem value="Harvested">
-                                                        Harvested
-                                                    </SelectItem>
-                                                    <SelectItem value="Lab Submitted">
-                                                        Lab Submitted
-                                                    </SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                        <div className="col-span-2">
-                                            <Label className="text-sm font-medium mb-2 block">Image</Label>
+                                            <Label className="text-sm font-medium mb-2 block">Upload Image</Label>
                                             <div
                                                 className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-blue-500 transition cursor-pointer bg-gray-50 relative"
                                                 onClick={() => imageInputRef.current?.click()}
@@ -586,8 +854,8 @@ export default function PlantingBatchesPage() {
                                                             alt="Default Preview"
                                                             className="w-24 h-24 object-cover rounded-lg opacity-50"
                                                         />
-                                                        <p className="text-sm">Drag & drop an image here</p>
-                                                        <p className="text-xs text-gray-400">or click to browse (default: batch1.png)</p>
+                                                        <p className="text-sm">Upload a file or drag and drop</p>
+                                                        <p className="text-xs text-gray-400">PNG, JPG, GIF up to 10MB (default: batch1.png)</p>
                                                     </div>
                                                 )}
                                                 <input
@@ -604,46 +872,54 @@ export default function PlantingBatchesPage() {
                                                 />
                                             </div>
                                         </div>
-
                                     </div>
-                                </div>
-                                <DialogFooter className="flex justify-end">
-                                    <Button
-                                        variant="outline"
-                                        className="bg-red-600 text-white"
-                                        disabled={isAddingBatch} // disable เมื่อกำลัง loading
-                                        onClick={() => {
-                                            setImagePreview(null);
-                                            if (imageInputRef.current) {
-                                                imageInputRef.current.value = '';
-                                            }
-                                            setCultivationMethod(undefined);
-                                            setLocation(undefined);
-                                            setSelectedFarm(undefined);
-                                            setPlantingDate("");
-                                            setPlantVariety("");
-                                        }}
-                                    >
-                                        Clear
-                                    </Button>
-                                    <Button
-                                        type="submit"
-                                        className="bg-green-600 dark:text-white min-w-[100px]"
-                                        disabled={isAddingBatch || !plantingDate || !plantVariety || !cultivationMethod || !location}
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            handleAddBatch();
-                                        }}
-                                    >
-                                        {isAddingBatch ? (
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                                Adding...
-                                            </div>
-                                        ) : (
-                                            "Add Batch"
-                                        )}
-                                    </Button>
+                                )}
+
+                                <DialogFooter className="flex justify-between">
+                                    {currentStep === 1 ? (
+                                        <>
+                                            <Button
+                                                variant="outline"
+                                                className="bg-red-500 text-white hover:bg-red-600"
+                                                onClick={handleCancel}
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button
+                                                className="bg-green-600 text-white hover:bg-green-700"
+                                                onClick={handleNext}
+                                            >
+                                                Next
+                                            </Button>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Button
+                                                variant="outline"
+                                                className="bg-red-500 text-white hover:bg-red-600"
+                                                onClick={handleBack}
+                                            >
+                                                Back
+                                            </Button>
+                                            <Button
+                                                className="bg-green-600 text-white hover:bg-green-700 min-w-[100px]"
+                                                disabled={isAddingBatch}
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    handleAddBatch();
+                                                }}
+                                            >
+                                                {isAddingBatch ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                        Adding...
+                                                    </div>
+                                                ) : (
+                                                    "Add Batch"
+                                                )}
+                                            </Button>
+                                        </>
+                                    )}
                                 </DialogFooter>
                             </DialogContent>
                         </Dialog>

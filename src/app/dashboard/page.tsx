@@ -14,6 +14,7 @@ import { Activity, CalendarClock, ChartColumnBig, ClipboardList, History, Inspec
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, Calendar, Sprout, Leaf, Factory, Wrench, FlaskConical, Notebook, Check, ChartSpline, Star, SquarePen, Trash, Circle, ChevronDown, ChevronUp, Pencil, EllipsisVertical } from "lucide-react";
 import QualityDashboard from "./QualityDashboard";
+import FactoryDashboard from "./FactoryDashboard";
 
 export default function DashboardPage() {
   const [batchDocumentID, setBatchDocumentID] = useState<string | null>(null);
@@ -166,16 +167,39 @@ export default function DashboardPage() {
   const getDisplayStatus = (dashboardData: Batches | null): string => {
     if (!dashboardData) return "No Data";
 
-    // ตรวจสอบ Farm_Status ก่อน (ให้ความสำคัญกับสถานะล่าสุด)
-    if (dashboardData.Farm_Status === "Harvested") {
+    // ตรวจสอบข้อมูลล่าสุดจากแต่ละ record เพื่อกำหนด status ที่แท้จริง
+    const hasFactoryRecords = dashboardData.factory_records && dashboardData.factory_records.length > 0;
+    const hasLabRecords = dashboardData.lab_submission_record && dashboardData.lab_submission_record.length > 0;
+    const hasHarvestRecords = dashboardData.recent_harvest_record && dashboardData.recent_harvest_record.length > 0;
+    const hasFertilizerRecords = dashboardData.recent_fertilizer_record && dashboardData.recent_fertilizer_record.length > 0;
+
+    // ถ้ามี factory submission แล้ว
+    if (hasFactoryRecords) {
+      const latestFactory = dashboardData.factory_records.sort((a, b) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      )[0];
+      return latestFactory.status === "Pending" ? "Factory Submission" : "Completed";
+    }
+
+    // ถ้ามี lab submission แล้ว
+    if (hasLabRecords) {
+      const latestLab = dashboardData.lab_submission_record.sort((a, b) => 
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      )[0];
+      return latestLab.status === "Pending" ? "Lab Submission" : "Lab Completed";
+    }
+
+    // ถ้ามีการเก็บเกี่ยวแล้ว
+    if (hasHarvestRecords) {
       return "Harvested";
     }
 
-    if (dashboardData.Farm_Status === "Fertilized") {
+    // ถ้ามีการใส่ปุ่ยแล้ว
+    if (hasFertilizerRecords) {
       return "Fertilized";
     }
 
-    // ถ้าไม่มี Farm_Status หรือ Farm_Status เป็น default ให้ดูจาก Batch_Status
+    // ถ้าไม่มีข้อมูลอื่น ให้ดูจาก Batch_Status
     switch (dashboardData.status) {
       case "Completed Successfully":
       case "Completed Past Data":
@@ -191,8 +215,8 @@ export default function DashboardPage() {
 
     const currentStatus = getDisplayStatus(dashboardData);
 
-    // ถ้าเก็บเกี่ยวแล้ว
-    if (currentStatus === "Harvested" || currentStatus === "Completed") {
+    // ถ้าเก็บเกี่ยวแล้วหรือมีการประมวลผลแล้ว
+    if (["Harvested", "Lab Submission", "Lab Completed", "Factory Submission", "Completed"].includes(currentStatus)) {
       return {
         status: "Harvested",
         detail: "Harvest completed"
@@ -250,6 +274,21 @@ export default function DashboardPage() {
         return {
           task: "Lab Submission",
           next: "Submit samples for testing"
+        };
+      case "Lab Submission":
+        return {
+          task: "Wait Lab Result",
+          next: "Waiting for lab analysis"
+        };
+      case "Lab Completed":
+        return {
+          task: "Factory Submission",
+          next: "Submit to factory"
+        };
+      case "Factory Submission":
+        return {
+          task: "Wait Factory",
+          next: "Waiting for factory processing"
         };
       case "Completed":
         return {
@@ -596,14 +635,29 @@ export default function DashboardPage() {
                 {getDisplayStatus(dashboardData)}
               </div>
               <div className="text-xs text-gray-400 mt-0.5">
-                {dashboardData?.Farm_Status === "Harvested" ? "Ready for processing" :
-                  dashboardData?.Farm_Status === "Fertilized" ? "Growing phase" :
-                    dashboardData && getDisplayStatus(dashboardData) !== "Completed" && dashboardData.planting_date
-                      ? `${Math.max(0, Math.ceil(
-                        (new Date(dashboardData.planting_date).getTime() + 9 * 30 * 24 * 60 * 60 * 1000 - Date.now())
-                        / (1000 * 60 * 60 * 24 * 30)
-                      ))} more months to go!`
-                      : "Check status"}
+                {(() => {
+                  const currentStatus = getDisplayStatus(dashboardData);
+                  switch (currentStatus) {
+                    case "Harvested":
+                    case "Lab Submission":
+                    case "Lab Completed":
+                    case "Factory Submission":
+                      return "Ready for processing";
+                    case "Fertilized":
+                      return "Growing phase";
+                    case "Planted":
+                      return dashboardData && dashboardData.planting_date
+                        ? `${Math.max(0, Math.ceil(
+                          (new Date(dashboardData.planting_date).getTime() + 9 * 30 * 24 * 60 * 60 * 1000 - Date.now())
+                          / (1000 * 60 * 60 * 24 * 30)
+                        ))} more months to go!`
+                        : "Check status";
+                    case "Completed":
+                      return "Process completed";
+                    default:
+                      return "Check status";
+                  }
+                })()}
               </div>
             </div>
             <div className="bg-white border rounded-2xl shadow-sm p-4">
@@ -721,6 +775,10 @@ export default function DashboardPage() {
 
     "Quality Inspection": [
       <QualityDashboard />
+    ],
+
+        "Factory": [
+      <FactoryDashboard />
     ],
 
     //Admin Dashboard

@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Factory } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -27,6 +27,31 @@ export default function FactorySubmissionPage() {
         qualityGrade: "",
     });
     const [factorySelections, setFactorySelections] = useState<{ [key: string]: string }>({});
+    const [factories, setFactories] = useState<any[]>([]);
+
+    const fetchFactories = async () => {
+        try {
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factories?populate=*`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+            });
+            if (!response.ok) {
+                throw new Error("Failed to fetch factories");
+            }
+            const data = await response.json();
+            setFactories(data.data.map((factory: any) => ({
+                id: factory.id,
+                documentId: factory.documentId,
+                name: factory.Factory_Name || factory.name || 'Unknown Factory',
+                location: factory.Location || 'Unknown Location',
+                status: factory.Status || 'Active',
+            })));
+        } catch (error) {
+            console.error("Error fetching factories:", error);
+            setFactories([]); // Set empty array on error
+        }
+    };
 
     const fetchAllBatchData = async () => {
         try {
@@ -40,11 +65,12 @@ export default function FactorySubmissionPage() {
             }
             const data = await response.json();
             setAllBatchData(data.data.map((batch: any) => ({
-                id: batch.Batch_id,
+                id: batch.Batch_id || `batch-${batch.id}`,
             })));
         }
         catch (error) {
             console.error("Error fetching all batch data:", error);
+            setAllBatchData([]); // Set empty array on error
         }
     };
     const fetchFactoryData = async () => {
@@ -80,18 +106,19 @@ export default function FactorySubmissionPage() {
             const data = await response.json();
             setFactorySubmission(
                 data.data.map((batch: any) => ({
-                    id: batch.Batch_id,
+                    id: batch.Batch_id || `batch-${batch.id}`,
                     documentId: batch.documentId,
-                    farm: batch.Farm_Name,
+                    farm: batch.Farm_Name || 'Unknown Farm',
                     test: batch.Test_Type || "-",
-                    grade: batch.Quality_Grade,
-                    yield: batch.Yield,
-                    date: batch.Date,
-                    status: batch.Submission_status,
+                    grade: batch.Quality_Grade || 'N/A',
+                    yield: batch.Yield || 0,
+                    date: batch.Date || batch.createdAt,
+                    status: batch.Submission_status || 'Unknown',
                 }))
             );
         } catch (error) {
             console.error("Error fetching batch data:", error);
+            setFactorySubmission([]); // Set empty array on error
         }
     };
 
@@ -151,17 +178,18 @@ export default function FactorySubmissionPage() {
             setFarmdata(data.data.map((farm: any) => ({
                 id: farm.id,
                 documentId: farm.documentId,
-                Crop_Type: farm.Crop_Type,
-                Cultivation_Method: farm.Cultivation_Method,
-                Farm_Size_Unit: farm.Farm_Size_Unit,
-                Farm_Size: farm.Farm_Size,
-                Farm_Address: farm.Farm_Address,
-                Farm_Status: farm.Farm_Status,
-                Farm_Name: farm.Farm_Name,
+                Crop_Type: farm.Crop_Type || 'Unknown',
+                Cultivation_Method: farm.Cultivation_Method || 'Unknown',
+                Farm_Size_Unit: farm.Farm_Size_Unit || 'hectares',
+                Farm_Size: farm.Farm_Size || 0,
+                Farm_Address: farm.Farm_Address || 'Unknown',
+                Farm_Status: farm.Farm_Status || 'Active',
+                Farm_Name: farm.Farm_Name || 'Unknown Farm',
             })));
             return data;
         } catch (error) {
             console.error('Error fetching farms:', error);
+            setFarmdata([]); // Set empty array on error
             return [];
         }
     };
@@ -186,20 +214,21 @@ export default function FactorySubmissionPage() {
             const data = await response.json();
             setFeedbackData(
                 data.data.map((item: any) => ({
-                    id: item.Batch_id,
+                    id: item.Batch_id || `batch-${item.id}`,
                     documentId: item.documentId,
-                    farm: item.Farm_Name,
-                    output_capsules: item.Output_Capsules,
-                    output_essential_oil: item.Output_Essential_Oil,
-                    remain: item.Turmeric_Utilization_Remaining,
-                    unit: item.Unit,
-                    status: item.Submission_status,
-                    note: item.Note,
+                    farm: item.Farm_Name || 'Unknown Farm',
+                    output_capsules: item.Output_Capsules || 0,
+                    output_essential_oil: item.Output_Essential_Oil || 0,
+                    remain: item.Turmeric_Utilization_Remaining || 0,
+                    unit: item.Unit || 'kg',
+                    status: item.Submission_status || 'Unknown',
+                    note: item.Note || '',
                 }))
             );
         }
         catch (error) {
             console.error("Error fetching feedback data:", error);
+            setFeedbackData([]); // Set empty array on error
         }
     };
 
@@ -233,6 +262,7 @@ export default function FactorySubmissionPage() {
     };
 
     React.useEffect(() => {
+        fetchFactories();
         fetchFarms();
         fetchAllBatchData();
         fetchFactoryData();
@@ -359,24 +389,40 @@ export default function FactorySubmissionPage() {
                     <div className="bg-white rounded-xl shadow p-6 mb-6">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="font-semibold text-lg">Ready for Factory Submission</h2>
+                            {factorySubmissionData.length > 0 && (
+                                <span className="text-sm text-gray-600">
+                                    {factorySubmissionData.length} batch{factorySubmissionData.length !== 1 ? 'es' : ''} waiting
+                                </span>
+                            )}
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
-                                <thead>
-                                    <tr className="border-b">
-                                        <th className="text-left py-2 px-2">
-                                            <input type="checkbox" checked={selectAll} onChange={handleSelectAll} />
-                                        </th>
-                                        <th className="text-left py-2 px-2">Batch ID</th>
-                                        <th className="text-left py-2 px-2">Farm Name</th>
-                                        <th className="text-left py-2 px-2">Test Type</th>
-                                        <th className="text-left py-2 px-2">Quality Grade</th>
-                                        <th className="text-left py-2 px-2">Yield</th>
-                                        <th className="text-left py-2 px-2">Date</th>
-                                        <th className="text-left py-2 px-2">Status</th>
-                                        <th className="text-left py-2 px-2">Choose Factory</th>
-                                    </tr>
-                                </thead>
+                        {factorySubmissionData.length === 0 ? (
+                            <div className="text-center py-12">
+                                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Factory className="w-8 h-8 text-gray-400" />
+                                </div>
+                                <h3 className="text-lg font-medium text-gray-900 mb-2">No batches ready for submission</h3>
+                                <p className="text-gray-500 text-sm">
+                                    Batches will appear here when they're ready to be sent to factories.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b">
+                                            <th className="text-left py-2 px-2">
+                                                <input type="checkbox" checked={selectAll} onChange={handleSelectAll} />
+                                            </th>
+                                            <th className="text-left py-2 px-2">Batch ID</th>
+                                            <th className="text-left py-2 px-2">Farm Name</th>
+                                            <th className="text-left py-2 px-2">Test Type</th>
+                                            <th className="text-left py-2 px-2">Quality Grade</th>
+                                            <th className="text-left py-2 px-2">Yield</th>
+                                            <th className="text-left py-2 px-2">Date</th>
+                                            <th className="text-left py-2 px-2">Status</th>
+                                            <th className="text-left py-2 px-2">Choose Factory</th>
+                                        </tr>
+                                    </thead>
                                 <tbody>
                                     {factorySubmissionData.map((batch) => (
                                         <tr className="border-b" key={batch.documentId}>
@@ -391,7 +437,7 @@ export default function FactorySubmissionPage() {
                                             <td className="px-2 py-2">{batch.farm}</td>
                                             <td className="px-2 py-2">{batch.test}</td>
                                             <td className="px-2 py-2">{batch.grade}</td>
-                                            <td className="px-2 py-2">{batch.yield}</td>
+                                            <td className="px-2 py-2">{batch.yield} kg</td>
                                             <td className="px-2 py-2">
                                                 {new Date(batch.date).toLocaleDateString("en-US", {
                                                     month: "short",
@@ -399,7 +445,11 @@ export default function FactorySubmissionPage() {
                                                     year: "numeric",
                                                 })}
                                             </td>
-                                            <td className="px-2 py-2 text-green-600">{batch.status}</td>
+                                            <td className="px-2 py-2">
+                                                <span className="text-blue-600 text-xs px-2 py-1 bg-blue-50 rounded">
+                                                    {batch.status}
+                                                </span>
+                                            </td>
                                             <td className="px-2 py-2">
                                                 <Select
                                                     value={factorySelections[batch.documentId] || ""}
@@ -414,8 +464,17 @@ export default function FactorySubmissionPage() {
                                                         <SelectValue placeholder="Select Factory" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="MFU">MFU</SelectItem>
-                                                        <SelectItem value="Lamduan">Lamduan</SelectItem>
+                                                        {factories.length > 0 ? (
+                                                            factories.map((factory) => (
+                                                                <SelectItem key={factory.documentId} value={factory.name}>
+                                                                    {factory.name}
+                                                                </SelectItem>
+                                                            ))
+                                                        ) : (
+                                                            <SelectItem value="no-factories" disabled>
+                                                                No factories available
+                                                            </SelectItem>
+                                                        )}
                                                     </SelectContent>
                                                 </Select>
                                             </td>
@@ -425,10 +484,23 @@ export default function FactorySubmissionPage() {
                                 </tbody>
                             </table>
                             <div className="mt-4 text-right">
-                                <button className="bg-green-600 text-white px-4 py-2 rounded transition-colors hover:bg-green-700"
+                                <button 
+                                    className="bg-green-600 text-white px-4 py-2 rounded transition-colors hover:bg-green-700 disabled:opacity-50"
+                                    disabled={selectedRows.length === 0}
                                     onClick={() => {
+                                        if (selectedRows.length === 0) {
+                                            alert("Please select at least one batch to submit.");
+                                            return;
+                                        }
+                                        
+                                        const missingFactories = selectedRows.filter(documentId => !factorySelections[documentId]);
+                                        if (missingFactories.length > 0) {
+                                            alert("Please select a factory for all selected batches.");
+                                            return;
+                                        }
+                                        
                                         selectedRows.forEach((documentId) => {
-                                            const selectedFactory = factorySelections[documentId]; // ✅ ดึงค่าโรงงานที่เลือกของแต่ละแถว
+                                            const selectedFactory = factorySelections[documentId];
                                             handleSubmitToFactory(documentId, selectedFactory);
                                         });
 
@@ -437,29 +509,49 @@ export default function FactorySubmissionPage() {
                                         setSelectAll(false);
                                         fetchFeedbackData();
                                     }}
-
                                 >
-                                    Submit to Factory
+                                    Submit to Factory ({selectedRows.length})
                                 </button>
                             </div>
-                        </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="bg-white rounded-xl shadow p-6">
-                        <h2 className="font-semibold text-lg mb-4">Recent Factory Feedback</h2>
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="border-b text-left">
-                                    <th className="py-2 px-2">Batch</th>
-                                    <th className="py-2 px-2">Farm Name</th>
-                                    <th className="py-2 px-2">Product Output</th>
-                                    <th className="py-2 px-2">Remaining Turmeric</th>
-                                    <th className="py-2 px-2">Status</th>
-                                    <th className="py-2 px-2">Note</th>
-                                    <th className="py-2 px-2 text-center"> </th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="font-semibold text-lg">Recent Factory Feedback</h2>
+                            {feedbackData.length > 0 && (
+                                <span className="text-sm text-gray-600">
+                                    {feedbackData.length} record{feedbackData.length !== 1 ? 's' : ''}
+                                </span>
+                            )}
+                        </div>
+                        
+                        {feedbackData.length === 0 ? (
+                            <div className="text-center py-12">
+                                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <ChevronRight className="w-8 h-8 text-gray-400" />
+                                </div>
+                                <h3 className="text-lg font-medium text-gray-900 mb-2">No factory feedback yet</h3>
+                                <p className="text-gray-500 text-sm">
+                                    Factory feedback will appear here after batches are processed.
+                                </p>
+                            </div>
+                        ) : (
+                            <>
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b text-left">
+                                            <th className="py-2 px-2">Batch</th>
+                                            <th className="py-2 px-2">Farm Name</th>
+                                            <th className="py-2 px-2">Product Output</th>
+                                            <th className="py-2 px-2">Remaining Turmeric</th>
+                                            <th className="py-2 px-2">Status</th>
+                                            <th className="py-2 px-2">Note</th>
+                                            <th className="py-2 px-2 text-center">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
                                 {currentItems.length === 0 ? (
                                     <tr key="no-data">
                                         <td colSpan={7} className="text-center py-4 text-gray-500">
@@ -503,10 +595,8 @@ export default function FactorySubmissionPage() {
                                     ))
                                 )}
                             </tbody>
-
-
                         </table>
-
+                        
                         <div className="flex justify-start mt-4 gap-2">
                             <button
                                 onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
@@ -537,7 +627,8 @@ export default function FactorySubmissionPage() {
                                 <ChevronRight className="w-4 h-4" />
                             </button>
                         </div>
-
+                        </>
+                        )}
                     </div>
 
                 </main>
