@@ -55,7 +55,7 @@ export default function FactorySubmissionPage() {
 
     const fetchAllBatchData = async () => {
         try {
-            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-submissions?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/batches?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -75,51 +75,66 @@ export default function FactorySubmissionPage() {
     };
     const fetchFactoryData = async () => {
         try {
-            const queryParams = new URLSearchParams();
-            queryParams.append("filters[user_documentId][$eq]", localStorage.getItem("userId") || "");
-            queryParams.append("filters[Submission_status][$eq]", "Waiting");
-
-            if (filters.batchId) {
-                queryParams.append("filters[Batch_id][$eq]", filters.batchId);
-            }
-            if (filters.dateOfResult) {
-                queryParams.append("filters[Date][$eq]", filters.dateOfResult);
-            }
-            if (filters.farmName && filters.farmName !== "*") {
-                queryParams.append("filters[Farm_Name][$eq]", filters.farmName);
-            }
-            if (filters.qualityGrade && filters.qualityGrade !== "*") {
-                queryParams.append("filters[Quality_Grade][$eq]", filters.qualityGrade);
-            }
-
-            console.log("Query Params:", queryParams.toString());
-            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-submissions?populate=*&${queryParams.toString()}`, {
+            // Fetch factory submissions with status "Waiting" instead of ready-for-factory records
+            console.log("Fetching factory submissions with Waiting status...");
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-submissions?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}&filters[Submission_status][$eq]=Waiting`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
             });
 
             if (!response.ok) {
-                throw new Error("Failed to fetch factory data");
+                throw new Error("Failed to fetch factory submissions");
             }
 
             const data = await response.json();
-            setFactorySubmission(
-                data.data.map((batch: any) => ({
-                    id: batch.Batch_id || `batch-${batch.id}`,
-                    documentId: batch.documentId,
-                    farm: batch.Farm_Name || 'Unknown Farm',
-                    test: batch.Test_Type || "-",
-                    grade: batch.Quality_Grade || 'N/A',
-                    yield: batch.Yield || 0,
-                    date: batch.Date || batch.createdAt,
-                    status: batch.Submission_status || 'Unknown',
-                }))
-            );
+            console.log("Factory submissions with Waiting status:", data.data);
+
+            // Apply additional filters if provided
+            let filteredRecords = data.data;
+            
+            if (filters.batchId) {
+                filteredRecords = filteredRecords.filter((record: any) => 
+                    record.Batch_id.includes(filters.batchId)
+                );
+            }
+            
+            if (filters.dateOfResult) {
+                filteredRecords = filteredRecords.filter((record: any) => 
+                    record.Date?.startsWith(filters.dateOfResult)
+                );
+            }
+            
+            if (filters.farmName && filters.farmName !== "*") {
+                filteredRecords = filteredRecords.filter((record: any) => 
+                    record.Farm_Name === filters.farmName
+                );
+            }
+
+            // Transform data to match factory submission format
+            const transformedData = filteredRecords.map((record: any) => ({
+                id: record.Batch_id,
+                documentId: record.documentId,
+                farm: record.Farm_Name,
+                test: record.Test_Type,
+                grade: record.Quality_Grade,
+                yield: record.Yield,
+                date: record.Date,
+                status: "Ready",
+                factorySubmissionData: record, // เก็บข้อมูลเต็มไว้ใช้ตอนอัปเดต
+            }));
+
+            console.log("Final transformed data:", transformedData);
+            setFactorySubmission(transformedData);
         } catch (error) {
-            console.error("Error fetching batch data:", error);
+            console.error("Error fetching factory submissions:", error);
             setFactorySubmission([]); // Set empty array on error
         }
+    };
+
+    const getFactoryName = (factoryDocumentId: string) => {
+        const factory = factories.find(f => f.documentId === factoryDocumentId);
+        return factory ? factory.name : 'Unknown Factory';
     };
 
     const handleSubmitToFactory = async (documentId: string, factorySelection: string) => {
@@ -127,7 +142,19 @@ export default function FactorySubmissionPage() {
             alert("Please select a factory before submitting.");
             return;
         }
+        
         try {
+            // Find the factory submission record
+            const submissionRecord = factorySubmissionData.find(item => item.documentId === documentId);
+            if (!submissionRecord || !submissionRecord.factorySubmissionData) {
+                alert("Factory submission record not found.");
+                return;
+            }
+
+            const submissionData = submissionRecord.factorySubmissionData;
+            console.log("Updating factory submission:", submissionData);
+
+            // Update factory submission status and factory selection
             const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-submissions/${documentId}`, {
                 method: "PUT",
                 headers: {
@@ -137,19 +164,70 @@ export default function FactorySubmissionPage() {
                 body: JSON.stringify({
                     data: {
                         Submission_status: "Pending",
-                        Factory: factorySelection,
-                        Date_Received: new Date().toISOString(),
+                        factory: factorySelection,
                     },
                 }),
             });
+
             if (!response.ok) {
-                throw new Error("Failed to submit to factory");
+                const errorData = await response.text();
+                console.error("Factory submission update error response:", errorData);
+                throw new Error(`Failed to update factory submission: ${response.status} - ${errorData}`);
             }
+
+            const factorySubmissionResult = await response.json();
+            console.log("Factory submission updated successfully:", factorySubmissionResult);
+
+            // Create new Factory Processing record
+            const processingResponse = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-processings`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+                body: JSON.stringify({
+                    data: {
+                        Batch_Id: submissionData.Batch_id,
+                        factory: factorySelection,
+                        Date_Received: new Date().toISOString().split('T')[0],
+                        Processing_Status: "Received",
+                        factory_submission: documentId,
+                    },
+                }),
+            });
+
+            if (!processingResponse.ok) {
+                const processingErrorData = await processingResponse.text();
+                console.error("Factory processing creation error:", processingErrorData);
+                throw new Error(`Failed to create factory processing record: ${processingResponse.status}`);
+            }
+
+            const processingResult = await processingResponse.json();
+            console.log("Factory processing record created:", processingResult);
+
+            // Update batch status
+            if (submissionData.batch) {
+                await fetch(`https://api-freeroll-production.up.railway.app/api/batches/${submissionData.batch}`, {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                    },
+                    body: JSON.stringify({
+                        data: {
+                            Batch_Status: "Submitted to Factory",
+                        },
+                    }),
+                });
+            }
+
             await fetchFactoryData();
             alert("Submitted to factory successfully!");
         }
-        catch (error) {
+        catch (error: any) {
             console.error("Error submitting to factory:", error);
+            const errorMessage = error.message || "Unknown error occurred";
+            alert(`Failed to submit to factory: ${errorMessage}`);
         }
     };
     type Farm = {
@@ -461,12 +539,19 @@ export default function FactorySubmissionPage() {
                                                     }
                                                 >
                                                     <SelectTrigger className="w-full border rounded px-2 py-1">
-                                                        <SelectValue placeholder="Select Factory" />
+                                                        <SelectValue 
+                                                            placeholder="Select Factory"
+                                                        >
+                                                            {factorySelections[batch.documentId] ? 
+                                                                getFactoryName(factorySelections[batch.documentId]) : 
+                                                                "Select Factory"
+                                                            }
+                                                        </SelectValue>
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {factories.length > 0 ? (
                                                             factories.map((factory) => (
-                                                                <SelectItem key={factory.documentId} value={factory.name}>
+                                                                <SelectItem key={factory.documentId} value={factory.documentId}>
                                                                     {factory.name}
                                                                 </SelectItem>
                                                             ))

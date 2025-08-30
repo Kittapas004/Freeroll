@@ -68,7 +68,8 @@ export default function ProcessingDetailsPage() {
             setLoading(true);
             console.log('🔍 Fetching batch data for Processing Details...');
 
-            const response = await fetch('https://api-freeroll-production.up.railway.app/api/factory-submissions?populate=*', {
+            // Fetch factory processing records instead of factory submissions
+            const response = await fetch('https://api-freeroll-production.up.railway.app/api/factory-processings?populate=*&filters[Processing_Status][$in][0]=Received&filters[Processing_Status][$in][1]=Processing', {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -79,23 +80,23 @@ export default function ProcessingDetailsPage() {
             }
 
             const data = await response.json();
-            console.log('✅ Batch data fetched:', data);
+            console.log('✅ Processing data fetched:', data);
 
             const formattedData: BatchData[] = data.data.map((item: any) => ({
                 id: item.id.toString(),
                 documentId: item.documentId,
-                batchId: item.Batch_id || `T-batch-${item.id}`,
-                farmName: item.Farm_Name || 'Unknown Farm',
-                farmLocation: item.Farm_Address || 'Unknown Location',
+                batchId: item.Batch_Id || `T-batch-${item.id}`,
+                farmName: item.factory_submission?.Farm_Name || 'Unknown Farm',
+                farmLocation: item.factory_submission?.Farm_Address || 'Unknown Location',
                 crop: 'Turmeric',
-                cultivation: item.Cultivation_Method || 'Organic',
-                weight: parseFloat(item.Yield) || 0,
-                quality: item.Quality_Grade || 'Grade A',
-                harvestDate: item.Date || item.createdAt,
-                testType: item.Test_Type || 'Curcuminoid',
-                status: item.Submission_status || 'Waiting',
-                farmer: item.Farmer_Name || 'Unknown Farmer',
-                contact: item.Contact || 'N/A',
+                cultivation: item.factory_submission?.Cultivation_Method || 'Organic',
+                weight: parseFloat(item.factory_submission?.Yield) || 0,
+                quality: item.factory_submission?.Quality_Grade || 'Grade A',
+                harvestDate: item.factory_submission?.Date || item.factory_submission?.createdAt,
+                testType: item.factory_submission?.Test_Type || 'Curcuminoid',
+                status: item.Processing_Status || 'Received',
+                farmer: item.factory_submission?.Farmer_Name || 'Unknown Farmer',
+                contact: item.factory_submission?.Contact || 'N/A',
                 dateReceived: item.Date_Received || item.createdAt,
                 factory: item.Factory || 'MFU'
             }));

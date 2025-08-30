@@ -147,53 +147,57 @@ export default function FactoryDashboard() {
       setLoading(true);
       setError(null);
       
-      console.log('🏭 Fetching Factory submissions from Strapi...');
+      console.log('🏭 Fetching Factory data from Strapi...');
       
-      // Simplified API call
-      const factoryRes = await fetch(
-        'https://api-freeroll-production.up.railway.app/api/factory-submissions?populate=*',
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('jwt')}`,
-          },
-        }
-      );
+      // Fetch both factory submissions and factory processing records
+      const [submissionsRes, processingRes] = await Promise.all([
+        fetch('https://api-freeroll-production.up.railway.app/api/factory-submissions?populate=*', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('jwt')}` },
+        }),
+        fetch('https://api-freeroll-production.up.railway.app/api/factory-processings?populate=*', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('jwt')}` },
+        })
+      ]);
 
-      if (!factoryRes.ok) {
-        console.error('❌ Failed to fetch factory data, status:', factoryRes.status);
-        throw new Error(`Failed to fetch factory data: ${factoryRes.status}`);
+      if (!submissionsRes.ok || !processingRes.ok) {
+        console.error('❌ Failed to fetch factory data');
+        throw new Error('Failed to fetch factory data');
       }
 
-      const factoryData = await factoryRes.json();
-      console.log('✅ Factory Data from Strapi:', factoryData);
+      const submissionsData = await submissionsRes.json();
+      const processingData = await processingRes.json();
       
-      const submissions = factoryData.data || [];
-      console.log(`📊 Found ${submissions.length} factory submissions`);
+      console.log('✅ Factory Submissions:', submissionsData);
+      console.log('✅ Factory Processing:', processingData);
       
-      if (submissions.length > 0) {
-        // Calculate real stats from submissions
-        const totalTurmericUsed = submissions.reduce((sum: number, s: any) => {
-          return sum + (parseFloat(s.Turmeric_Utilization_Used) || parseFloat(s.Yield) || 0);
+      const submissions = submissionsData.data || [];
+      const processings = processingData.data || [];
+      console.log(`📊 Found ${submissions.length} factory submissions and ${processings.length} processing records`);
+      
+      if (processings.length > 0) {
+        // Calculate real stats from processing records
+        const totalTurmericUsed = processings.reduce((sum: number, p: any) => {
+          return sum + (parseFloat(p.Turmeric_Utilization_Used) || 0);
         }, 0);
 
-        const totalCapsules = submissions.reduce((sum: number, s: any) => {
-          return sum + (parseInt(s.Output_Capsules) || 0);
+        const totalCapsules = processings.reduce((sum: number, p: any) => {
+          return sum + (parseInt(p.Output_Capsules) || 0);
         }, 0);
 
-        const totalEssentialOil = submissions.reduce((sum: number, s: any) => {
-          return sum + (parseFloat(s.Output_Essential_Oil) || 0);
+        const totalEssentialOil = processings.reduce((sum: number, p: any) => {
+          return sum + (parseFloat(p.Output_Essential_Oil) || 0);
         }, 0);
 
-        const totalWaste = submissions.reduce((sum: number, s: any) => {
-          return sum + (parseFloat(s.Turmeric_Utilization_Waste) || 0);
+        const totalWaste = processings.reduce((sum: number, p: any) => {
+          return sum + (parseFloat(p.Turmeric_Utilization_Waste) || 0);
         }, 0);
 
         const pendingSubmissions = submissions.filter((s: any) => 
           s.Submission_status === 'Waiting' || s.Submission_status === 'Pending'
         ).length;
         
-        const completedBatches = submissions.filter((s: any) => 
-          s.Submission_status === 'Completed'
+        const completedBatches = processings.filter((p: any) => 
+          p.Processing_Status === 'Completed'
         ).length;
         
         setStats({

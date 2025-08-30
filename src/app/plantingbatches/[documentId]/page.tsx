@@ -1109,11 +1109,15 @@ export default function PlantingBatchDetail() {
     };
 
     const handlePrintGAP = () => {
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) {
-            alert('Please allow popups to print the GAP report');
-            return;
-        }
+        // สร้าง iframe สำหรับ print แทน window.open
+        const printFrame = document.createElement('iframe');
+        printFrame.style.position = 'absolute';
+        printFrame.style.top = '-1000px';
+        printFrame.style.left = '-1000px';
+        printFrame.style.width = '0';
+        printFrame.style.height = '0';
+        printFrame.style.border = 'none';
+        document.body.appendChild(printFrame);
 
         const gapContent = `
 <!DOCTYPE html>
@@ -1123,485 +1127,433 @@ export default function PlantingBatchDetail() {
     <title>GAP Certification Report</title>
     <style>
         @page {
-            margin: 20mm;
+            margin: 20mm 15mm 15mm 15mm;
             size: A4;
         }
         body {
             font-family: Arial, sans-serif;
-            line-height: 1.4;
+            line-height: 1.3;
             color: #333;
             margin: 0;
             padding: 0;
             font-size: 12px;
         }
-        .header {
-            background-color: #16a34a;
-            color: white;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 20px;
+        .main-header {
+            text-align: left;
+            margin-bottom: 30px;
+            padding: 20px 20px 0 20px;
+            page-break-inside: avoid;
+            page-break-after: avoid;
         }
-        .header h1 {
-            margin: 0;
+        .main-header h1 {
+            color: #22c55e;
+            margin: 0 0 5px 0;
             font-size: 24px;
             font-weight: bold;
         }
-        .header p {
-            margin: 10px 0 0 0;
-            opacity: 0.9;
+        .main-header p {
+            margin: 3px 0;
+            color: #666;
+            font-size: 13px;
+        }
+        .main-header .separator {
+            border-bottom: 3px solid #22c55e;
+            margin: 15px 0 0 0;
+            width: 100%;
+        }
+        .page-header {
+            display: none;
+        }
+        @media print {
+            body { 
+                print-color-adjust: exact;
+            }
+            .page-header {
+                display: block;
+                text-align: left;
+                padding: 10px 20px 15px 20px;
+                margin-bottom: 20px;
+                position: relative;
+            }
+            .page-header h1 {
+                color: #22c55e;
+                margin: 0 0 5px 0;
+                font-size: 20px;
+                font-weight: bold;
+            }
+            .page-header p {
+                margin: 2px 0;
+                color: #666;
+                font-size: 11px;
+            }
+            .page-header .separator {
+                border-bottom: 2px solid #22c55e;
+                margin: 10px 0 0 0;
+                width: 100%;
+            }
+            .main-header {
+                display: none;
+            }
+            .content {
+                padding: 0 20px;
+            }
+        }
+        .content {
+            padding: 0 20px 20px 20px;
         }
         .section {
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             page-break-inside: avoid;
         }
-        .section-header {
-            background-color: #dcfce7;
-            padding: 10px;
-            border-left: 4px solid #16a34a;
-            margin-bottom: 15px;
-        }
-        .section-title {
-            font-size: 16px;
-            font-weight: bold;
-            color: #166534;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-        .info-item {
-            margin-bottom: 10px;
-        }
-        .info-label {
-            font-size: 11px;
-            color: #666;
-            font-weight: 500;
-            margin-bottom: 5px;
-        }
-        .info-value {
-            font-weight: bold;
+        .section h2 {
+            background-color: #f8f9fa;
             padding: 8px 12px;
-            background-color: #f3f4f6;
-            border: 1px solid #d1d5db;
-            border-radius: 4px;
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            color: #333;
+            border-left: 4px solid #22c55e;
+            page-break-after: avoid;
         }
-        .cost-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 10px;
-            margin-top: 15px;
+        .section:nth-child(n+4) {
+            page-break-before: auto;
         }
-        .cost-item {
-            background-color: #f9fafb;
-            padding: 10px;
-            border-radius: 4px;
-            text-align: center;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            page-break-inside: avoid;
         }
-        .cost-total {
-            background-color: #dcfce7;
-            border: 1px solid #22c55e;
-            padding: 10px;
-            border-radius: 4px;
-            text-align: center;
+        td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            vertical-align: top;
+        }
+        .label {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            width: 150px;
+        }
+        .value {
+            background-color: white;
+        }
+        .cost-table {
             margin-top: 10px;
         }
-        .cost-label {
-            font-size: 10px;
-            color: #666;
-            margin-bottom: 5px;
+        .cost-table td {
+            text-align: center;
         }
-        .cost-value {
+        .cost-table .label {
+            text-align: left;
+            width: 120px;
+        }
+        .app-header {
+            background-color: #f1f5f9;
+            padding: 5px 10px;
+            margin: 15px 0 5px 0;
             font-weight: bold;
-            font-size: 14px;
+            color: #374151;
+            page-break-after: avoid;
         }
-        .record-item {
-            border: 1px solid #e5e7eb;
-            border-radius: 6px;
-            padding: 12px;
-            background-color: #f9fafb;
-            margin-bottom: 10px;
+        .app-section {
+            page-break-inside: avoid;
+            margin-bottom: 15px;
         }
-        .record-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1fr;
-            gap: 10px;
-        }
-        .record-field {
-            margin-bottom: 8px;
-        }
-        .record-label {
-            font-size: 10px;
-            color: #666;
-            margin-bottom: 3px;
-        }
-        .record-value {
-            font-weight: 500;
-        }
-        .cert-statement {
+        .cert-box {
             background-color: #dcfce7;
             border: 1px solid #22c55e;
             padding: 15px;
-            border-radius: 6px;
-            margin-top: 20px;
-            text-align: center;
+            margin: 20px 0;
+            text-align: justify;
+            page-break-inside: avoid;
         }
-        .signature-area {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 50px;
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
             margin-top: 40px;
-            text-align: center;
+            page-break-inside: avoid;
         }
         .signature-box {
-            border-top: 1px solid #333;
-            padding-top: 10px;
-            margin-top: 50px;
-        }
-        .no-data {
             text-align: center;
-            color: #666;
-            font-style: italic;
-            padding: 20px;
+            width: 200px;
         }
-        @media print {
-            .no-print { display: none !important; }
-            body { print-color-adjust: exact; }
+        .signature-line {
+            border-top: 1px solid #333;
+            margin-top: 50px;
+            padding-top: 5px;
         }
     </style>
 </head>
 <body>
-    <div class="header">
+    <!-- Header สำหรับทุกหน้าในการพิมพ์ -->
+    <div class="page-header">
         <h1>GAP Certification Report</h1>
         <p>Good Agricultural Practices Certification</p>
         <p>Comprehensive documentation of farming practices</p>
+        <div class="separator"></div>
     </div>
+
+    <!-- Header สำหรับหน้าจอปกติ -->
+    <div class="main-header">
+        <h1>GAP Certification Report</h1>
+        <p>Good Agricultural Practices Certification</p>
+        <p>Comprehensive documentation of farming practices</p>
+        <div class="separator"></div>
+    </div>
+
+    <div class="content">
 
     <!-- 1. Farmer Information -->
     <div class="section">
-        <div class="section-header">
-            <h3 class="section-title">👨‍🌾 Farmer Information</h3>
-        </div>
-        <div class="info-grid">
-            <div class="info-item">
-                <div class="info-label">Full Name</div>
-                <div class="info-value">${currentUser?.username || localStorage.getItem("username") || "Kittapas Viriyapipatpoor"}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Email Address</div>
-                <div class="info-value">${currentUser?.email || localStorage.getItem("email") || "littlefarm@gmail.com"}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Contact Number</div>
-                <div class="info-value">${currentUser?.phone || localStorage.getItem("contactNumber") || "089-123-4567"}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Report Date</div>
-                <div class="info-value">${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</div>
-            </div>
-        </div>
+        <h2>1. Farmer Information</h2>
+        <table>
+            <tr>
+                <td class="label">Full Name</td>
+                <td class="value">${currentUser?.username || localStorage.getItem("username") || "Kittapas Viriyapipatpoor"}</td>
+            </tr>
+            <tr>
+                <td class="label">Report Date</td>
+                <td class="value">${new Date().toLocaleDateString('en-GB')}</td>
+            </tr>
+            <tr>
+                <td class="label">Email Address</td>
+                <td class="value">${currentUser?.email || localStorage.getItem("email") || "littlefarm@gmail.com"}</td>
+            </tr>
+            <tr>
+                <td class="label">Contact Number</td>
+                <td class="value">${currentUser?.phone || localStorage.getItem("contactNumber") || "089-123-4567"}</td>
+            </tr>
+        </table>
     </div>
 
     <!-- 2. Farm Information -->
     <div class="section">
-        <div class="section-header">
-            <h3 class="section-title">🚜 Farm Information</h3>
-        </div>
-        <div class="info-grid">
-            <div class="info-item">
-                <div class="info-label">Farm Name</div>
-                <div class="info-value">${currentFarm?.Farm_Name || PlantingBatches?.location || "Little Farm"}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Farm Size</div>
-                <div class="info-value">${currentFarm ? `${currentFarm.Farm_Size} ${currentFarm.Farm_Size_Unit}` : "15 Rai"}</div>
-            </div>
-            <div class="info-item" style="grid-column: 1 / -1;">
-                <div class="info-label">Farm Address</div>
-                <div class="info-value">${currentFarm?.Farm_Address || "123 Moo 5, Mae Rim Luang, Muang District, Chiang Rai"}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Crop Type</div>
-                <div class="info-value">${currentFarm?.Crop_Type || "Turmeric"}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Cultivation Method</div>
-                <div class="info-value">${currentFarm?.Cultivation_Method || PlantingBatches?.cultivation_method || "Organic Cultivation"}</div>
-            </div>
-        </div>
+        <h2>2. Farm Information</h2>
+        <table>
+            <tr>
+                <td class="label">Farm Name</td>
+                <td class="value">${currentFarm?.Farm_Name || PlantingBatches?.location || "Little Farm"}</td>
+            </tr>
+            <tr>
+                <td class="label">Farm Size</td>
+                <td class="value">${currentFarm ? `${currentFarm.Farm_Size} ${currentFarm.Farm_Size_Unit}` : "15 Rai"}</td>
+            </tr>
+            <tr>
+                <td class="label">Farm Address</td>
+                <td class="value">${currentFarm?.Farm_Address || "123 Moo 5, Mae Fah Luang, Muang District, Chiang Rai"}</td>
+            </tr>
+            <tr>
+                <td class="label">Crop Type</td>
+                <td class="value">${currentFarm?.Crop_Type || "Turmeric"}</td>
+            </tr>
+            <tr>
+                <td class="label">Cultivation Method</td>
+                <td class="value">${currentFarm?.Cultivation_Method || PlantingBatches?.cultivation_method || "Organic Cultivation"}</td>
+            </tr>
+        </table>
     </div>
 
     <!-- 3. Planting Information -->
     <div class="section">
-        <div class="section-header">
-            <h3 class="section-title">🌱 Planting Information</h3>
-        </div>
-        <div class="info-grid">
-            <div class="info-item">
-                <div class="info-label">Batch ID</div>
-                <div class="info-value">${PlantingBatches?.batches_id || "Kittapas Viriyapipatpoor"}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Date of Planting</div>
-                <div class="info-value">${PlantingBatches?.planting_date ? new Date(PlantingBatches.planting_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : "August 21, 2025"}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Plant Variety</div>
-                <div class="info-value">${PlantingBatches?.plant_variety || "LittleFarm@gmail.com"}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Cultivation Method</div>
-                <div class="info-value">${PlantingBatches?.cultivation_method || "Organic"}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Soil pH</div>
-                <div class="info-value">${PlantingBatches?.soil_pH || "4.0"}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Soil Quality</div>
-                <div class="info-value">${PlantingBatches?.soil_quality || "Good"}</div>
-            </div>
-            <div class="info-item">
-                <div class="info-label">Water Source</div>
-                <div class="info-value">${PlantingBatches?.water_source || "Rainwater Harvesting"}</div>
-            </div>
-        </div>
+        <h2>3. Planting Information</h2>
+        <table>
+            <tr>
+                <td class="label">Batch ID</td>
+                <td class="value">${PlantingBatches?.batches_id || "Kittapas Viriyapipatpoor"}</td>
+            </tr>
+            <tr>
+                <td class="label">Date of Planting</td>
+                <td class="value">${PlantingBatches?.planting_date ? new Date(PlantingBatches.planting_date).toLocaleDateString('en-GB') : "August 21, 2025"}</td>
+            </tr>
+            <tr>
+                <td class="label">Plant Variety</td>
+                <td class="value">${PlantingBatches?.plant_variety || "LittleFarm@gmail.com"}</td>
+            </tr>
+            <tr>
+                <td class="label">Cultivation Method</td>
+                <td class="value">${PlantingBatches?.cultivation_method || "Organic"}</td>
+            </tr>
+            <tr>
+                <td class="label">Soil pH</td>
+                <td class="value">${PlantingBatches?.soil_pH || "4.0"}</td>
+            </tr>
+            <tr>
+                <td class="label">Soil Quality</td>
+                <td class="value">${PlantingBatches?.soil_quality || "Good"}</td>
+            </tr>
+            <tr>
+                <td class="label">Water Source</td>
+                <td class="value">${PlantingBatches?.water_source || "Rainwater Harvesting"}</td>
+            </tr>
+        </table>
         
-        <div style="border-left: 4px solid #22c55e; padding-left: 15px; margin-top: 20px;">
-            <h4 style="color: #166534; margin-bottom: 15px; font-weight: bold;">Planting Cost</h4>
-            <div class="cost-grid">
-                <div class="cost-item">
-                    <div class="cost-label">Labor Cost (THB)</div>
-                    <div class="cost-value">฿${PlantingBatches?.labor_cost || "2,000"}</div>
-                </div>
-                <div class="cost-item">
-                    <div class="cost-label">Material Cost (THB)</div>
-                    <div class="cost-value">฿${PlantingBatches?.material_cost || "6,000"}</div>
-                </div>
-                <div class="cost-item">
-                    <div class="cost-label">Other Cost (THB)</div>
-                    <div class="cost-value">฿${PlantingBatches?.other_costs || "0"}</div>
-                </div>
-            </div>
-            <div class="cost-total">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-weight: bold;">Total Planting Cost</span>
-                    <span style="font-weight: bold; font-size: 16px;">฿${PlantingBatches?.total_planting_cost || "8,000"}</span>
-                </div>
-            </div>
-        </div>
+        <table class="cost-table">
+            <tr>
+                <td class="label">Planting Cost</td>
+                <td class="label">Cost</td>
+                <td class="label">Unit</td>
+            </tr>
+            <tr>
+                <td class="label">Labor Cost</td>
+                <td class="value">${PlantingBatches?.labor_cost || "2,000"}</td>
+                <td class="value">Baht</td>
+            </tr>
+            <tr>
+                <td class="label">Material Cost</td>
+                <td class="value">${PlantingBatches?.material_cost || "6,000"}</td>
+                <td class="value">Baht</td>
+            </tr>
+            <tr>
+                <td class="label">Other Costs</td>
+                <td class="value">${PlantingBatches?.other_costs || "0"}</td>
+                <td class="value">Baht</td>
+            </tr>
+            <tr style="font-weight: bold;">
+                <td class="label">Total Planting Cost</td>
+                <td class="value">${PlantingBatches?.total_planting_cost || "8,000"}</td>
+                <td class="value">Baht</td>
+            </tr>
+        </table>
     </div>
 
     <!-- 4. Fertilizer Information -->
     <div class="section">
-        <div class="section-header">
-            <h3 class="section-title">🌿 Fertilizer Information</h3>
-        </div>
+        <h2>4. Fertilizer Information</h2>
         ${PlantingBatches?.recent_fertilizer_record && PlantingBatches.recent_fertilizer_record.length > 0 ? `
-            <div style="margin-bottom: 20px;">
-                <h4 style="margin-bottom: 10px;">Application 1</h4>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <div class="info-label">Date</div>
-                        <div class="info-value">${PlantingBatches.recent_fertilizer_record[0] ? new Date(PlantingBatches.recent_fertilizer_record[0].date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : "08/22/2025"}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Fertilizer Type</div>
-                        <div class="info-value">${PlantingBatches.recent_fertilizer_record[0]?.fertilizer_type || "Organic"}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Quantity Applied</div>
-                        <div class="info-value">${PlantingBatches.recent_fertilizer_record[0]?.amount || "100"}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">How to Apply</div>
-                        <div class="info-value">${PlantingBatches.recent_fertilizer_record[0]?.method || "Spray"}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Acres</div>
-                        <div class="info-value">${PlantingBatches.recent_fertilizer_record[0]?.size || "20"}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Notes</div>
-                        <div class="info-value">${PlantingBatches.recent_fertilizer_record[0]?.note || "-"}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Total Fertilizer Cost</div>
-                        <div class="info-value">${PlantingBatches.recent_fertilizer_record[0]?.total_fertilizer_cost || "3,000"} Baht</div>
-                    </div>
+            ${PlantingBatches.recent_fertilizer_record.map((record, index) => `
+                <div class="app-section">
+                    <div class="app-header">Application ${index + 1}</div>
+                    <table>
+                        <tr>
+                            <td class="label">Date</td>
+                            <td class="value">${new Date(record.date).toLocaleDateString('en-GB')}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Fertilizer Type</td>
+                            <td class="value">${record.fertilizer_type}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Quantity Applied</td>
+                            <td class="value">${record.amount}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">How to Apply</td>
+                            <td class="value">${record.method}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Acres</td>
+                            <td class="value">${record.size}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Notes</td>
+                            <td class="value">${record.note || "-"}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Total Fertilizer Cost</td>
+                            <td class="value">${(record.total_fertilizer_cost || 0).toLocaleString()} Baht</td>
+                        </tr>
+                    </table>
                 </div>
-            </div>
-            ${PlantingBatches.recent_fertilizer_record.length > 1 ? `
-                <div style="margin-bottom: 20px;">
-                    <h4 style="margin-bottom: 10px;">Application 2</h4>
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <div class="info-label">Date</div>
-                            <div class="info-value">${new Date(PlantingBatches.recent_fertilizer_record[1].date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Fertilizer Type</div>
-                            <div class="info-value">${PlantingBatches.recent_fertilizer_record[1].fertilizer_type}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Quantity Applied</div>
-                            <div class="info-value">${PlantingBatches.recent_fertilizer_record[1].amount}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">How to Apply</div>
-                            <div class="info-value">${PlantingBatches.recent_fertilizer_record[1].method}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Acres</div>
-                            <div class="info-value">${PlantingBatches.recent_fertilizer_record[1].size}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Notes</div>
-                            <div class="info-value">${PlantingBatches.recent_fertilizer_record[1].note || "-"}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Total Fertilizer Cost</div>
-                            <div class="info-value">${PlantingBatches.recent_fertilizer_record[1].total_fertilizer_cost || "2000"} Baht</div>
-                        </div>
-                    </div>
-                </div>
-            ` : ''}
+            `).join('')}
         ` : `
-            <div class="no-data">No fertilizer application records available</div>
+            <p style="text-align: center; color: #666; font-style: italic; padding: 20px;">No fertilizer application records available</p>
         `}
     </div>
 
     <!-- 5. Harvest Information -->
     <div class="section">
-        <div class="section-header">
-            <h3 class="section-title">🌾 Harvest Information</h3>
-        </div>
+        <h2>5. Harvest Information</h2>
         ${PlantingBatches?.recent_harvest_record && PlantingBatches.recent_harvest_record.length > 0 ? `
-            <div style="margin-bottom: 20px;">
-                <h4 style="margin-bottom: 10px;">Application 1</h4>
-                <div class="info-grid">
-                    <div class="info-item">
-                        <div class="info-label">Harvest Date</div>
-                        <div class="info-value">${PlantingBatches.recent_harvest_record[0] ? new Date(PlantingBatches.recent_harvest_record[0].date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : "08/22/2025"}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Harvest Method</div>
-                        <div class="info-value">${PlantingBatches.recent_harvest_record[0]?.method || "Manual Harvesting"}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Yield Amount</div>
-                        <div class="info-value">${PlantingBatches.recent_harvest_record[0]?.yleld || "100"} kg</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Curcuminoid Quality</div>
-                        <div class="info-value">${PlantingBatches.recent_harvest_record[0]?.curcumin_quality || "3.5"}%</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Quality Grade</div>
-                        <div class="info-value">${PlantingBatches.recent_harvest_record[0]?.quality_grade || "Grade A"}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Result Type</div>
-                        <div class="info-value">${PlantingBatches.recent_harvest_record[0]?.result_type || "UV Spectroscopy"}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Notes</div>
-                        <div class="info-value">${PlantingBatches.recent_harvest_record[0]?.note || "-"}</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Total Harvest Cost</div>
-                        <div class="info-value">${PlantingBatches.recent_harvest_record[0]?.total_harvest_cost || "5,000"} Baht</div>
-                    </div>
+            ${PlantingBatches.recent_harvest_record.map((record, index) => `
+                <div class="app-section">
+                    <div class="app-header">Application ${index + 1}</div>
+                    <table>
+                        <tr>
+                            <td class="label">Harvest Date</td>
+                            <td class="value">${new Date(record.date).toLocaleDateString('en-GB')}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Harvest Method</td>
+                            <td class="value">${record.method}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Yield Amount</td>
+                            <td class="value">${record.yleld} ${record.yleld_unit}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Curcuminoid Quality</td>
+                            <td class="value">${record.curcumin_quality}%</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Quality Grade</td>
+                            <td class="value">${record.quality_grade}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Result Type</td>
+                            <td class="value">${record.result_type}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Notes</td>
+                            <td class="value">${record.note || "-"}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">Total Harvest Cost</td>
+                            <td class="value">${(record.total_harvest_cost || 0).toLocaleString()} Baht</td>
+                        </tr>
+                    </table>
                 </div>
-            </div>
-            ${PlantingBatches.recent_harvest_record.length > 1 ? `
-                <div style="margin-bottom: 20px;">
-                    <h4 style="margin-bottom: 10px;">Application 2</h4>
-                    <div class="info-grid">
-                        <div class="info-item">
-                            <div class="info-label">Harvest Date</div>
-                            <div class="info-value">${new Date(PlantingBatches.recent_harvest_record[1].date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Harvest Method</div>
-                            <div class="info-value">${PlantingBatches.recent_harvest_record[1].method}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Yield Amount</div>
-                            <div class="info-value">${PlantingBatches.recent_harvest_record[1].yleld} kg</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Curcuminoid Quality</div>
-                            <div class="info-value">${PlantingBatches.recent_harvest_record[1].curcumin_quality}%</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Quality Grade</div>
-                            <div class="info-value">${PlantingBatches.recent_harvest_record[1].quality_grade}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Result Type</div>
-                            <div class="info-value">${PlantingBatches.recent_harvest_record[1].result_type || "UV Spectroscopy"}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Notes</div>
-                            <div class="info-value">${PlantingBatches.recent_harvest_record[1].note || "-"}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Total Harvest Cost</div>
-                            <div class="info-value">${PlantingBatches.recent_harvest_record[1].total_harvest_cost || "6000"} Baht</div>
-                        </div>
-                    </div>
-                </div>
-            ` : ''}
+            `).join('')}
         ` : `
-            <div class="no-data">No harvest records available</div>
+            <p style="text-align: center; color: #666; font-style: italic; padding: 20px;">No harvest records available</p>
         `}
     </div>
 
     <!-- 6. Certification Statement -->
     <div class="section">
-        <div class="section-header">
-            <h3 class="section-title">📋 Certification Statement</h3>
-        </div>
-        <div class="cert-statement">
-            <p style="margin: 0; font-weight: 500;">
-                This report certifies that Little Farm, managed by Mr. Kittapas Viriyapipatpoor, has followed 
-                Good Agricultural Practices (GAP) under organic cultivation standards. All planting, fertilizer 
-                application, and harvest activities are documented in detail for compliance, traceability, and 
-                product quality assurance.
-            </p>
+        <h2>6. Certification Statement</h2>
+        <div class="cert-box">
+            This document certifies that ${currentFarm?.Farm_Name || PlantingBatches?.location || "Little Farm"}, managed by ${currentUser?.username || localStorage.getItem("username") || "Kittapas Viriyapipatpoor"}, has followed 
+            Good Agricultural Practices (GAP) under organic cultivation standards. All planting, fertilizer 
+            application, and harvest activities are documented in detail for compliance, traceability, and 
+            product quality assurance.
         </div>
         
-        <div class="signature-area">
-            <div>
-                <div class="signature-box">
+        <div class="signature-section">
+            <div class="signature-box">
+                <div class="signature-line">
                     <strong>Farmer</strong><br>
-                    <span>Kittapas Viriyapipatpoor</span>
+                    ${currentUser?.username || localStorage.getItem("username") || "Kittapas Viriyapipatpoor"}
                 </div>
             </div>
-            <div>
-                <div class="signature-box">
+            <div class="signature-box">
+                <div class="signature-line">
                     <strong>Official Reviewer</strong>
                 </div>
             </div>
         </div>
     </div>
+
+    </div> <!-- ปิด content div -->
 </body>
 </html>`;
-
-        printWindow.document.write(gapContent);
-        printWindow.document.close();
-        printWindow.focus();
-        
-        setTimeout(() => {
-            printWindow.print();
-            printWindow.close();
-        }, 250);
+        // เขียน HTML content ลงใน iframe
+        const frameDoc = printFrame.contentDocument || printFrame.contentWindow?.document;
+        if (frameDoc) {
+            frameDoc.write(gapContent);
+            frameDoc.close();
+            
+            // รอให้ content โหลดเสร็จแล้วค่อย print
+            setTimeout(() => {
+                if (printFrame.contentWindow) {
+                    printFrame.contentWindow.focus();
+                    printFrame.contentWindow.print();
+                    
+                    // ลบ iframe หลังจาก print เสร็จ
+                    setTimeout(() => {
+                        document.body.removeChild(printFrame);
+                    }, 250);
+                }
+            }, 250);
+        }
     };
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -1787,8 +1739,19 @@ export default function PlantingBatchDetail() {
                 return;
             }
 
-            // Update Batch_Status to "Completed Successfully" with completion timestamp
-            const completionTimestamp = new Date().toISOString();
+            // Check if there are harvest records
+            if (!PlantingBatches.recent_harvest_record || PlantingBatches.recent_harvest_record.length === 0) {
+                alert("Cannot mark as complete: No harvest records found. Please add at least one harvest record.");
+                return;
+            }
+
+            console.log("Starting handleMarkAsComplete process...");
+            console.log("PlantingBatches:", PlantingBatches);
+            console.log("Document ID:", documentId);
+
+            // Update Batch_Status to "Completed Successfully"
+            console.log("Updating batch status...");
+            
             const res = await fetch(`https://api-freeroll-production.up.railway.app/api/batches/${documentId}`, {
                 method: "PUT",
                 headers: {
@@ -1798,63 +1761,76 @@ export default function PlantingBatchDetail() {
                 body: JSON.stringify({
                     data: {
                         Batch_Status: "Completed Successfully",
-                        completion_timestamp: completionTimestamp,
                     },
                 }),
             });
 
+            if (!res.ok) {
+                const errorResponse = await res.text();
+                console.error("Batch update failed:", errorResponse);
+                throw new Error(`Failed to update Batch_Status to Completed Successfully: ${errorResponse}`);
+            }
+
+            console.log("Batch status updated successfully");
+
+            // Group harvest records by quality grade
             const groupedHarvestRecords = PlantingBatches.recent_harvest_record.reduce((acc: { [key: string]: { quality_grade: string; total_yield: number; records: string[] } }, record) => {
+                if (!record.quality_grade) {
+                    console.warn("Harvest record missing quality_grade:", record);
+                    return acc;
+                }
+                
                 if (!acc[record.quality_grade]) {
                     acc[record.quality_grade] = { quality_grade: record.quality_grade, total_yield: 0, records: [] };
                 }
-                acc[record.quality_grade].total_yield += record.yleld;
+                acc[record.quality_grade].total_yield += (record.yleld || 0);
                 acc[record.quality_grade].records.push(record.documentId);
                 return acc;
             }, {});
 
-            // Create factory submissions for each Quality_Grade
+            console.log("Grouped harvest records:", groupedHarvestRecords);
+
+            // Create factory submission records for each Quality_Grade (NOT ready-for-factory)
             for (const grade in groupedHarvestRecords) {
                 const { quality_grade, total_yield, records } = groupedHarvestRecords[grade];
-                console.log("Creating factory submission:", {
-                    Farm_Name: PlantingBatches.location,
-                    Batch_id: PlantingBatches.batches_id,
-                    Test_Type: "Curcuminoid",
+                
+                const factorySubmissionData = {
+                    Batch_id: PlantingBatches.batches_id || `batch-${documentId}`,
+                    Farm_Name: PlantingBatches.location || "Unknown Farm",
                     Quality_Grade: quality_grade,
                     Yield: total_yield,
-                    Date: new Date().toISOString(),
-                    Submission_status: "Waiting",
+                    Test_Type: "Curcuminoid",
+                    Date: new Date().toISOString().split('T')[0],
+                    Submission_status: "Waiting", // รอให้ Farmer เลือก Factory
                     batch: documentId,
-                    harvest_records: records,
-                });
-                const fac_submission_res = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-submissions`, {
+                    user_documentId: localStorage.getItem("userId"),
+                };
+
+                console.log("Creating factory submission record:", factorySubmissionData);
+
+                const factory_submission_res = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-submissions`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                     },
                     body: JSON.stringify({
-                        data: {
-                            Farm_Name: PlantingBatches.location,
-                            Batch_id: PlantingBatches.batches_id,
-                            Test_Type: "Curcuminoid",
-                            Quality_Grade: quality_grade,
-                            Yield: total_yield,
-                            Date: new Date().toISOString(),
-                            Submission_status: "Waiting",
-                            batch: documentId,
-                            harvest_records: records,
-                            user_documentId: localStorage.getItem("userId"),
-                        },
+                        data: factorySubmissionData,
                     }),
                 });
 
-                if (!fac_submission_res.ok) {
-                    throw new Error(`Failed to create factory submission for Quality Grade: ${quality_grade}`);
+                if (!factory_submission_res.ok) {
+                    const errorResponse = await factory_submission_res.text();
+                    console.error(`Factory submission creation failed for grade ${quality_grade}:`, errorResponse);
+                    throw new Error(`Failed to create factory submission record for Quality Grade: ${quality_grade}. Error: ${errorResponse}`);
                 }
+
+                const factorySubmissionResult = await factory_submission_res.json();
+                console.log(`Factory submission record created for grade ${quality_grade}:`, factorySubmissionResult);
             }
 
-            if (!res.ok) throw new Error("Failed to update Batch_Status to Completed Successfully");
-
+            console.log("All factory submission records created successfully");            // Update farm status
+            console.log("Updating farm status...");
             const farm_res = await fetch(`https://api-freeroll-production.up.railway.app/api/farms/${PlantingBatches.farm_id}`, {
                 method: "PUT",
                 headers: {
@@ -1868,8 +1844,16 @@ export default function PlantingBatchDetail() {
                 }),
             });
 
-            if (!farm_res.ok) throw new Error("Failed to update Farm Batch_Status to End Planted");
+            if (!farm_res.ok) {
+                const errorResponse = await farm_res.text();
+                console.error("Farm update failed:", errorResponse);
+                throw new Error(`Failed to update Farm Status to End Planted: ${errorResponse}`);
+            }
 
+            console.log("Farm status updated successfully");
+
+            // Create notification
+            console.log("Creating notification...");
             const notification_res = await fetch(`https://api-freeroll-production.up.railway.app/api/notifications`, {
                 method: "POST",
                 headers: {
@@ -1878,7 +1862,7 @@ export default function PlantingBatchDetail() {
                 },
                 body: JSON.stringify({
                     data: {
-                        Text: `Batch marked as completed successfully`,
+                        Text: `Batch marked as completed successfully and added to factory queue`,
                         Date: new Date().toISOString(),
                         Notification_status: "General",
                         batch: documentId,
@@ -1886,13 +1870,21 @@ export default function PlantingBatchDetail() {
                     }
                 })
             });
-            if (!notification_res.ok) throw new Error("Failed to create notification record");
 
-            alert("Batch marked as Completed Successfully!");
+            if (!notification_res.ok) {
+                const errorResponse = await notification_res.text();
+                console.error("Notification creation failed:", errorResponse);
+                // Don't throw error for notification failure - it's not critical
+                console.warn("Failed to create notification, but continuing...");
+            } else {
+                console.log("Notification created successfully");
+            }
+
+            alert("Batch marked as Completed Successfully! You can now submit it to a factory from the Factory Submission page.");
             await fetchPlantingBatches(); // Refresh the data
         } catch (error) {
             console.error("Error marking batch as complete:", error);
-            alert("Failed to mark batch as complete. Please try again.");
+            alert(`Failed to mark batch as complete. Error: ${typeof error === "object" && error !== null && "message" in error ? (error as { message?: string }).message : String(error)}. Please try again.`);
         }
     };
 

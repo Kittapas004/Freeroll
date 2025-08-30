@@ -65,7 +65,8 @@ export default function FactoryFeedbackDetailPage() {
 
     const fetchFactoryData = async () => {
         try {
-            const response = await fetch(
+            // Fetch factory submission data
+            const submissionResponse = await fetch(
                 `https://api-freeroll-production.up.railway.app/api/factory-submissions/${batchdocumentId}?populate=*`,
                 {
                     method: "GET",
@@ -73,28 +74,53 @@ export default function FactoryFeedbackDetailPage() {
                         Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                     }
                 });
-            if (!response.ok) {
-                throw new Error("Network response was not ok");
+            
+            if (!submissionResponse.ok) {
+                throw new Error("Failed to fetch factory submission");
             }
-            const data = await response.json();
+            
+            const submissionData = await submissionResponse.json();
+            
+            // Fetch corresponding factory processing data
+            const processingResponse = await fetch(
+                `https://api-freeroll-production.up.railway.app/api/factory-processings?filters[factory_submission][$eq]=${batchdocumentId}&populate=*`,
+                {
+                    method: "GET",
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                    }
+                });
+            
+            let processingData = null;
+            if (processingResponse.ok) {
+                const processingResult = await processingResponse.json();
+                if (processingResult.data && processingResult.data.length > 0) {
+                    processingData = processingResult.data[0]; // Get the first processing record
+                }
+            }
+            
+            // Combine data from both sources
+            const submission = submissionData.data;
             setFactoryData({
-                id: data.data.Batch_id || `batch-${data.data.id}`,
-                documentId: data.data.documentId,
-                farm_name: data.data.Farm_Name || 'Unknown Farm',
-                grade: data.data.Quality_Grade || 'N/A',
-                yield: data.data.Yield || 0,
-                Date_Received: data.data.Date_Received || data.data.createdAt,
-                Factory: data.data.Factory || 'Unknown Factory',
-                Output_Capsules: data.data.Output_Capsules || 0,
-                Output_Essential_Oil: data.data.Output_Essential_Oil || 0,
-                used: data.data.Turmeric_Utilization_Used || 0,
-                remaining: data.data.Turmeric_Utilization_Remaining || 0,
-                waste: data.data.Turmeric_Utilization_Waste || 0,
-                Date_Processed: data.data.Date_Processed || null,
-                Processed_By: data.data.Processed_By || 'Unknown',
-                Attachments: data.data.Attachments || [],
+                id: submission.Batch_id || `batch-${submission.id}`,
+                documentId: submission.documentId,
+                farm_name: submission.Farm_Name || 'Unknown Farm',
+                grade: submission.Quality_Grade || 'N/A',
+                yield: submission.Yield || 0,
+                Date_Received: processingData?.Date_Received || submission.createdAt,
+                Factory: submission.Factory || 'Unknown Factory',
+                Output_Capsules: processingData?.Output_Capsules || 0,
+                Output_Essential_Oil: processingData?.Output_Essential_Oil || 0,
+                used: processingData?.Turmeric_Utilization_Used || 0,
+                remaining: processingData?.Turmeric_Utilization_Remaining || 0,
+                waste: processingData?.Turmeric_Utilization_Waste || 0,
+                Date_Processed: processingData?.Date_Processed || null,
+                Processed_By: processingData?.Processed_By || 'Unknown',
+                Attachments: processingData?.Attachments || [],
+                Processing_Status: processingData?.Processing_Status || 'Received',
             });
-            console.log('Attachments:', data.data.Attachments?.length || 0);
+            console.log('Processing Data:', processingData);
+            console.log('Attachments:', processingData?.Attachments?.length || 0);
         } catch (error) {
             console.error("Error fetching factory data:", error);
             setFactoryData(null);

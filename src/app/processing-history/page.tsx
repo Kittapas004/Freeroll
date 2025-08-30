@@ -78,7 +78,7 @@ export default function ProcessingHistoryPage() {
             setLoading(true);
             console.log('📋 Fetching processing history...');
 
-            const response = await fetch('https://api-freeroll-production.up.railway.app/api/factory-submissions?populate=*&filters[Submission_status][$ne]=Waiting', {
+            const response = await fetch('https://api-freeroll-production.up.railway.app/api/factory-processings?populate=*&filters[Processing_Status][$eq]=Completed', {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -94,10 +94,10 @@ export default function ProcessingHistoryPage() {
             const formattedData: HistoryData[] = data.data.map((item: any) => ({
                 id: item.id.toString(),
                 documentId: item.documentId,
-                batchId: item.Batch_id || `T-batch-${item.id}`,
-                farmName: item.Farm_Name || 'Unknown Farm',
-                weight: parseFloat(item.Yield) || 0,
-                quality: item.Quality_Grade || 'Grade A',
+                batchId: item.Batch_Id || `T-batch-${item.id}`,
+                farmName: item.factory_submission?.Farm_Name || 'Unknown Farm',
+                weight: parseFloat(item.factory_submission?.Yield) || 0,
+                quality: item.factory_submission?.Quality_Grade || 'Grade A',
                 dateProcessed: item.Date_Processed || item.Date_Received || item.createdAt,
                 processedBy: item.Processed_By || 'Factory Team',
                 outputCapsules: parseInt(item.Output_Capsules) || 0,
@@ -105,7 +105,7 @@ export default function ProcessingHistoryPage() {
                 turmericUsed: parseFloat(item.Turmeric_Utilization_Used) || 0,
                 turmericRemaining: parseFloat(item.Turmeric_Utilization_Remaining) || 0,
                 turmericWaste: parseFloat(item.Turmeric_Utilization_Waste) || 0,
-                status: item.Submission_status || 'Completed',
+                status: item.Processing_Status || 'Completed',
                 factory: item.Factory || 'MFU'
             }));
 
