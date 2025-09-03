@@ -3078,8 +3078,7 @@ export default function QualityInspectionPage() {
               <X size={16} />
               Cancel
             </Button>
-
-            {/* ⭐ แก้ปุ่ม Save ให้อยู่ขวา */}
+            
             <Button
               onClick={handleSave}
               disabled={saving || isReadOnly}

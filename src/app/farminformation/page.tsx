@@ -49,6 +49,8 @@ export default function FarmInformationPage() {
         Farm_Address: string;
         Farm_Name: string;
         publishedAt: string;
+        Latitude: string;
+        Longitude: string;
     };
 
     const fetchFarms = async () => {
@@ -141,6 +143,14 @@ export default function FarmInformationPage() {
                                     </Select>
                                 </div>
                                 <div className="flex flex-col gap-2">
+                                    <Label htmlFor="Latitude" className="text-sm font-medium">Latitude (°)</Label>
+                                    <Input type="text" id="Latitude" className="border rounded p-2" placeholder="Enter the latitude in decimal degrees (e.g., 15.8700)" ></Input>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <Label htmlFor="Longitude" className="text-sm font-medium">Longitude (°)</Label>
+                                    <Input type="text" id="Longitude" className="border rounded p-2" placeholder="Enter the longitude in decimal degrees (e.g., 100.9925)" ></Input>
+                                </div>
+                                <div className="flex flex-col gap-2">
                                     <label htmlFor="cultivation-method" className="text-sm font-medium">Cultivation Method</label>
                                     <Select onValueChange={(setCultivationMethod)}>
                                         <SelectTrigger className="w-full">
@@ -164,6 +174,8 @@ export default function FarmInformationPage() {
                                             const farmName = (document.getElementById("farm-name") as HTMLInputElement).value;
                                             const farmLocation = (document.getElementById("farm-location") as HTMLInputElement).value;
                                             const farmSize = parseFloat((document.getElementById("farm-size") as HTMLInputElement).value);
+                                            const latitude = parseFloat((document.getElementById("Latitude") as HTMLInputElement).value);
+                                            const longitude = parseFloat((document.getElementById("Longitude") as HTMLInputElement).value);
 
                                             try {
                                                 const response = await fetch("https://api-freeroll-production.up.railway.app/api/farms", {
@@ -179,6 +191,8 @@ export default function FarmInformationPage() {
                                                             Farm_Size: farmSize,
                                                             Farm_Size_Unit: farmSizeUnit,
                                                             Crop_Type: cropType,
+                                                            Latitude: latitude,
+                                                            Longitude: longitude,
                                                             Cultivation_Method: cultivationMethod,
                                                             user_documentId: localStorage.getItem("userId"),
                                                         }
@@ -201,7 +215,7 @@ export default function FarmInformationPage() {
                         <div className="mt-6">
                             <h1 className="text-lg font-semibold">Your Farms</h1>
                             {farmdata.map((yourfarm) => (
-                                <Card className="p-4 flex flex-row gap-4 mt-4 items-center justify-between hover:bg-accent" key={yourfarm.id}>
+                                <Card className="p-4 flex flex-row gap-2 mt-4 items-center justify-between hover:bg-accent" key={yourfarm.id}>
                                     <div className="flex flex-row gap-6 items-center w-full">
                                         <MapPin className="rounded-2xl border-accent-foreground p-1 text-green-700 bg-green-200 w-10 h-10"></MapPin>
                                         <div className="grid grid-cols-5 w-full gap-4 mt-4">
@@ -221,7 +235,13 @@ export default function FarmInformationPage() {
                                                 <p className="text-sm text-gray-500">Method</p>
                                                 <h1 className="text-sm font-semibold">{yourfarm.Cultivation_Method}</h1>
                                             </div>
+                                            <div className="flex flex-col gap-2">
+                                                <p className="text-sm text-gray-500">Coordinates</p>
+                                                <h1 className="text-sm font-semibold">Latitude (°): {yourfarm.Latitude}</h1>
+                                                <h1 className="text-sm font-semibold">Longitude (°): {yourfarm.Longitude}</h1>
+                                            </div>
                                         </div>
+
                                     </div>
                                     <div className="flex gap-4">
                                         <Popover>
@@ -292,6 +312,26 @@ export default function FarmInformationPage() {
                                                             </Select>
                                                         </div>
                                                         <div className="flex flex-col gap-2">
+                                                            <Label htmlFor="edit-Longitude" className="text-sm font-medium">Longitude</Label>
+                                                            <Input
+                                                                type="text"
+                                                                id="edit-Longitude"
+                                                                className="border rounded p-2"
+                                                                defaultValue={yourfarm.Longitude}
+                                                                onChange={(e) => (yourfarm.Longitude = e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="flex flex-col gap-2">
+                                                            <Label htmlFor="edit-Latitude" className="text-sm font-medium">Latitude</Label>
+                                                            <Input
+                                                                type="text"
+                                                                id="edit-Latitude"
+                                                                className="border rounded p-2"
+                                                                defaultValue={yourfarm.Latitude}
+                                                                onChange={(e) => (yourfarm.Latitude = e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="flex flex-col gap-2">
                                                             <Label htmlFor="edit-cultivation-method" className="text-sm font-medium">Cultivation Method</Label>
                                                             <Select
                                                                 defaultValue={yourfarm.Cultivation_Method}
@@ -326,6 +366,8 @@ export default function FarmInformationPage() {
                                                                                 Farm_Size_Unit: yourfarm.Farm_Size_Unit,
                                                                                 Crop_Type: yourfarm.Crop_Type,
                                                                                 Cultivation_Method: yourfarm.Cultivation_Method,
+                                                                                Latitude: yourfarm.Latitude,
+                                                                                Longitude: yourfarm.Longitude,
                                                                             }
                                                                         }),
                                                                     });

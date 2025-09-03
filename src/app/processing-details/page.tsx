@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { 
+import {
     Search, 
     Package, 
     MapPin, 
@@ -22,8 +22,10 @@ import {
     Factory as FactoryIcon,
     User,
     Clock,
-    Loader2
+    Loader2,
+    FileText
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface BatchData {
     id: string;
@@ -45,6 +47,7 @@ interface BatchData {
 }
 
 export default function ProcessingDetailsPage() {
+    const router = useRouter();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [loading, setLoading] = useState(true);
     const [batchData, setBatchData] = useState<BatchData[]>([]);
@@ -68,38 +71,131 @@ export default function ProcessingDetailsPage() {
             setLoading(true);
             console.log('🔍 Fetching batch data for Processing Details...');
 
-            // Fetch factory processing records instead of factory submissions
-            const response = await fetch('https://api-freeroll-production.up.railway.app/api/factory-processings?populate=*&filters[Processing_Status][$in][0]=Received&filters[Processing_Status][$in][1]=Processing', {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
-                },
-            });
+            // Fetch factory processing records, farms, and user data
+            const [processingResponse, farmsResponse, userResponse] = await Promise.all([
+                fetch('https://api-freeroll-production.up.railway.app/api/factory-processings?populate=factory_submission&filters[Processing_Status][$in][0]=Received&filters[Processing_Status][$in][1]=Processing', {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                    },
+                }),
+                fetch('https://api-freeroll-production.up.railway.app/api/farms?populate=*', {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                    },
+                }),
+                fetch('https://api-freeroll-production.up.railway.app/api/users/me?populate=factory', {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                    },
+                })
+            ]);
 
-            if (!response.ok) {
-                throw new Error('Failed to fetch batch data');
+            if (!processingResponse.ok || !farmsResponse.ok) {
+                // Check for authentication errors
+                if (processingResponse.status === 401 || farmsResponse.status === 401) {
+                    console.error('❌ JWT token expired, redirecting to login');
+                    localStorage.removeItem("jwt");
+                    localStorage.removeItem("userId");
+                    window.location.href = "/";
+                    return;
+                }
+                throw new Error('Failed to fetch data');
             }
 
-            const data = await response.json();
-            console.log('✅ Processing data fetched:', data);
+            const processingData = await processingResponse.json();
+            const farmsData = await farmsResponse.json();
+            const userData = userResponse.ok ? await userResponse.json() : null;
+            
+            console.log('✅ Processing data fetched:', processingData);
+            console.log('✅ Farms data fetched:', farmsData);
+            console.log('✅ User data fetched:', userData);
+            console.log('🔍 All userData fields:', userData ? Object.keys(userData) : 'userData is null/undefined');
+            console.log('🏭 Factory relation data:', userData?.factory);
 
-            const formattedData: BatchData[] = data.data.map((item: any) => ({
-                id: item.id.toString(),
-                documentId: item.documentId,
-                batchId: item.Batch_Id || `T-batch-${item.id}`,
-                farmName: item.factory_submission?.Farm_Name || 'Unknown Farm',
-                farmLocation: item.factory_submission?.Farm_Address || 'Unknown Location',
-                crop: 'Turmeric',
-                cultivation: item.factory_submission?.Cultivation_Method || 'Organic',
-                weight: parseFloat(item.factory_submission?.Yield) || 0,
-                quality: item.factory_submission?.Quality_Grade || 'Grade A',
-                harvestDate: item.factory_submission?.Date || item.factory_submission?.createdAt,
-                testType: item.factory_submission?.Test_Type || 'Curcuminoid',
-                status: item.Processing_Status || 'Received',
-                farmer: item.factory_submission?.Farmer_Name || 'Unknown Farmer',
-                contact: item.factory_submission?.Contact || 'N/A',
-                dateReceived: item.Date_Received || item.createdAt,
-                factory: item.Factory || 'MFU'
-            }));
+            // Get factory name from user data - try factory relation first
+            let factoryName = 'TurmeRic Processing Plant'; // default fallback
+            
+            if (userData) {
+                if (userData.factory) {
+                    console.log('🏭 Factory relation fields:', Object.keys(userData.factory));
+                    // Try different possible factory field names
+                    factoryName = userData.factory.Factory_Name || 
+                                 userData.factory.name || 
+                                 userData.factory.factory_name ||
+                                 userData.factory.title ||
+                                 userData.factory.company_name ||
+                                 factoryName;
+                } else {
+                    // Fallback to other possible fields
+                    factoryName = userData.Factory || 
+                                 userData.factory || 
+                                 userData.company || 
+                                 userData.organization || 
+                                 userData.factoryName ||
+                                 userData.Company ||
+                                 (userData.username ? `${userData.username} Processing Plant` : null) || 
+                                 (userData.email ? userData.email.split('@')[0] + ' Processing Plant' : null) || 
+                                 'TurmeRic Processing Plant';
+                }
+            }
+            
+            console.log('🏭 Factory name determined:', factoryName);
+
+            // Create a farm lookup map
+            const farmMap = new Map();
+            farmsData.data.forEach((farm: any) => {
+                console.log('🚜 Farm data structure:', farm);
+                farmMap.set(farm.Farm_Name, farm);
+            });
+            
+            console.log('📋 Available farms in map:', Array.from(farmMap.keys()));
+
+            const formattedData: BatchData[] = processingData.data.map((item: any) => {
+                console.log('🔍 Processing item:', item);
+                console.log('🏭 Factory submission data:', item.factory_submission);
+                console.log('🏭 factoryName fallback:', factoryName);
+                
+                // Get farm information from multiple sources
+                let farmLocation = 'Unknown Location';
+                let farmName = item.factory_submission?.Farm_Name || 'Unknown Farm';
+                let cropType = 'Unknown'; 
+                let farmerName = 'Unknown Farmer';
+                let farmerContact = 'N/A';
+                
+                // Look up farm data for complete information
+                let farmData = null;
+                if (farmName && farmMap.has(farmName)) {
+                    farmData = farmMap.get(farmName);
+                    farmLocation = farmData.Farm_Address || farmLocation;
+                    cropType = farmData.Crop_Type || cropType;
+                    farmerName = farmData.Farmer_Name || item.factory_submission?.Farmer_Name || farmerName;
+                    farmerContact = farmData.Contact || item.factory_submission?.Contact || farmerContact;
+                } else if (item.factory_submission?.Farm_Address) {
+                    // Fallback to factory submission data
+                    farmLocation = item.factory_submission.Farm_Address;
+                    farmerName = item.factory_submission.Farmer_Name || farmerName;
+                    farmerContact = item.factory_submission.Contact || farmerContact;
+                }
+                
+                return {
+                    id: item.id.toString(),
+                    documentId: item.documentId,
+                    batchId: item.Batch_Id || `T-batch-${item.id}`,
+                    farmName: farmName,
+                    farmLocation: farmLocation,
+                    crop: cropType,
+                    cultivation: item.factory_submission?.Cultivation_Method || farmData?.Cultivation_Method || 'Unknown',
+                    weight: parseFloat(item.factory_submission?.Weight || item.factory_submission?.Yield) || 500,
+                    quality: item.factory_submission?.Quality_Grade || 'Grade A',
+                    harvestDate: item.factory_submission?.Date || item.factory_submission?.createdAt || new Date().toISOString(),
+                    testType: item.factory_submission?.Test_Type || 'Unknown',
+                    status: item.Processing_Status || 'Received',
+                    farmer: farmerName,
+                    contact: farmerContact,
+                    dateReceived: item.Date_Received || item.createdAt || new Date().toISOString(),
+                    factory: item.Factory || factoryName
+                };
+            });
 
             setBatchData(formattedData);
             setFilteredData(formattedData);
@@ -152,10 +248,13 @@ export default function ProcessingDetailsPage() {
         switch (status.toLowerCase()) {
             case 'completed':
                 return 'bg-green-100 text-green-800';
+            case 'in progress':
+                return 'bg-yellow-100 text-yellow-800';
             case 'pending':
             case 'processing':
                 return 'bg-yellow-100 text-yellow-800';
             case 'waiting':
+            case 'received':
                 return 'bg-blue-100 text-blue-800';
             default:
                 return 'bg-gray-100 text-gray-800';
@@ -266,7 +365,7 @@ export default function ProcessingDetailsPage() {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {filteredData.map((batch) => (
-                                <Card key={batch.id} className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
+                                <Card key={batch.id} className="p-6 hover:shadow-lg transition-shadow">
                                     <div className="space-y-4">
                                         {/* Header */}
                                         <div className="flex items-start justify-between">
@@ -328,9 +427,10 @@ export default function ProcessingDetailsPage() {
 
                                         {/* Action Button */}
                                         <Button 
-                                            className="w-full mt-4 bg-gray-800 hover:bg-gray-900"
-                                            onClick={() => console.log('Record details for:', batch.batchId)}
+                                            className="w-full mt-4 bg-gray-800 hover:bg-gray-900 active:bg-gray-950 hover:shadow-lg active:shadow-sm transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 flex items-center gap-2 cursor-pointer"
+                                            onClick={() => router.push(`/processing-details/${batch.documentId}`)}
                                         >
+                                            <FileText className="w-4 h-4" />
                                             Record Details
                                         </Button>
                                     </div>
