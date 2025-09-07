@@ -685,28 +685,28 @@ export default function ReportsPage() {
           console.log('yield:', Number(mapping.yield));
           console.log('yield_unit:', String(mapping.yieldUnit));
           const createExportHistoryRes = await fetch('https://api-freeroll-production.up.railway.app/api/export-histories', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('jwt')}`,
-          },
-          body: JSON.stringify({
-            data: {
-              batch_ids: [mapping.apiId],
-              export_date: new Date().toISOString(),
-              export_status: 'Export Success',
-              lab: Number(labID),
-              exported_by: UserName,
-              exported: true,
-              batch_name: String(mapping.batchId),
-              farm_name: String(mapping.farmName),
-              test_type: String(mapping.testType),
-              quality_grade: String(mapping.qualityGrade),
-              yield: Number(mapping.yield),
-              yield_unit: String(mapping.yieldUnit),
-            }
-          }),
-        });
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+            },
+            body: JSON.stringify({
+              data: {
+                batch_ids: [mapping.apiId],
+                export_date: new Date().toISOString(),
+                export_status: 'Export Success',
+                lab: Number(labID),
+                exported_by: UserName,
+                exported: true,
+                batch_name: String(mapping.batchId),
+                farm_name: String(mapping.farmName),
+                test_type: String(mapping.testType),
+                quality_grade: String(mapping.qualityGrade),
+                yield: Number(mapping.yield),
+                yield_unit: String(mapping.yieldUnit),
+              }
+            }),
+          });
 
           if (!updateRes.ok && !createExportHistoryRes.ok) {
             throw new Error(`Failed to update export status for record ${mapping.apiId}`);
@@ -1160,41 +1160,41 @@ export default function ReportsPage() {
                       </div>
                     </td>
                   </tr>
-      ) : (
-        filteredExportHistory.slice(0, 10).map((history, index) => (
-          <tr key={history.id || index} className="text-sm border-b hover:bg-gray-50">
-            <td className="py-3 font-medium">{history.batchId}</td>
-            <td className="py-3">{history.farmName}</td>
-            <td className="py-3">{history.testType}</td>
-            <td className="py-3">
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${history.qualityGrade === 'A' || history.qualityGrade === 'Grade A'
-                ? 'bg-green-100 text-green-800'
-                : history.qualityGrade === 'B' || history.qualityGrade === 'Grade B'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-gray-100 text-gray-800'
-                }`}>
-                {history.qualityGrade}
-              </span>
-            </td>
-            <td className="py-3">{history.yield} {history.yieldUnit}</td>
-            <td className="py-3">
-              <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                {history.status}
-              </span>
-            </td>
-            <td className="py-3">
-              <span className="text-gray-500 text-xs">
-                {formatDate(history.exportDate)}
-              </span>
-            </td>
-            <td className="py-3">
-                {history.exportedBy}
-            </td>
-          </tr>
-        ))
-      )}
-    </tbody>
-  </table>
+                ) : (
+                  filteredExportHistory.slice(0, 10).map((history, index) => (
+                    <tr key={history.id || index} className="text-sm border-b hover:bg-gray-50">
+                      <td className="py-3 font-medium">{history.batchId}</td>
+                      <td className="py-3">{history.farmName}</td>
+                      <td className="py-3">{history.testType}</td>
+                      <td className="py-3">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${history.qualityGrade === 'A' || history.qualityGrade === 'Grade A'
+                          ? 'bg-green-100 text-green-800'
+                          : history.qualityGrade === 'B' || history.qualityGrade === 'Grade B'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
+                          }`}>
+                          {history.qualityGrade}
+                        </span>
+                      </td>
+                      <td className="py-3">{history.yield} {history.yieldUnit}</td>
+                      <td className="py-3">
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          {history.status}
+                        </span>
+                      </td>
+                      <td className="py-3">
+                        <span className="text-gray-500 text-xs">
+                          {formatDate(history.exportDate)}
+                        </span>
+                      </td>
+                      <td className="py-3">
+                        {history.exportedBy}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </main>
       </SidebarInset>

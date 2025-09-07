@@ -47,6 +47,7 @@ export default function RecordDetailsPage() {
     const router = useRouter();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [loading, setLoading] = useState(true);
+    const [isReadOnly, setIsReadOnly] = useState(false); // เพิ่ม state สำหรับ read-only mode
 
     // Batch Information
     const [batchInfo, setBatchInfo] = useState<BatchInfo>({
@@ -61,7 +62,7 @@ export default function RecordDetailsPage() {
     });
 
     // Raw Material Tracking
-    const [rawMaterialType, setRawMaterialType] = useState("Fresh Turmeric");
+    const [rawMaterialType, setRawMaterialType] = useState("Fresh Rhizome");
     const [rawMaterialSource, setRawMaterialSource] = useState("");
     const [batchLotNumber, setBatchLotNumber] = useState("");
     const [incomingWeight, setIncomingWeight] = useState("");
@@ -90,6 +91,7 @@ export default function RecordDetailsPage() {
     const [duration, setDuration] = useState("");
     const [temperature, setTemperature] = useState("");
     const [equipmentUsed, setEquipmentUsed] = useState("");
+    const [operatorProcessor, setOperatorProcessor] = useState("");
 
     // Output & Waste
     const [finalProductType, setFinalProductType] = useState("Powder");
@@ -107,7 +109,8 @@ export default function RecordDetailsPage() {
     const [targetMarket, setTargetMarket] = useState("Food");
 
     // Processing Status
-    const [processingStatus, setProcessingStatus] = useState("Received");
+    const [currentStatus, setCurrentStatus] = useState("Received"); // For read-only display
+    const [processingStatus, setProcessingStatus] = useState("Processing"); // For editing with default "Processing"
 
     const toggleSidebar = () => {
         setIsSidebarOpen((prev) => {
@@ -141,7 +144,7 @@ export default function RecordDetailsPage() {
 
             const processingData = await processingResponse.json();
             const farmsData = farmsResponse.ok ? await farmsResponse.json() : { data: [] };
-            
+
             console.log('✅ Processing details fetched:', processingData);
             console.log('✅ Farms data fetched:', farmsData);
 
@@ -160,7 +163,7 @@ export default function RecordDetailsPage() {
             let farmName = item.factory_submission?.Farm_Name || 'Unknown Farm';
             let cropType = 'Unknown';
             let cultivationMethod = 'Unknown';
-            
+
             // Look up farm data for complete information
             let farmData = null;
             if (farmName && farmMap.has(farmName)) {
@@ -191,7 +194,25 @@ export default function RecordDetailsPage() {
             setBatchLotNumber(item.batch_lot_number || item.Batch_Id || `Batch-001`);
             setIncomingWeight(item.incoming_weight?.toString() || item.factory_submission?.Yield || '0.00');
             setRawMaterialSource(item.raw_material_source || item.factory_submission?.Farm_Name || 'Farmer Name');
-            setRawMaterialType(item.raw_material_type || 'Fresh Turmeric');
+            
+            // Validate and map raw material type to ensure it's one of the allowed values
+            const validRawMaterialTypes = ['Fresh Rhizome', 'Dried Slice', 'Powder'];
+            let materialType = item.raw_material_type || 'Fresh Rhizome';
+            
+            // Map common variations to valid values
+            if (materialType === 'Fresh Turmeric' || materialType === 'Fresh' || materialType.includes('Fresh')) {
+                materialType = 'Fresh Rhizome';
+            } else if (materialType === 'Dried' || materialType.includes('Dried')) {
+                materialType = 'Dried Slice';
+            } else if (materialType.includes('Powder')) {
+                materialType = 'Powder';
+            } else if (!validRawMaterialTypes.includes(materialType)) {
+                materialType = 'Fresh Rhizome'; // Default fallback
+            }
+            
+            console.log('🔍 Original raw material type:', item.raw_material_type);
+            console.log('🔍 Setting validated raw material type:', materialType);
+            setRawMaterialType(materialType);
 
             // Set quality data - load saved data or defaults
             setQualityData({
@@ -217,6 +238,7 @@ export default function RecordDetailsPage() {
             setDuration(item.duration?.toString() || "");
             setTemperature(item.temperature?.toString() || "");
             setEquipmentUsed(item.equipment_used || "");
+            setOperatorProcessor(item.operator_processor || "");
 
             // Set output & waste
             setFinalProductType(item.final_product_type || "Powder");
@@ -237,7 +259,14 @@ export default function RecordDetailsPage() {
             console.log('🔍 Processing status from DB:', item.processing_status);
             console.log('🔍 Processing_Status from DB:', item.Processing_Status);
             console.log('🔍 Full item data:', item);
-            setProcessingStatus(item.Processing_Status || item.processing_status || "Received");
+
+            const savedStatus = item.Processing_Status || item.processing_status || "Received";
+            setCurrentStatus(savedStatus); // For read-only display
+            // Keep processingStatus as "Processing" for dropdown default, but if status is already Completed, use that
+            setProcessingStatus(savedStatus === "Completed" ? "Completed" : "Processing");
+
+            // Set read-only mode if processing is completed
+            setIsReadOnly(savedStatus === "Completed");
 
         } catch (error) {
             console.error('❌ Error fetching batch details:', error);
@@ -250,13 +279,26 @@ export default function RecordDetailsPage() {
         try {
             console.log('💾 Saving processing record...');
 
+            // Validate raw material type before saving
+            const validRawMaterialTypes = ['Fresh Rhizome', 'Dried Slice', 'Powder'];
+            let validatedRawMaterialType = rawMaterialType;
+            
+            console.log('🔍 Current rawMaterialType before validation:', rawMaterialType);
+            
+            if (!validRawMaterialTypes.includes(rawMaterialType)) {
+                console.warn('⚠️ Invalid raw material type detected, using default:', rawMaterialType);
+                validatedRawMaterialType = 'Fresh Rhizome';
+            }
+            
+            console.log('✅ Validated raw material type:', validatedRawMaterialType);
+
             // Create processing record data - include all fields that exist in Strapi
             const recordData = {
                 // Existing fields
                 Batch_Id: batchInfo.batchId,
 
                 // Raw Material Tracking
-                raw_material_type: rawMaterialType,
+                raw_material_type: validatedRawMaterialType,
                 raw_material_source: rawMaterialSource,
                 batch_lot_number: batchLotNumber,
                 incoming_weight: parseFloat(incomingWeight) || 0,
@@ -281,6 +323,7 @@ export default function RecordDetailsPage() {
                 duration: parseFloat(duration) || 0,
                 temperature: parseFloat(temperature) || 0,
                 equipment_used: equipmentUsed,
+                operator_processor: operatorProcessor,
 
                 // Output data
                 final_product_type: finalProductType,
@@ -339,6 +382,10 @@ export default function RecordDetailsPage() {
         fetchBatchDetails();
     }, [params.id]);
 
+    useEffect(() => {
+        console.log('🔍 Current rawMaterialType value:', rawMaterialType);
+    }, [rawMaterialType]);
+
     if (loading) {
         return (
             <SidebarProvider open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
@@ -372,6 +419,11 @@ export default function RecordDetailsPage() {
                             Back
                         </Button>
                         <h1 className="text-2xl font-semibold">Processing Details</h1>
+                        {isReadOnly && (
+                            <span className="px-3 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full border border-amber-300">
+                                Read Only - Completed
+                            </span>
+                        )}
                     </div>
                 </header>
 
@@ -425,12 +477,12 @@ export default function RecordDetailsPage() {
                                     <Label className="text-sm font-medium text-gray-600">Location</Label>
                                     <Input value={batchInfo.location} readOnly className="bg-gray-50" />
                                 </div>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                                 <div>
                                     <Label className="text-sm font-medium text-gray-600">Status</Label>
-                                    <Input value={processingStatus} readOnly className="bg-gray-50" />
+                                    <Input value={currentStatus} readOnly className="bg-gray-50" />
                                 </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                                 <div>
                                     <Label className="text-sm font-medium text-gray-600">Processing Status</Label>
                                     <Select value={processingStatus} onValueChange={setProcessingStatus}>
@@ -438,7 +490,6 @@ export default function RecordDetailsPage() {
                                             <SelectValue placeholder="Select status" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Received">Received</SelectItem>
                                             <SelectItem value="Processing">Processing</SelectItem>
                                             <SelectItem value="Completed">Completed</SelectItem>
                                         </SelectContent>
@@ -464,12 +515,14 @@ export default function RecordDetailsPage() {
                                     <Label htmlFor="rawMaterialType" className="text-sm font-medium">Raw Material Type</Label>
                                     <Select value={rawMaterialType} onValueChange={setRawMaterialType}>
                                         <SelectTrigger>
-                                            <SelectValue />
+                                            <SelectValue>
+                                                {rawMaterialType ? rawMaterialType : "Select raw material type"}
+                                            </SelectValue>
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Fresh Turmeric">Fresh Turmeric</SelectItem>
-                                            <SelectItem value="Dried Turmeric">Dried Turmeric</SelectItem>
-                                            <SelectItem value="Turmeric Powder">Turmeric Powder</SelectItem>
+                                            <SelectItem value="Fresh Rhizome">Fresh Rhizome</SelectItem>
+                                            <SelectItem value="Dried Slice">Dried Slice</SelectItem>
+                                            <SelectItem value="Powder">Powder</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -535,6 +588,7 @@ export default function RecordDetailsPage() {
                                             placeholder="0.00"
                                             value={qualityData.moisture}
                                             onChange={(e) => setQualityData({ ...qualityData, moisture: e.target.value })}
+                                            disabled={isReadOnly}
                                         />
                                     </div>
                                     <div>
@@ -546,6 +600,7 @@ export default function RecordDetailsPage() {
                                             placeholder="0.00"
                                             value={qualityData.curcuminoidContent}
                                             onChange={(e) => setQualityData({ ...qualityData, curcuminoidContent: e.target.value })}
+                                            disabled={isReadOnly}
                                         />
                                     </div>
                                 </div>
@@ -739,19 +794,17 @@ export default function RecordDetailsPage() {
                                 </div>
 
                                 <div>
-                                    <Label htmlFor="duration" className="text-sm font-medium">Duration (hours)</Label>
+                                    <Label htmlFor="operatorProcessor" className="text-sm font-medium">Operator/Processor</Label>
                                     <Input
-                                        id="duration"
-                                        type="number"
-                                        step="0.1"
-                                        placeholder="0.0"
-                                        value={duration}
-                                        onChange={(e) => setDuration(e.target.value)}
+                                        id="operatorProcessor"
+                                        placeholder="Enter operator name"
+                                        value={operatorProcessor}
+                                        onChange={(e) => setOperatorProcessor(e.target.value)}
                                     />
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
                                 <div>
                                     <Label htmlFor="temperature" className="text-sm font-medium">Temperature (°C)</Label>
                                     <Input
@@ -761,6 +814,18 @@ export default function RecordDetailsPage() {
                                         placeholder="0.0"
                                         value={temperature}
                                         onChange={(e) => setTemperature(e.target.value)}
+                                    />
+                                </div>
+
+                                <div>
+                                    <Label htmlFor="duration" className="text-sm font-medium">Duration (hours)</Label>
+                                    <Input
+                                        id="duration"
+                                        type="number"
+                                        step="0.1"
+                                        placeholder="0.0"
+                                        value={duration}
+                                        onChange={(e) => setDuration(e.target.value)}
                                     />
                                 </div>
 
@@ -817,18 +882,6 @@ export default function RecordDetailsPage() {
                                     </div>
 
                                     <div>
-                                        <Label htmlFor="remainingStock" className="text-sm font-medium">Remaining Stock (kg)</Label>
-                                        <Input
-                                            id="remainingStock"
-                                            type="number"
-                                            step="0.01"
-                                            placeholder="0.00"
-                                            value={remainingStock}
-                                            onChange={(e) => setRemainingStock(e.target.value)}
-                                        />
-                                    </div>
-
-                                    <div>
                                         <Label htmlFor="wasteQuantity" className="text-sm font-medium">Waste Quantity (kg)</Label>
                                         <Input
                                             id="wasteQuantity"
@@ -837,6 +890,18 @@ export default function RecordDetailsPage() {
                                             placeholder="0.00"
                                             value={wasteQuantity}
                                             onChange={(e) => setWasteQuantity(e.target.value)}
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <Label htmlFor="remainingStock" className="text-sm font-medium">Remaining Stock (kg)</Label>
+                                        <Input
+                                            id="remainingStock"
+                                            type="number"
+                                            step="0.01"
+                                            placeholder="0.00"
+                                            value={remainingStock}
+                                            onChange={(e) => setRemainingStock(e.target.value)}
                                         />
                                     </div>
                                 </div>
@@ -944,21 +1009,29 @@ export default function RecordDetailsPage() {
                     </Card>
 
                     <div className="flex items-center justify-end gap-2 left-1 bottom-0 w-full p-4 bg-white border-t">
+                        {isReadOnly && (
+                            <div className="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-2 rounded-md border border-amber-200 mr-auto">
+                                <Package size={16} />
+                                <span className="text-sm font-medium">This processing record is completed and cannot be modified</span>
+                            </div>
+                        )}
                         <Button
-                            onClick={() => router.push('/processing-details')}
+                            onClick={() => router.push('/processing-history')}
                             variant="outline"
-                            className="flex items-center gap-2 bg-red-600 text-white hover:bg-red-500 hover:text-white"
+                            className="flex items-center gap-2"
                         >
-                            <X size={16} />
-                            Cancel
+                            <ArrowLeft size={16} />
+                            {isReadOnly ? 'Back to History' : 'Cancel'}
                         </Button>
-                        <Button
-                            onClick={handleSaveRecord}
-                            className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
-                        >
-                            <Save className="w-4 h-4" />
-                            Save Record
-                        </Button>
+                        {!isReadOnly && (
+                            <Button
+                                onClick={handleSaveRecord}
+                                className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
+                            >
+                                <Save className="w-4 h-4" />
+                                Save Record
+                            </Button>
+                        )}
                     </div>
                 </main>
             </SidebarInset>

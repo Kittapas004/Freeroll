@@ -114,7 +114,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       { title: "Dashboard", url: "/dashboard", icon: LayoutGrid },
       { title: "Processing Details", url: "/processing-details", icon: Cog },
       { title: "Processing History", url: "/processing-history", icon: History },
-      { title: "Reports & Data Export", url: "/reports", icon: BarChart3 },
+      { title: "Processing Reports", url: "/processing-reports", icon: Database },
       { title: "Setting", url: "/settings", icon: Settings2 },
     ],
     Admin: [

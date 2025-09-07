@@ -627,7 +627,7 @@ export default function InspectionHistory() {
                                                             <span className="text-gray-400">No test results</span>
                                                         )}
                                                     </td>
-                                                    <td className="pr-6 py-4 whitespace-nowrap text-sm ">
+                                                    <td className="pr-6 py-4 pl-3 whitespace-nowrap text-sm ">
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
