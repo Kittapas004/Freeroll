@@ -358,9 +358,9 @@ export default function ProcessingReportsPage() {
         }
 
         try {
-            // Delete all export history records from API
+            // First, fetch all export history records to get their documentIds
             const response = await fetch(
-                `https://api-freeroll-production.up.railway.app/api/export-factory-histories`,
+                `https://api-freeroll-production.up.railway.app/api/export-factory-histories?populate=*`,
                 {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -368,31 +368,88 @@ export default function ProcessingReportsPage() {
                 }
             );
 
-            if (response.ok) {
-                const data = await response.json();
-
-                // Delete each record individually
-                for (const item of data.data) {
-                    await fetch(
-                        `https://api-freeroll-production.up.railway.app/api/export-factory-histories/${item.id}`,
-                        {
-                            method: 'DELETE',
-                            headers: {
-                                Authorization: `Bearer ${localStorage.getItem('jwt')}`,
-                            },
-                        }
-                    );
-                }
-
-                // Clear local state
-                setExportHistory([]);
-                setExportHistorySearch("");
-
-                alert('Export history cleared successfully!');
+            if (!response.ok) {
+                throw new Error(`Failed to fetch export history: ${response.status}`);
             }
+
+            const data = await response.json();
+            console.log('Records to delete:', data);
+
+            if (!data.data || data.data.length === 0) {
+                alert('No export history records found to delete.');
+                return;
+            }
+
+            // Delete each record individually using documentId
+            let deletedCount = 0;
+            let failedCount = 0;
+
+            for (const item of data.data) {
+                try {
+                    // Try deleting with documentId first, then fall back to id
+                    const deleteId = item.documentId || item.id;
+                    
+                    // Try multiple endpoint formats
+                    const endpoints = [
+                        `https://api-freeroll-production.up.railway.app/api/export-factory-histories/${deleteId}`,
+                        `https://api-freeroll-production.up.railway.app/api/export-factory-history/${deleteId}`,
+                    ];
+
+                    let deleteSuccess = false;
+
+                    for (const endpoint of endpoints) {
+                        try {
+                            const deleteResponse = await fetch(endpoint, {
+                                method: 'DELETE',
+                                headers: {
+                                    Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                },
+                            });
+
+                            if (deleteResponse.ok) {
+                                deletedCount++;
+                                deleteSuccess = true;
+                                console.log(`Successfully deleted record: ${deleteId} using ${endpoint}`);
+                                break;
+                            } else {
+                                console.log(`Failed to delete using ${endpoint}: ${deleteResponse.status}`);
+                            }
+                        } catch (endpointError) {
+                            console.log(`Error with endpoint ${endpoint}:`, endpointError);
+                        }
+                    }
+
+                    if (!deleteSuccess) {
+                        failedCount++;
+                        console.error(`Failed to delete record ${deleteId} with all endpoints`);
+                    }
+
+                } catch (deleteError) {
+                    failedCount++;
+                    console.error(`Error deleting record ${item.documentId || item.id}:`, deleteError);
+                }
+            }
+
+            // Clear local state
+            setExportHistory([]);
+            setExportHistorySearch("");
+
+            // Show result message
+            if (deletedCount > 0 && failedCount === 0) {
+                alert(`Export history cleared successfully! ${deletedCount} records deleted.`);
+            } else if (deletedCount > 0 && failedCount > 0) {
+                alert(`Partially cleared export history. ${deletedCount} records deleted, ${failedCount} failed.`);
+            } else {
+                alert('Failed to clear export history. Please check console for details and verify your delete permissions in Strapi.');
+            }
+
+            // Refresh the export history data
+            fetchExportHistory();
+
         } catch (error) {
             console.error('Error clearing export history:', error);
-            alert('Failed to clear export history. Please try again.');
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            alert(`Failed to clear export history: ${errorMessage}`);
         }
     };
 
