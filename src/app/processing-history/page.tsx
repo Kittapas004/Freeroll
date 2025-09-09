@@ -91,6 +91,16 @@ export default function ProcessingHistoryPage() {
 
             const data = await response.json();
             console.log('✅ Processing history fetched:', data);
+            
+            // Log sample item to check output_unit field
+            if (data.data && data.data.length > 0) {
+                console.log('🔍 Sample item fields:', {
+                    final_product_type: data.data[0].final_product_type,
+                    output_quantity: data.data[0].output_quantity,
+                    output_unit: data.data[0].output_unit,
+                    processing_method: data.data[0].processing_method
+                });
+            }
 
             const formattedData: HistoryData[] = data.data.map((item: any) => ({
                 id: item.id.toString(),
@@ -106,37 +116,12 @@ export default function ProcessingHistoryPage() {
                 productOutput: (() => {
                     const productType = item.final_product_type || 'Powder';
                     const quantity = item.output_quantity || 0;
+                    const unit = item.output_unit || 'kg'; // อ่านหน่วยจาก Strapi
 
-                    if (productType === 'Powder' || productType.toLowerCase().includes('powder')) {
-                        return `Powder: ${quantity} kg`;
-                    } else if (productType === 'Essential Oil' || productType.toLowerCase().includes('oil')) {
-                        return `Essential Oil: ${quantity} liters`;
-                    } else if (productType === 'Capsules' || productType.toLowerCase().includes('capsule')) {
-                        return `Capsules: ${quantity} packs`;
-                    } else {
-                        // Default based on common batch patterns from the image
-                        const batchNum = parseInt(item.id) % 4;
-                        switch (batchNum) {
-                            case 0: return 'Powder: 800 kg';
-                            case 1: return 'Essential Oil: 40 liters';
-                            case 2: return 'Capsules: 1,200 packs';
-                            default: return 'Powder: 950 kg';
-                        }
-                    }
+                    // ใช้ข้อมูลจาก Strapi แทน if-else logic
+                    return `${productType}: ${quantity} ${unit}`;
                 })(),
-                processMethod: (() => {
-                    const method = item.final_product_type;
-                    if (method) return method;
-
-                    // Default based on product type or batch pattern
-                    const batchNum = parseInt(item.id) % 4;
-                    switch (batchNum) {
-                        case 0: return 'Drying';
-                        case 1: return 'Extraction';
-                        case 2: return 'Drying';
-                        default: return 'Grinding';
-                    }
-                })(),
+                processMethod: item.processing_method || item.final_product_type || 'Processing',
                 status: item.Processing_Status || 'Complete'
             }));
 
@@ -363,7 +348,7 @@ export default function ProcessingHistoryPage() {
                                     <table className="w-full text-sm">
                                         <thead>
                                             <tr className="border-b">
-                                                <th className="text-left py-3 px-4 font-medium text-gray-600">Batch ID</th>
+                                                <th className="text-left py-3 px-4 font-medium text-gray-600">Lot ID</th>
                                                 <th className="text-left py-3 px-4 font-medium text-gray-600">Date</th>
                                                 <th className="text-left py-3 px-4 font-medium text-gray-600">Processor</th>
                                                 <th className="text-left py-3 px-4 font-medium text-gray-600">Product Output</th>

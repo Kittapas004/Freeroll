@@ -96,6 +96,7 @@ export default function RecordDetailsPage() {
     // Output & Waste
     const [finalProductType, setFinalProductType] = useState("Powder");
     const [outputQuantity, setOutputQuantity] = useState("");
+    const [outputUnit, setOutputUnit] = useState("kg"); // เพิ่มสำหรับหน่วยการวัด
     const [remainingStock, setRemainingStock] = useState("");
     const [wasteQuantity, setWasteQuantity] = useState("");
 
@@ -117,6 +118,38 @@ export default function RecordDetailsPage() {
             localStorage.setItem("sidebarOpen", String(!prev));
             return !prev;
         });
+    };
+
+    // ฟังก์ชันกำหนดหน่วยเริ่มต้นตามประเภทสินค้า
+    const getDefaultUnit = (productType: string): string => {
+        switch (productType) {
+            case 'Powder':
+            case 'Extract':
+                return 'kg';
+            case 'Capsule':
+                return 'packs';
+            case 'Tea Bag':
+                return 'boxes';
+            default:
+                return 'kg';
+        }
+    };
+
+    // ฟังก์ชันเมื่อเปลี่ยนประเภทสินค้า จะอัปเดตหน่วยอัตโนมัติ
+    const handleProductTypeChange = (newProductType: string) => {
+        const newUnit = getDefaultUnit(newProductType);
+        console.log(`🔄 Product type changed: ${finalProductType} → ${newProductType}`);
+        console.log(`📏 Unit changed: ${outputUnit} → ${newUnit}`);
+        
+        setFinalProductType(newProductType);
+        setOutputUnit(newUnit);
+    };
+
+    // ฟังก์ชันแสดงผลรวมของผลิตภัณฑ์พร้อมหน่วย
+    const getFormattedOutput = () => {
+        const quantity = parseFloat(outputQuantity) || 0;
+        if (quantity === 0) return "0 units";
+        return `${quantity} ${outputUnit}`;
     };
 
     const fetchBatchDetails = async () => {
@@ -241,8 +274,11 @@ export default function RecordDetailsPage() {
             setOperatorProcessor(item.operator_processor || "");
 
             // Set output & waste
-            setFinalProductType(item.final_product_type || "Powder");
+            const productType = item.final_product_type || "Powder";
+            setFinalProductType(productType);
             setOutputQuantity(item.output_quantity?.toString() || "");
+            // กำหนด outputUnit จากข้อมูลที่บันทึกไว้ หรือใช้ค่าเริ่มต้นตามประเภทสินค้า
+            setOutputUnit(item.output_unit || getDefaultUnit(productType));
             setRemainingStock(item.remaining_stock?.toString() || "");
             setWasteQuantity(item.waste_quantity?.toString() || "");
 
@@ -328,6 +364,7 @@ export default function RecordDetailsPage() {
                 // Output data
                 final_product_type: finalProductType,
                 output_quantity: parseFloat(outputQuantity) || 0,
+                output_unit: outputUnit, // เพิ่มการบันทึกหน่วยการวัด
                 remaining_stock: parseFloat(remainingStock) || 0,
                 waste_quantity: parseFloat(wasteQuantity) || 0,
 
@@ -348,6 +385,12 @@ export default function RecordDetailsPage() {
             };
 
             console.log('📋 Data to be saved:', recordData);
+            console.log('🏷️ Output details:', {
+                finalProductType,
+                outputQuantity,
+                outputUnit,
+                formattedOutput: getFormattedOutput()
+            });
 
             // Update factory processing record with processing details
             const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-processings/${params.id}`, {
@@ -856,7 +899,7 @@ export default function RecordDetailsPage() {
                                 <div className="space-y-4">
                                     <div>
                                         <Label htmlFor="finalProductType" className="text-sm font-medium">Final Product Type</Label>
-                                        <Select value={finalProductType} onValueChange={setFinalProductType}>
+                                        <Select value={finalProductType} onValueChange={handleProductTypeChange} disabled={isReadOnly}>
                                             <SelectTrigger>
                                                 <SelectValue />
                                             </SelectTrigger>
@@ -869,16 +912,30 @@ export default function RecordDetailsPage() {
                                         </Select>
                                     </div>
 
-                                    <div>
-                                        <Label htmlFor="outputQuantity" className="text-sm font-medium">Output Quantity (kg)</Label>
-                                        <Input
-                                            id="outputQuantity"
-                                            type="number"
-                                            step="0.01"
-                                            placeholder="0.00"
-                                            value={outputQuantity}
-                                            onChange={(e) => setOutputQuantity(e.target.value)}
-                                        />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <Label htmlFor="outputQuantity" className="text-sm font-medium">
+                                                Output Quantity ({outputUnit})
+                                            </Label>
+                                            <Input
+                                                id="outputQuantity"
+                                                type="number"
+                                                step="0.01"
+                                                placeholder="0.00"
+                                                value={outputQuantity}
+                                                onChange={(e) => setOutputQuantity(e.target.value)}
+                                                disabled={isReadOnly}
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label htmlFor="outputUnit" className="text-sm font-medium">Unit </Label>
+                                            <Input
+                                                id="outputUnit"
+                                                value={outputUnit}
+                                                readOnly
+                                                className="bg-gray-50"
+                                            />
+                                        </div>
                                     </div>
 
                                     <div>
@@ -890,6 +947,7 @@ export default function RecordDetailsPage() {
                                             placeholder="0.00"
                                             value={wasteQuantity}
                                             onChange={(e) => setWasteQuantity(e.target.value)}
+                                            disabled={isReadOnly}
                                         />
                                     </div>
 
@@ -902,6 +960,7 @@ export default function RecordDetailsPage() {
                                             placeholder="0.00"
                                             value={remainingStock}
                                             onChange={(e) => setRemainingStock(e.target.value)}
+                                            disabled={isReadOnly}
                                         />
                                     </div>
                                 </div>

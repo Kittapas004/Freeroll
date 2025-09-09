@@ -22,9 +22,10 @@ function FileDownload({ className }: { className?: string }) {
 interface ProcessingRecord {
     id: string;
     documentId?: string | number;
-    batchId: string;
+    lotId: string;
     farmName: string;
     processor: string;
+    productType: string;
     output: number;
     outputUnit: string;
     dateOfResult: string;
@@ -35,7 +36,7 @@ interface ProcessingRecord {
 
 interface ExportHistoryItem {
     id: string;
-    batchId: string;
+    lotId: string;
     exportedBy: string;
     exportType: string;
     date: string;
@@ -46,7 +47,7 @@ export default function ProcessingReportsPage() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [selectedFarm, setSelectedFarm] = useState("All Farms");
     const [selectedProductType, setSelectedProductType] = useState("All Types");
-    const [batchIdFilter, setBatchIdFilter] = useState("");
+    const [lotIdFilter, setLotIdFilter] = useState("");
     const [processingDateFilter, setProcessingDateFilter] = useState("");
 
     // Data states
@@ -70,7 +71,7 @@ export default function ProcessingReportsPage() {
     const filteredExportHistory: ExportHistoryItem[] = exportHistory.filter((item: ExportHistoryItem) => {
         const q = exportHistorySearch.toLowerCase();
         return (
-            item.batchId?.toLowerCase().includes(q) ||
+            item.lotId?.toLowerCase().includes(q) ||
             item.exportedBy?.toLowerCase().includes(q) ||
             item.exportType?.toLowerCase().includes(q) ||
             item.status?.toLowerCase().includes(q)
@@ -132,6 +133,16 @@ export default function ProcessingReportsPage() {
             const data = await response.json();
             console.log('Raw API Data:', data);
 
+            // Log sample item to check output_unit field
+            if (data.data && data.data.length > 0) {
+                console.log('🔍 Sample processing record fields:', {
+                    final_product_type: data.data[0].final_product_type,
+                    output_quantity: data.data[0].output_quantity,
+                    output_unit: data.data[0].output_unit,
+                    processing_method: data.data[0].processing_method
+                });
+            }
+
             if (!data.data || data.data.length === 0) {
                 console.log('No completed processing records found');
                 setCompletedData([]);
@@ -142,26 +153,16 @@ export default function ProcessingReportsPage() {
             const processedRecords: ProcessingRecord[] = data.data.map((item: any) => {
                 const productType = item.final_product_type || 'Powder';
                 const quantity = item.output_quantity || 0;
-
-                let output = quantity;
-                let outputUnit = 'kg';
-
-                // Determine output format based on product type
-                if (productType === 'Powder' || productType.toLowerCase().includes('powder')) {
-                    outputUnit = 'kg';
-                } else if (productType === 'Essential Oil' || productType.toLowerCase().includes('oil')) {
-                    outputUnit = 'liters';
-                } else if (productType === 'Capsules' || productType.toLowerCase().includes('capsule')) {
-                    outputUnit = 'packs';
-                }
+                const outputUnit = item.output_unit || 'kg'; // อ่านหน่วยจาก Strapi แทน if-else
 
                 return {
                     id: item.id.toString(),
                     documentId: item.documentId,
-                    batchId: item.Batch_Id || `T-Batch-${String(item.id).padStart(3, '0')}`,
+                    lotId: item.batch_lot_number|| `Lot-${String(item.id).padStart(3, '0')}`,
                     farmName: item.factory_submission?.Farm_Name || 'Unknown Farm',
                     processor: item.operator_processor || userName,
-                    output: output,
+                    productType: productType,
+                    output: quantity, // ใช้ quantity แทน output
                     outputUnit: outputUnit,
                     dateOfResult: new Date(item.processing_date_custom || item.Date_Received || item.createdAt).toLocaleDateString('en-US', {
                         year: 'numeric',
@@ -175,6 +176,16 @@ export default function ProcessingReportsPage() {
             });
 
             console.log('Processed records:', processedRecords);
+            console.log('🔍 Sample processed record:', {
+                productType: processedRecords[0]?.productType,
+                output: processedRecords[0]?.output,
+                outputUnit: processedRecords[0]?.outputUnit,
+                formatted: processedRecords[0] ? formatProductOutput(
+                    processedRecords[0].productType, 
+                    processedRecords[0].output, 
+                    processedRecords[0].outputUnit
+                ) : 'N/A'
+            });
             setCompletedData(processedRecords);
 
         } catch (err) {
@@ -216,7 +227,7 @@ export default function ProcessingReportsPage() {
             // Map the data to our interface
             const mappedHistory: ExportHistoryItem[] = data.data.map((item: any) => ({
                 id: item.id.toString(),
-                batchId: item.batch_id || 'Unknown',
+                lotId: item.lot_id || 'Unknown',
                 exportedBy: item.exported_by || 'Unknown User',
                 exportType: item.export_type || 'PDF Document',
                 date: new Date(item.export_date).toLocaleDateString('en-US', {
@@ -241,20 +252,57 @@ export default function ProcessingReportsPage() {
         fetchExportHistory();
     }, []);
 
+    // Function to format product output with correct units from Strapi
+    const formatProductOutput = (productType: string, quantity: number, unit: string): string => {
+        // ใช้ข้อมูลจาก Strapi โดยตรง แทนการคำนวณ
+        return `${productType}: ${quantity} ${unit}`;
+    };
+
+    // Get unique farm names for dropdown
+    const uniqueFarmNames = [...new Set(completedData.map(item => item.farmName))];
+
+    // Get unique product types for dropdown
+    const uniqueProductTypes = [...new Set(completedData.map(item => item.productType))];
+    
     // Filter data based on search criteria
     const filteredData = completedData.filter((item: ProcessingRecord) => {
-        const farmMatch = selectedFarm === "All Farms" || item.farmName.includes(selectedFarm);
-        const productTypeMatch = selectedProductType === "All Types" || item.outputUnit.includes(selectedProductType);
-        const batchMatch = !batchIdFilter || item.batchId.toLowerCase().includes(batchIdFilter.toLowerCase());
-        const dateMatch = !processingDateFilter || item.dateOfResult.includes(processingDateFilter);
+        // Farm name match
+        const farmMatch = selectedFarm === "All Farms" || item.farmName === selectedFarm;
+        
+        // Product type match - use actual productType field
+        const productTypeMatch = selectedProductType === "All Types" || item.productType === selectedProductType;
+        
+        // Lot ID match
+        const lotMatch = !lotIdFilter || item.lotId.toLowerCase().includes(lotIdFilter.toLowerCase());
+        
+        // Date match - compare dates properly
+        let dateMatch = true;
+        if (processingDateFilter) {
+            try {
+                const filterDate = new Date(processingDateFilter);
+                const itemDate = new Date(item.dateOfResult);
+                // Compare only the date part (ignore time)
+                dateMatch = filterDate.toDateString() === itemDate.toDateString();
+            } catch (error) {
+                console.error('Date comparison error:', error);
+                dateMatch = item.dateOfResult.includes(processingDateFilter);
+            }
+        }
 
-        return farmMatch && productTypeMatch && batchMatch && dateMatch;
+        return farmMatch && productTypeMatch && lotMatch && dateMatch;
+    }).sort((a, b) => {
+        // Sort by date (newest first)
+        return new Date(b.dateOfResult).getTime() - new Date(a.dateOfResult).getTime();
     });
 
     // Update filtered data when filters change
     useEffect(() => {
-        // Re-filter data when any filter changes
-    }, [batchIdFilter, selectedFarm, selectedProductType, processingDateFilter]);
+        // Reset pagination when filters change
+        setCurrentPage(1);
+        // Clear selection when filtering
+        setSelectedItems([]);
+        setSelectAll(false);
+    }, [lotIdFilter, selectedFarm, selectedProductType, processingDateFilter]);
 
     // Pagination logic
     const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -293,20 +341,20 @@ export default function ProcessingReportsPage() {
 
             // Create export data
             const exportData = selectedBatchesData.map((item: ProcessingRecord) => ({
-                batchId: item.batchId,
+                lotId: item.lotId,
                 farmName: item.farmName,
                 processor: item.processor,
-                output: `${item.output} ${item.outputUnit}`,
+                output: formatProductOutput(item.productType, item.output, item.outputUnit),
                 dateOfResult: item.dateOfResult,
                 status: item.status,
             }));
 
-            const batchNames = selectedBatchesData.map((item: ProcessingRecord) => item.batchId).join(', ');
+            const lotNames = selectedBatchesData.map((item: ProcessingRecord) => item.lotId).join(', ');
 
             // Save export history to API
             const exportHistoryData = {
                 data: {
-                    batch_id: batchNames,
+                    lot_id: lotNames,
                     exported_by: userName, // Use actual factory user name
                     export_type: 'PDF Document',
                     export_date: new Date().toISOString(),
@@ -455,7 +503,7 @@ export default function ProcessingReportsPage() {
 
     // Reset filters
     const handleResetFilters = () => {
-        setBatchIdFilter("");
+        setLotIdFilter("");
         setSelectedFarm("All Farms");
         setSelectedProductType("All Types");
         setProcessingDateFilter("");
@@ -542,14 +590,14 @@ export default function ProcessingReportsPage() {
                         {/* Search Filters Section */}
                         <div className="bg-white rounded-md shadow-sm p-6">
                             <div className="grid grid-cols-2 gap-x-4 gap-y-6">
-                                {/* Batch ID Filter */}
+                                {/* Lot ID Filter */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Batch ID</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Lot ID</label>
                                     <input
                                         type="text"
-                                        placeholder="Enter batch ID"
-                                        value={batchIdFilter}
-                                        onChange={(e) => setBatchIdFilter(e.target.value)}
+                                        placeholder="Enter lot ID"
+                                        value={lotIdFilter}
+                                        onChange={(e) => setLotIdFilter(e.target.value)}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-md"
                                     />
                                 </div>
@@ -575,8 +623,11 @@ export default function ProcessingReportsPage() {
                                             className="appearance-none w-full px-3 py-2 border border-gray-300 rounded-md"
                                         >
                                             <option value="All Farms">All Farms</option>
-                                            <option value="Little Farm">Little Farm</option>
-                                            <option value="Vilad Farm">Vilad Farm</option>
+                                            {uniqueFarmNames.map((farmName) => (
+                                                <option key={farmName} value={farmName}>
+                                                    {farmName}
+                                                </option>
+                                            ))}
                                         </select>
                                         <ChevronDown className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
                                     </div>
@@ -591,9 +642,11 @@ export default function ProcessingReportsPage() {
                                             className="appearance-none w-full px-3 py-2 border border-gray-300 rounded-md"
                                         >
                                             <option value="All Types">All Types</option>
-                                            <option value="kg">Powder</option>
-                                            <option value="liters">Essential Oil</option>
-                                            <option value="packs">Capsules</option>
+                                            {uniqueProductTypes.map((productType) => (
+                                                <option key={productType} value={productType}>
+                                                    {productType}
+                                                </option>
+                                            ))}
                                         </select>
                                         <ChevronDown className="absolute right-3 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
                                     </div>
@@ -609,7 +662,12 @@ export default function ProcessingReportsPage() {
                                     Reset
                                 </button>
                                 <button
-                                    onClick={fetchCompletedRecords}
+                                    onClick={() => {
+                                        // Force re-filter by triggering pagination reset
+                                        setCurrentPage(1);
+                                        setSelectedItems([]);
+                                        setSelectAll(false);
+                                    }}
                                     className="px-4 py-2 bg-green-500 text-white rounded-md flex items-center hover:bg-green-600"
                                 >
                                     Search
@@ -622,6 +680,12 @@ export default function ProcessingReportsPage() {
                             <div className="flex justify-between items-center mb-4">
                                 <div>
                                     <h2 className="text-lg font-medium">Data Export</h2>
+                                    <p className="text-sm text-gray-600 mt-1">
+                                        {filteredData.length === completedData.length 
+                                            ? `Total ${completedData.length} records`
+                                            : `Found ${filteredData.length} of ${completedData.length} records`
+                                        }
+                                    </p>
                                 </div>
                                 <div className="flex gap-2">
                                     <button
@@ -646,7 +710,7 @@ export default function ProcessingReportsPage() {
                                                 className="rounded border-gray-300 text-green-600 focus:ring-green-500"
                                             />
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch ID</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lot ID</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Farm Name</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Processor</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Output (kg/units)</th>
@@ -672,11 +736,17 @@ export default function ProcessingReportsPage() {
                                                         className="rounded border-gray-300 text-green-600 focus:ring-green-500"
                                                     />
                                                 </td>
-                                                <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.batchId}</td>
+                                                <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.lotId}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-900">{item.farmName}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-900">{item.processor}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-900">{item.output} {item.outputUnit}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-900">{item.dateOfResult}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-900">{formatProductOutput(item.productType, item.output, item.outputUnit)}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-900">
+                                                    {new Date(item.dateOfResult).toLocaleDateString('en-US', {
+                                                        year: 'numeric',
+                                                        month: 'short',
+                                                        day: 'numeric'
+                                                    })}
+                                                </td>
                                                 <td className="px-6 py-4">
                                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                                         <CheckCircle className="w-3 h-3 mr-1" />
@@ -751,7 +821,7 @@ export default function ProcessingReportsPage() {
                             <table className="w-full">
                                 <thead className="bg-gray-50">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch ID</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lot ID</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Exported By</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Export Type</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -768,7 +838,7 @@ export default function ProcessingReportsPage() {
                                     ) : (
                                         filteredExportHistory.map((item) => (
                                             <tr key={item.id} className="hover:bg-gray-50">
-                                                <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.batchId}</td>
+                                                <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.lotId}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-900">{item.exportedBy}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-900">{item.exportType}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-900">{item.date}</td>
