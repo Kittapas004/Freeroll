@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Factory } from "lucide-react";
+import { ChevronLeft, ChevronRight, Factory, Clock, CheckCircle, Package, Truck, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,72 @@ import { Input } from "@/components/ui/input";
 import React from "react";
 import Link from "next/link";
 
+// Status badge component with icons
+const StatusBadge = ({ status }: { status: string }) => {
+    const getStatusConfig = (status: string) => {
+        const statusLower = status.toLowerCase();
+
+        if (statusLower.includes('completed') || statusLower.includes('finished') || statusLower.includes('export success')) {
+            return {
+                icon: CheckCircle,
+                bgColor: 'bg-gradient-to-r from-green-100 to-emerald-100 border border-green-200',
+                textColor: 'text-green-800',
+                iconColor: 'text-green-600',
+                shadow: 'shadow-sm'
+            };
+        }
+        
+        if (statusLower.includes('processing') || statusLower.includes('in progress')) {
+            return {
+                icon: Package,
+                bgColor: 'bg-gradient-to-r from-blue-100 to-blue-100  ',
+                textColor: 'text-blue-800',
+                iconColor: 'text-blue-600',
+                shadow: 'shadow-sm'
+            };
+        }
+        
+        if (statusLower.includes('awaiting') || statusLower.includes('waiting') || statusLower.includes('pending')) {
+            return {
+                icon: Clock,
+                bgColor: 'bg-gradient-to-r from-yellow-100 to-yellow-100 ',
+                textColor: 'text-amber-800',
+                iconColor: 'text-amber-600',
+                shadow: 'shadow-sm'
+            };
+        }
+        
+        
+        if (statusLower.includes('received') ) {
+            return {
+                icon: Truck,
+                bgColor: 'bg-gradient-to-r from-indigo-100 to-blue-100 ',
+                textColor: 'text-indigo-800',
+                iconColor: 'text-indigo-600',
+                shadow: 'shadow-sm'
+            };
+        }
+        
+        // Default for unknown status
+        return {
+            icon: AlertCircle,
+            bgColor: 'bg-gradient-to-r from-gray-100 to-slate-100 border border-gray-200',
+            textColor: 'text-gray-700',
+            iconColor: 'text-gray-500',
+            shadow: 'shadow-sm'
+        };
+    };
+
+    const config = getStatusConfig(status);
+    const Icon = config.icon;
+
+    return (
+        <span className={`inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium cursor-default ${config.bgColor} ${config.textColor} ${config.shadow}`}>
+            <Icon className={`w-3.5 h-3.5 ${config.iconColor}`} />
+            {status}
+        </span>
+    );
+};
 
 export default function FactorySubmissionPage() {
     const [factorySubmissionData, setFactorySubmission] = useState<any[]>([]);
@@ -92,21 +158,21 @@ export default function FactorySubmissionPage() {
 
             // Apply additional filters if provided
             let filteredRecords = data.data;
-            
+
             if (filters.batchId) {
-                filteredRecords = filteredRecords.filter((record: any) => 
+                filteredRecords = filteredRecords.filter((record: any) =>
                     record.Batch_id.includes(filters.batchId)
                 );
             }
-            
+
             if (filters.dateOfResult) {
-                filteredRecords = filteredRecords.filter((record: any) => 
+                filteredRecords = filteredRecords.filter((record: any) =>
                     record.Date?.startsWith(filters.dateOfResult)
                 );
             }
-            
+
             if (filters.farmName && filters.farmName !== "*") {
-                filteredRecords = filteredRecords.filter((record: any) => 
+                filteredRecords = filteredRecords.filter((record: any) =>
                     record.Farm_Name === filters.farmName
                 );
             }
@@ -142,7 +208,7 @@ export default function FactorySubmissionPage() {
             alert("Please select a factory before submitting.");
             return;
         }
-        
+
         try {
             // Find the factory submission record
             const submissionRecord = factorySubmissionData.find(item => item.documentId === documentId);
@@ -281,7 +347,8 @@ export default function FactorySubmissionPage() {
 
     const fetchFeedbackData = async () => {
         try {
-            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-submissions?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}&filters[Submission_status][$ne]=Waiting`, {
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-processings?populate[factory_submission][populate]=*&filters[factory_submission][user_documentId][$eq]=${localStorage.getItem("userId")}
+`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -292,15 +359,19 @@ export default function FactorySubmissionPage() {
             const data = await response.json();
             setFeedbackData(
                 data.data.map((item: any) => ({
-                    id: item.Batch_id || `batch-${item.id}`,
+                    id: item.Batch_Id || `batch-${item.id}`,
                     documentId: item.documentId,
-                    farm: item.Farm_Name || 'Unknown Farm',
-                    output_capsules: item.Output_Capsules || 0,
-                    output_essential_oil: item.Output_Essential_Oil || 0,
-                    remain: item.Turmeric_Utilization_Remaining || 0,
-                    unit: item.Unit || 'kg',
-                    status: item.Submission_status || 'Unknown',
-                    note: item.Note || '',
+                    farm: item.factory_submission?.Farm_Name || 'Unknown Farm',
+                    product_output: item.output_quantity || 0,
+                    product_type: item.final_product_type || 'Powder',
+                    remaining_turmeric: item.remaining_stock || 0,
+                    waste_turmeric: item.waste_quantity || 0,
+                    unit: item.output_unit || 'kg',
+                    status:
+                        item.Processing_Status === "Completed"
+                            ? "Awaiting Export"
+                            : item.Processing_Status || "Unknown",
+                    note: item.compliance_notes || item.inspection_notes || '',
                 }))
             );
         }
@@ -501,103 +572,103 @@ export default function FactorySubmissionPage() {
                                             <th className="text-left py-2 px-2">Choose Factory</th>
                                         </tr>
                                     </thead>
-                                <tbody>
-                                    {factorySubmissionData.map((batch) => (
-                                        <tr className="border-b" key={batch.documentId}>
-                                            <td className="px-2 py-2">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedRows.includes(batch.documentId)}
-                                                    onChange={() => handleSelectRow(batch.documentId)}
-                                                />
-                                            </td>
-                                            <td className="px-2 py-2">{batch.id}</td>
-                                            <td className="px-2 py-2">{batch.farm}</td>
-                                            <td className="px-2 py-2">{batch.test}</td>
-                                            <td className="px-2 py-2">{batch.grade}</td>
-                                            <td className="px-2 py-2">{batch.yield} kg</td>
-                                            <td className="px-2 py-2">
-                                                {new Date(batch.date).toLocaleDateString("en-US", {
-                                                    month: "short",
-                                                    day: "numeric",
-                                                    year: "numeric",
-                                                })}
-                                            </td>
-                                            <td className="px-2 py-2">
-                                                <span className="text-blue-600 text-xs px-2 py-1 bg-blue-50 rounded">
-                                                    {batch.status}
-                                                </span>
-                                            </td>
-                                            <td className="px-2 py-2">
-                                                <Select
-                                                    value={factorySelections[batch.documentId] || ""}
-                                                    onValueChange={(value) =>
-                                                        setFactorySelections((prev) => ({
-                                                            ...prev,
-                                                            [batch.documentId]: value,
-                                                        }))
-                                                    }
-                                                >
-                                                    <SelectTrigger className="w-full border rounded px-2 py-1">
-                                                        <SelectValue 
-                                                            placeholder="Select Factory"
-                                                        >
-                                                            {factorySelections[batch.documentId] ? 
-                                                                getFactoryName(factorySelections[batch.documentId]) : 
-                                                                "Select Factory"
-                                                            }
-                                                        </SelectValue>
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {factories.length > 0 ? (
-                                                            factories.map((factory) => (
-                                                                <SelectItem key={factory.documentId} value={factory.documentId}>
-                                                                    {factory.name}
+                                    <tbody>
+                                        {factorySubmissionData.map((batch) => (
+                                            <tr className="border-b" key={batch.documentId}>
+                                                <td className="px-2 py-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedRows.includes(batch.documentId)}
+                                                        onChange={() => handleSelectRow(batch.documentId)}
+                                                    />
+                                                </td>
+                                                <td className="px-2 py-2">{batch.id}</td>
+                                                <td className="px-2 py-2">{batch.farm}</td>
+                                                <td className="px-2 py-2">{batch.test}</td>
+                                                <td className="px-2 py-2">{batch.grade}</td>
+                                                <td className="px-2 py-2">{batch.yield} kg</td>
+                                                <td className="px-2 py-2">
+                                                    {new Date(batch.date).toLocaleDateString("en-US", {
+                                                        month: "short",
+                                                        day: "numeric",
+                                                        year: "numeric",
+                                                    })}
+                                                </td>
+                                                <td className="px-2 py-2">
+                                                    <span className="text-blue-600 text-xs px-2 py-1 bg-blue-50 rounded">
+                                                        {batch.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-2 py-2">
+                                                    <Select
+                                                        value={factorySelections[batch.documentId] || ""}
+                                                        onValueChange={(value) =>
+                                                            setFactorySelections((prev) => ({
+                                                                ...prev,
+                                                                [batch.documentId]: value,
+                                                            }))
+                                                        }
+                                                    >
+                                                        <SelectTrigger className="w-full border rounded px-2 py-1">
+                                                            <SelectValue
+                                                                placeholder="Select Factory"
+                                                            >
+                                                                {factorySelections[batch.documentId] ?
+                                                                    getFactoryName(factorySelections[batch.documentId]) :
+                                                                    "Select Factory"
+                                                                }
+                                                            </SelectValue>
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {factories.length > 0 ? (
+                                                                factories.map((factory) => (
+                                                                    <SelectItem key={factory.documentId} value={factory.documentId}>
+                                                                        {factory.name}
+                                                                    </SelectItem>
+                                                                ))
+                                                            ) : (
+                                                                <SelectItem value="no-factories" disabled>
+                                                                    No factories available
                                                                 </SelectItem>
-                                                            ))
-                                                        ) : (
-                                                            <SelectItem value="no-factories" disabled>
-                                                                No factories available
-                                                            </SelectItem>
-                                                        )}
-                                                    </SelectContent>
-                                                </Select>
-                                            </td>
+                                                            )}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </td>
 
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            <div className="mt-4 text-right">
-                                <button 
-                                    className="bg-green-600 text-white px-4 py-2 rounded transition-colors hover:bg-green-700 disabled:opacity-50"
-                                    disabled={selectedRows.length === 0}
-                                    onClick={() => {
-                                        if (selectedRows.length === 0) {
-                                            alert("Please select at least one batch to submit.");
-                                            return;
-                                        }
-                                        
-                                        const missingFactories = selectedRows.filter(documentId => !factorySelections[documentId]);
-                                        if (missingFactories.length > 0) {
-                                            alert("Please select a factory for all selected batches.");
-                                            return;
-                                        }
-                                        
-                                        selectedRows.forEach((documentId) => {
-                                            const selectedFactory = factorySelections[documentId];
-                                            handleSubmitToFactory(documentId, selectedFactory);
-                                        });
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                <div className="mt-4 text-right">
+                                    <button
+                                        className="bg-green-600 text-white px-4 py-2 rounded transition-colors hover:bg-green-700 disabled:opacity-50"
+                                        disabled={selectedRows.length === 0}
+                                        onClick={() => {
+                                            if (selectedRows.length === 0) {
+                                                alert("Please select at least one batch to submit.");
+                                                return;
+                                            }
 
-                                        fetchFactoryData();
-                                        setSelectedRows([]);
-                                        setSelectAll(false);
-                                        fetchFeedbackData();
-                                    }}
-                                >
-                                    Submit to Factory ({selectedRows.length})
-                                </button>
-                            </div>
+                                            const missingFactories = selectedRows.filter(documentId => !factorySelections[documentId]);
+                                            if (missingFactories.length > 0) {
+                                                alert("Please select a factory for all selected batches.");
+                                                return;
+                                            }
+
+                                            selectedRows.forEach((documentId) => {
+                                                const selectedFactory = factorySelections[documentId];
+                                                handleSubmitToFactory(documentId, selectedFactory);
+                                            });
+
+                                            fetchFactoryData();
+                                            setSelectedRows([]);
+                                            setSelectAll(false);
+                                            fetchFeedbackData();
+                                        }}
+                                    >
+                                        Submit to Factory ({selectedRows.length})
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -611,7 +682,7 @@ export default function FactorySubmissionPage() {
                                 </span>
                             )}
                         </div>
-                        
+
                         {feedbackData.length === 0 ? (
                             <div className="text-center py-12">
                                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -631,88 +702,82 @@ export default function FactorySubmissionPage() {
                                             <th className="py-2 px-2">Farm Name</th>
                                             <th className="py-2 px-2">Product Output</th>
                                             <th className="py-2 px-2">Remaining Turmeric</th>
+                                            <th className="py-2 px-2">Waste Turmeric</th>
                                             <th className="py-2 px-2">Status</th>
-                                            <th className="py-2 px-2">Note</th>
                                             <th className="py-2 px-2 text-center">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                {currentItems.length === 0 ? (
-                                    <tr key="no-data">
-                                        <td colSpan={7} className="text-center py-4 text-gray-500">
-                                            No data on this page.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    currentItems.map((item) => (
-                                        <tr key={item.documentId} className="border-b">
-                                            <td className="py-2 px-2">{item.id}</td>
-                                            <td className="py-2 px-2">{item.farm}</td>
-                                            <td className="py-2 px-2">
-                                                {item.output_capsules || item.output_essential_oil
-                                                    ? `${item.output_capsules ? `Capsules: ${item.output_capsules} packs` : ""} ${item.output_essential_oil ? `Essential Oil: ${item.output_essential_oil} liters` : ""}`.trim()
-                                                    : "-"}</td>
-                                            <td className="py-2 px-2">{item.remain && item.unit ? `${item.remain} ${item.unit}` : "-"}</td>
-                                            <td className="py-2 px-2">
-                                                <span
-                                                    className={`text-xs px-3 py-1 rounded-full ${item.status === "Completed"
-                                                        ? "bg-green-100 text-green-700"
-                                                        : "bg-yellow-100 text-yellow-800"
-                                                        }`}
-                                                >
-                                                    {item.status}
-                                                </span>
-                                            </td>
-                                            <td className="py-2 px-2">{item.note ? `${item.note}` : "-"}</td>
-                                            <td className="py-2 px-2 text-center">
-                                                <Link href={`/factorysubmission/${item.documentId}`} key={item.documentId}>
-                                                    {item.status === "Completed" && (
-                                                        <button
-                                                            onClick={() => router.push(`/factorysubmission/${item.id}`)}
-                                                            className="text-blue-600 hover:underline flex items-center gap-1"
-                                                        >
-                                                            View
-                                                        </button>
-                                                    )}
-                                                </Link>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                        
-                        <div className="flex justify-start mt-4 gap-2">
-                            <button
-                                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                                disabled={currentPage === 1}
-                                className="w-8 h-8 rounded-full border flex items-center justify-center transition hover:bg-gray-100 disabled:opacity-50"
-                            >
-                                <ChevronLeft className="w-4 h-4" />
-                            </button>
+                                        {currentItems.length === 0 ? (
+                                            <tr key="no-data">
+                                                <td colSpan={7} className="text-center py-4 text-gray-500">
+                                                    No data on this page.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            currentItems.map((item) => (
+                                                <tr key={item.documentId} className="border-b">
+                                                    <td className="py-2 px-2">{item.id}</td>
+                                                    <td className="py-2 px-2">{item.farm}</td>
+                                                    <td className="py-2 px-2">
+                                                        {item.product_output && item.unit
+                                                            ? `${item.product_output} ${item.unit} (${item.product_type || 'Powder'})`
+                                                            : "-"}
+                                                    </td>
+                                                    <td className="py-2 px-2">{item.remaining_turmeric && item.unit ? `${item.remaining_turmeric} ${item.unit}` : "-"}</td>
+                                                    <td className="py-2 px-2">{item.waste_turmeric && item.unit ? `${item.waste_turmeric} ${item.unit}` : "-"}</td>
+                                                    <td className="py-2 px-2">
+                                                        <StatusBadge status={item.status} />
+                                                    </td>
+                                                    <td className="py-2 px-2 text-center">
+                                                        <Link href={`/factorysubmission/${item.documentId}`} key={item.documentId}>
+                                                            {item.status === "Completed" && (
+                                                                <button
+                                                                    onClick={() => router.push(`/factorysubmission/${item.id}`)}
+                                                                    className="text-blue-600 hover:underline flex items-center gap-1"
+                                                                >
+                                                                    View
+                                                                </button>
+                                                            )}
+                                                        </Link>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
 
-                            {[...Array(totalPages)].map((_, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => setCurrentPage(i + 1)}
-                                    className={`w-8 h-8 rounded-full border transition ${currentPage === i + 1
-                                        ? "bg-green-600 text-white"
-                                        : "hover:bg-gray-100"
-                                        }`}
-                                >
-                                    {i + 1}
-                                </button>
-                            ))}
+                                <div className="flex justify-start mt-4 gap-2">
+                                    <button
+                                        onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                                        disabled={currentPage === 1}
+                                        className="w-8 h-8 rounded-full border flex items-center justify-center transition hover:bg-gray-100 disabled:opacity-50"
+                                    >
+                                        <ChevronLeft className="w-4 h-4" />
+                                    </button>
 
-                            <button
-                                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-                                disabled={currentPage === totalPages}
-                                className="w-8 h-8 rounded-full border flex items-center justify-center transition hover:bg-gray-100 disabled:opacity-50"
-                            >
-                                <ChevronRight className="w-4 h-4" />
-                            </button>
-                        </div>
-                        </>
+                                    {[...Array(totalPages)].map((_, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => setCurrentPage(i + 1)}
+                                            className={`w-8 h-8 rounded-full border transition ${currentPage === i + 1
+                                                ? "bg-green-600 text-white"
+                                                : "hover:bg-gray-100"
+                                                }`}
+                                        >
+                                            {i + 1}
+                                        </button>
+                                    ))}
+
+                                    <button
+                                        onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                                        disabled={currentPage === totalPages}
+                                        className="w-8 h-8 rounded-full border flex items-center justify-center transition hover:bg-gray-100 disabled:opacity-50"
+                                    >
+                                        <ChevronRight className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </>
                         )}
                     </div>
 

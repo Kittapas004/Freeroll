@@ -21,7 +21,7 @@ function FileDownload({ className }: { className?: string }) {
 
 interface ProcessingRecord {
     id: string;
-    documentId?: string | number;
+    documentId: string;
     lotId: string;
     farmName: string;
     processor: string;
@@ -304,6 +304,17 @@ export default function ProcessingReportsPage() {
         setSelectAll(false);
     }, [lotIdFilter, selectedFarm, selectedProductType, processingDateFilter]);
 
+    // Update selectAll state when selectedItems changes
+    useEffect(() => {
+        if (filteredData.length > 0) {
+            const allFilteredIds = filteredData.map(item => item.documentId);
+            const allSelected = allFilteredIds.every(id => selectedItems.includes(id));
+            setSelectAll(allSelected && selectedItems.length > 0);
+        } else {
+            setSelectAll(false);
+        }
+    }, [selectedItems, filteredData]);
+
     // Pagination logic
     const totalPages = Math.ceil(filteredData.length / itemsPerPage);
     const paginatedData = filteredData.slice(
@@ -324,7 +335,8 @@ export default function ProcessingReportsPage() {
         if (selectAll) {
             setSelectedItems([]);
         } else {
-            setSelectedItems(paginatedData.map(item => item.id));
+            // Select ALL filtered data, not just current page
+            setSelectedItems(filteredData.map(item => item.documentId));
         }
         setSelectAll(!selectAll);
     };
@@ -337,9 +349,13 @@ export default function ProcessingReportsPage() {
         }
 
         try {
-            const selectedBatchesData = completedData.filter((item: ProcessingRecord) => selectedItems.includes(item.id));
+            // Filter ALL selected items from completedData (not just paginatedData)
+            const selectedBatchesData = completedData.filter((item: ProcessingRecord) => selectedItems.includes(item.documentId));
+            
+            console.log('Selected items for export:', selectedItems);
+            console.log('Selected batches data:', selectedBatchesData);
 
-            // Create export data
+            // Create export data with all selected items
             const exportData = selectedBatchesData.map((item: ProcessingRecord) => ({
                 lotId: item.lotId,
                 farmName: item.farmName,
@@ -349,38 +365,77 @@ export default function ProcessingReportsPage() {
                 status: item.status,
             }));
 
-            const lotNames = selectedBatchesData.map((item: ProcessingRecord) => item.lotId).join(', ');
+            let successCount = 0;
+            let failCount = 0;
 
-            // Save export history to API
-            const exportHistoryData = {
-                data: {
-                    lot_id: lotNames,
-                    exported_by: userName, // Use actual factory user name
-                    export_type: 'PDF Document',
-                    export_date: new Date().toISOString(),
-                    status_export: 'Export Success',
-                    // factory_processings: selectedItems.map(id => parseInt(id))
+            // Create SEPARATE export history records for each selected item
+            for (const item of selectedBatchesData) {
+                try {
+                    // Ensure we have a valid factory processing ID
+                    const factoryProcessingId = item.documentId;
+                    
+                    if (factoryProcessingId === undefined || factoryProcessingId === null) {
+                        console.error(`Invalid factory processing ID for ${item.lotId}: ${item.documentId}`);
+                        failCount++;
+                        continue;
+                    }
+
+                    console.log(`Processing export for Batch: ${item.lotId}, Factory Processing ID: ${factoryProcessingId}`);
+
+                    const exportHistoryData = {
+                        data: {
+                            lot_id: item.lotId,
+                            exported_by: userName,
+                            export_type: 'PDF Document',
+                            export_date: new Date().toISOString(),
+                            status_export: 'Export Success',
+                            total_unique_lots: 1, // Always 1 since we're creating separate records
+                            total_selected_items: 1, // Always 1 since we're creating separate records
+                            factory_processing: factoryProcessingId // Single factory processing ID for clear relation
+                        }
+                    };
+
+                    console.log(`Creating export history for ${item.lotId}:`, {
+                        lotId: item.lotId,
+                        factoryProcessingId: factoryProcessingId,
+                        documentId: item.documentId,
+                        exportData: exportHistoryData
+                    });
+
+                    const saveResponse = await fetch(
+                        `https://api-freeroll-production.up.railway.app/api/export-factory-histories`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                            },
+                            body: JSON.stringify(exportHistoryData),
+                        }
+                    );
+
+                    if (saveResponse.ok) {
+                        const savedRecord = await saveResponse.json();
+                        console.log(`✅ Export history saved successfully for ${item.lotId}:`, savedRecord);
+                        successCount++;
+                    } else {
+                        const errorText = await saveResponse.text();
+                        console.error(`❌ Failed to save export history for ${item.lotId}:`, {
+                            status: saveResponse.status,
+                            error: errorText,
+                            factoryProcessingId: factoryProcessingId
+                        });
+                        failCount++;
+                    }
+                } catch (itemError) {
+                    console.error(`Error creating export history for ${item.lotId}:`, itemError);
+                    failCount++;
                 }
-            };
+            }
 
-            const saveResponse = await fetch(
-                `https://api-freeroll-production.up.railway.app/api/export-factory-histories`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${localStorage.getItem('jwt')}`,
-                    },
-                    body: JSON.stringify(exportHistoryData),
-                }
-            );
-
-            if (saveResponse.ok) {
-                console.log('Export history saved successfully');
-                // Refresh export history to show the new record
+            // Refresh export history to show the new records
+            if (successCount > 0) {
                 fetchExportHistory();
-            } else {
-                console.error('Failed to save export history');
             }
 
             // Mark items as exported
@@ -390,8 +445,15 @@ export default function ProcessingReportsPage() {
             setSelectedItems([]);
             setSelectAll(false);
 
-            console.log('Export successful:', exportData);
-            alert('Export completed successfully!');
+            // Show appropriate success/error message
+            if (successCount === selectedBatchesData.length) {
+                console.log(`Export successful for ${selectedBatchesData.length} items:`, exportData);
+                alert(`Export completed successfully! ${selectedBatchesData.length} processing records exported as separate entries.`);
+            } else if (successCount > 0) {
+                alert(`Partial success: ${successCount} records exported successfully, ${failCount} failed. Check console for details.`);
+            } else {
+                alert('Export failed for all selected items. Please check console for details.');
+            }
 
         } catch (error) {
             console.error('Export error:', error);
@@ -685,6 +747,11 @@ export default function ProcessingReportsPage() {
                                             ? `Total ${completedData.length} records`
                                             : `Found ${filteredData.length} of ${completedData.length} records`
                                         }
+                                        {selectedItems.length > 0 && (
+                                            <span className="ml-2 text-green-600 font-medium">
+                                                • {selectedItems.length} selected for export
+                                            </span>
+                                        )}
                                     </p>
                                 </div>
                                 <div className="flex gap-2">
@@ -694,7 +761,7 @@ export default function ProcessingReportsPage() {
                                         className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                                     >
                                         <FileDownload className="w-4 h-4 mr-2" />
-                                        Export Data
+                                        Export Data {selectedItems.length > 0 && `(${selectedItems.length})`}
                                     </button>
                                 </div>
                             </div>
@@ -703,12 +770,14 @@ export default function ProcessingReportsPage() {
                                 <thead className="bg-gray-100">
                                     <tr className="text-left text-sm font-medium text-gray-700 border-b">
                                         <th className="px-6 py-3 text-left">
-                                            <input
-                                                type="checkbox"
-                                                checked={selectAll}
-                                                onChange={handleSelectAll}
-                                                className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                                            />
+                                            <div className="flex items-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectAll}
+                                                    onChange={handleSelectAll}
+                                                    className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                                />
+                                            </div>
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lot ID</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Farm Name</th>
@@ -727,12 +796,12 @@ export default function ProcessingReportsPage() {
                                         </tr>
                                     ) : (
                                         paginatedData.map((item) => (
-                                            <tr key={item.id} className="hover:bg-gray-50">
+                                            <tr key={item.documentId} className="hover:bg-gray-50">
                                                 <td className="px-6 py-4">
                                                     <input
                                                         type="checkbox"
-                                                        checked={selectedItems.includes(item.id)}
-                                                        onChange={() => handleSelectItem(item.id)}
+                                                        checked={selectedItems.includes(item.documentId)}
+                                                        onChange={() => handleSelectItem(item.documentId)}
                                                         className="rounded border-gray-300 text-green-600 focus:ring-green-500"
                                                     />
                                                 </td>
