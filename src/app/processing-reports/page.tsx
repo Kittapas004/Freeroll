@@ -155,6 +155,17 @@ export default function ProcessingReportsPage() {
                 const quantity = item.output_quantity || 0;
                 const outputUnit = item.output_unit || 'kg'; // อ่านหน่วยจาก Strapi แทน if-else
 
+                // เช็คว่า record นี้ถูก export ไปแล้วหรือยังจาก export_factory_history
+                const hasExportHistory = item.export_factory_history && 
+                                       item.export_factory_history !== null && 
+                                       item.export_factory_history.status_export === "Export Success";
+
+                console.log(`Processing record ${item.batch_lot_number}:`, {
+                    lotId: item.batch_lot_number,
+                    export_factory_history: item.export_factory_history,
+                    hasExportHistory: hasExportHistory
+                });
+                
                 return {
                     id: item.id.toString(),
                     documentId: item.documentId,
@@ -170,8 +181,8 @@ export default function ProcessingReportsPage() {
                         day: 'numeric'
                     }),
                     status: 'Complete',
-                    exported: false,
-                    exportStatus: 'Not Exported'
+                    exported: hasExportHistory, // ใช้เฉพาะใน UI แต่ไม่บันทึกลง database
+                    exportStatus: hasExportHistory ? 'Export Success' : 'Not Exported' // ใช้เฉพาะใน UI แต่ไม่บันทึกลง database
                 };
             });
 
@@ -266,6 +277,17 @@ export default function ProcessingReportsPage() {
     
     // Filter data based on search criteria
     const filteredData = completedData.filter((item: ProcessingRecord) => {
+        // เช็คว่า record นี้ถูก export ไปแล้วหรือยัง - ถ้าถูก export แล้วจะไม่แสดงใน Data Export
+        const isAlreadyExported = item.exported === true || item.exportStatus === "Export Success";
+        
+        // Debug log เพื่อดูสถานะของแต่ละ record
+        console.log(`Checking record ${item.lotId}:`, {
+            lotId: item.lotId,
+            exported: item.exported,
+            exportStatus: item.exportStatus,
+            isAlreadyExported: isAlreadyExported
+        });
+        
         // Farm name match
         const farmMatch = selectedFarm === "All Farms" || item.farmName === selectedFarm;
         
@@ -289,7 +311,8 @@ export default function ProcessingReportsPage() {
             }
         }
 
-        return farmMatch && productTypeMatch && lotMatch && dateMatch;
+        // Return เฉพาะรายการที่ยังไม่ได้ export และตรงตามเงื่อนไขอื่นๆ
+        return !isAlreadyExported && farmMatch && productTypeMatch && lotMatch && dateMatch;
     }).sort((a, b) => {
         // Sort by date (newest first)
         return new Date(b.dateOfResult).getTime() - new Date(a.dateOfResult).getTime();
@@ -372,26 +395,30 @@ export default function ProcessingReportsPage() {
             for (const item of selectedBatchesData) {
                 try {
                     // Ensure we have a valid factory processing ID
-                    const factoryProcessingId = item.documentId;
+                    // Try to use documentId, but fall back to id if necessary
+                    const factoryProcessingId = item.documentId || item.id;
                     
-                    if (factoryProcessingId === undefined || factoryProcessingId === null) {
-                        console.error(`Invalid factory processing ID for ${item.lotId}: ${item.documentId}`);
+                    if (!factoryProcessingId) {
+                        console.error(`Invalid factory processing ID for ${item.lotId}: documentId=${item.documentId}, id=${item.id}`);
                         failCount++;
                         continue;
                     }
+                    
+                    console.log(`Using factory processing ID for ${item.lotId}: ${factoryProcessingId}`);
 
                     console.log(`Processing export for Batch: ${item.lotId}, Factory Processing ID: ${factoryProcessingId}`);
 
-                    const exportHistoryData = {
+                    // First try the standard Strapi v4 relation format
+                    let exportHistoryData = {
                         data: {
                             lot_id: item.lotId,
                             exported_by: userName,
                             export_type: 'PDF Document',
                             export_date: new Date().toISOString(),
                             status_export: 'Export Success',
-                            total_unique_lots: 1, // Always 1 since we're creating separate records
-                            total_selected_items: 1, // Always 1 since we're creating separate records
-                            factory_processing: factoryProcessingId // Single factory processing ID for clear relation
+                            factory_processing: {
+                                connect: [factoryProcessingId]
+                            }
                         }
                     };
 
@@ -399,10 +426,10 @@ export default function ProcessingReportsPage() {
                         lotId: item.lotId,
                         factoryProcessingId: factoryProcessingId,
                         documentId: item.documentId,
-                        exportData: exportHistoryData
+                        exportData: JSON.stringify(exportHistoryData)
                     });
 
-                    const saveResponse = await fetch(
+                    let saveResponse = await fetch(
                         `https://api-freeroll-production.up.railway.app/api/export-factory-histories`,
                         {
                             method: 'POST',
@@ -413,17 +440,97 @@ export default function ProcessingReportsPage() {
                             body: JSON.stringify(exportHistoryData),
                         }
                     );
+                    
+                    // If the first approach fails, try alternative formats for the relation
+                    if (!saveResponse.ok) {
+                        console.log('First export attempt failed, trying alternative format...');
+                        
+                        // Try alternative format 1: direct ID assignment
+                        exportHistoryData = {
+                            data: {
+                                lot_id: item.lotId,
+                                exported_by: userName,
+                                export_type: 'PDF Document',
+                                export_date: new Date().toISOString(),
+                                status_export: 'Export Success',
+                                // Use any type to bypass TypeScript error but maintain the API format needed
+                                factory_processing: factoryProcessingId as any
+                            }
+                        };
+                        
+                        saveResponse = await fetch(
+                            `https://api-freeroll-production.up.railway.app/api/export-factory-histories`,
+                            {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                },
+                                body: JSON.stringify(exportHistoryData),
+                            }
+                        );
+                        
+                        // If still failing, try alternative format 2: id property
+                        if (!saveResponse.ok) {
+                            console.log('Second export attempt failed, trying another format...');
+                            
+                            exportHistoryData = {
+                                data: {
+                                    lot_id: item.lotId,
+                                    exported_by: userName,
+                                    export_type: 'PDF Document',
+                                    export_date: new Date().toISOString(),
+                                    status_export: 'Export Success',
+                                    // Use any type to bypass TypeScript error but maintain the API format needed
+                                    factory_processing: {
+                                        id: factoryProcessingId
+                                    } as any
+                                }
+                            };
+                            
+                            saveResponse = await fetch(
+                                `https://api-freeroll-production.up.railway.app/api/export-factory-histories`,
+                                {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                    },
+                                    body: JSON.stringify(exportHistoryData),
+                                }
+                            );
+                        }
+                    }
 
                     if (saveResponse.ok) {
                         const savedRecord = await saveResponse.json();
                         console.log(`✅ Export history saved successfully for ${item.lotId}:`, savedRecord);
                         successCount++;
                     } else {
-                        const errorText = await saveResponse.text();
+                        let errorText;
+                        try {
+                            // Try to get the error as JSON for better details
+                            const errorJson = await saveResponse.json();
+                            console.log("Error JSON response:", errorJson);
+                            
+                            // Extract Strapi error details if available
+                            if (errorJson.error && errorJson.error.message) {
+                                errorText = `Error: ${errorJson.error.message}`;
+                                if (errorJson.error.details) {
+                                    errorText += ` - Details: ${JSON.stringify(errorJson.error.details)}`;
+                                }
+                            } else {
+                                errorText = JSON.stringify(errorJson, null, 2);
+                            }
+                        } catch (e) {
+                            // If not valid JSON, get as text
+                            errorText = await saveResponse.text();
+                        }
                         console.error(`❌ Failed to save export history for ${item.lotId}:`, {
                             status: saveResponse.status,
                             error: errorText,
-                            factoryProcessingId: factoryProcessingId
+                            factoryProcessingId: factoryProcessingId,
+                            requestBody: JSON.stringify(exportHistoryData)
                         });
                         failCount++;
                     }
@@ -436,6 +543,8 @@ export default function ProcessingReportsPage() {
             // Refresh export history to show the new records
             if (successCount > 0) {
                 fetchExportHistory();
+                // Refresh the completed records data เพื่อให้รายการที่ export แล้วหายไปจากหน้า Data Export
+                fetchCompletedRecords();
             }
 
             // Mark items as exported

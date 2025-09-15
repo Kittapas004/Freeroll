@@ -7,13 +7,13 @@ import {
 } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Factory, Clock, CheckCircle, Package, Truck, AlertCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Factory, Clock, CheckCircle, Package, Truck, AlertCircle, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import React from "react";
-import Link from "next/link";
+
 
 // Status badge component with icons
 const StatusBadge = ({ status }: { status: string }) => {
@@ -86,6 +86,7 @@ export default function FactorySubmissionPage() {
     const [factorySubmissionData, setFactorySubmission] = useState<any[]>([]);
     const [feedbackData, setFeedbackData] = useState<any[]>([]);
     const [allbatchData, setAllBatchData] = useState<any[]>([]);
+    // ลบ exportedBatchData state ออก
     const [filters, setFilters] = useState({
         batchId: "",
         dateOfResult: "",
@@ -288,6 +289,7 @@ export default function FactorySubmissionPage() {
             }
 
             await fetchFactoryData();
+            await fetchFeedbackData(); // รีเฟรชข้อมูล feedback ด้วย
             alert("Submitted to factory successfully!");
         }
         catch (error: any) {
@@ -347,18 +349,48 @@ export default function FactorySubmissionPage() {
 
     const fetchFeedbackData = async () => {
         try {
-            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-processings?populate[factory_submission][populate]=*&filters[factory_submission][user_documentId][$eq]=${localStorage.getItem("userId")}
-`, {
+            console.log("Fetching feedback data...");
+            
+            // Fetch factory processings with export history populated
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-processings?populate=factory_submission&populate=export_factory_history&filters[factory_submission][user_documentId][$eq]=${localStorage.getItem("userId")}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
             });
+            
             if (!response.ok) {
-                throw new Error("Failed to fetch feedback data");
+                const errorText = await response.text();
+                console.error("Feedback fetch error:", response.status, errorText);
+                throw new Error(`Failed to fetch feedback data: ${response.status}`);
             }
+            
             const data = await response.json();
-            setFeedbackData(
-                data.data.map((item: any) => ({
+            console.log("Feedback data received:", data);
+            
+            // ตรวจสอบว่ามี data หรือไม่
+            if (!data.data || !Array.isArray(data.data)) {
+                console.warn("No data array found in response:", data);
+                setFeedbackData([]);
+                return;
+            }
+            
+            // Transform data และเช็คว่ามี export history หรือไม่
+            const transformedData = data.data.map((item: any) => {
+                // เช็คว่ามี export_factory_history หรือไม่ (อาจเป็น array หรือ object)
+                const hasExportHistory = item.export_factory_history && 
+                    (Array.isArray(item.export_factory_history) ? 
+                        item.export_factory_history.length > 0 : 
+                        item.export_factory_history.id);
+                
+                // กำหนด status ตาม export history
+                let status = item.Processing_Status || "Unknown";
+                if (hasExportHistory) {
+                    status = "Export Success";
+                } else if (item.Processing_Status === "Completed") {
+                    status = "Awaiting Export";
+                }
+
+                return {
                     id: item.Batch_Id || `batch-${item.id}`,
                     documentId: item.documentId,
                     farm: item.factory_submission?.Farm_Name || 'Unknown Farm',
@@ -367,13 +399,14 @@ export default function FactorySubmissionPage() {
                     remaining_turmeric: item.remaining_stock || 0,
                     waste_turmeric: item.waste_quantity || 0,
                     unit: item.output_unit || 'kg',
-                    status:
-                        item.Processing_Status === "Completed"
-                            ? "Awaiting Export"
-                            : item.Processing_Status || "Unknown",
+                    status: status,
                     note: item.compliance_notes || item.inspection_notes || '',
-                }))
-            );
+                    hasExportHistory: hasExportHistory, // เพิ่มเพื่อใช้ในการแสดงปุ่ม
+                };
+            });
+
+            console.log("Transformed feedback data:", transformedData);
+            setFeedbackData(transformedData);
         }
         catch (error) {
             console.error("Error fetching feedback data:", error);
@@ -600,39 +633,46 @@ export default function FactorySubmissionPage() {
                                                     </span>
                                                 </td>
                                                 <td className="px-2 py-2">
-                                                    <Select
-                                                        value={factorySelections[batch.documentId] || ""}
-                                                        onValueChange={(value) =>
-                                                            setFactorySelections((prev) => ({
-                                                                ...prev,
-                                                                [batch.documentId]: value,
-                                                            }))
-                                                        }
-                                                    >
-                                                        <SelectTrigger className="w-full border rounded px-2 py-1">
-                                                            <SelectValue
-                                                                placeholder="Select Factory"
-                                                            >
-                                                                {factorySelections[batch.documentId] ?
-                                                                    getFactoryName(factorySelections[batch.documentId]) :
-                                                                    "Select Factory"
-                                                                }
-                                                            </SelectValue>
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {factories.length > 0 ? (
-                                                                factories.map((factory) => (
-                                                                    <SelectItem key={factory.documentId} value={factory.documentId}>
-                                                                        {factory.name}
+                                                    <div className="flex gap-2">
+                                                        <Select
+                                                            value={factorySelections[batch.documentId] || ""}
+                                                            onValueChange={(value) =>
+                                                                setFactorySelections((prev) => ({
+                                                                    ...prev,
+                                                                    [batch.documentId]: value,
+                                                                }))
+                                                            }
+                                                        >
+                                                            <SelectTrigger className="w-full border rounded px-2 py-1">
+                                                                <SelectValue placeholder="Select Factory">
+                                                                    {factorySelections[batch.documentId] ?
+                                                                        getFactoryName(factorySelections[batch.documentId]) :
+                                                                        "Select Factory"
+                                                                    }
+                                                                </SelectValue>
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {factories.length > 0 ? (
+                                                                    factories.map((factory) => (
+                                                                        <SelectItem key={factory.documentId} value={factory.documentId}>
+                                                                            {factory.name}
+                                                                        </SelectItem>
+                                                                    ))
+                                                                ) : (
+                                                                    <SelectItem value="no-factories" disabled>
+                                                                        No factories available
                                                                     </SelectItem>
-                                                                ))
-                                                            ) : (
-                                                                <SelectItem value="no-factories" disabled>
-                                                                    No factories available
-                                                                </SelectItem>
-                                                            )}
-                                                        </SelectContent>
-                                                    </Select>
+                                                                )}
+                                                            </SelectContent>
+                                                        </Select>
+                                                        <button
+                                                            onClick={() => handleSubmitToFactory(batch.documentId, factorySelections[batch.documentId])}
+                                                            className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors"
+                                                            disabled={!factorySelections[batch.documentId]}
+                                                        >
+                                                            Submit
+                                                        </button>
+                                                    </div>
                                                 </td>
 
                                             </tr>
@@ -730,16 +770,15 @@ export default function FactorySubmissionPage() {
                                                         <StatusBadge status={item.status} />
                                                     </td>
                                                     <td className="py-2 px-2 text-center">
-                                                        <Link href={`/factorysubmission/${item.documentId}`} key={item.documentId}>
-                                                            {item.status === "Completed" && (
-                                                                <button
-                                                                    onClick={() => router.push(`/factorysubmission/${item.id}`)}
-                                                                    className="text-blue-600 hover:underline flex items-center gap-1"
-                                                                >
-                                                                    View
-                                                                </button>
-                                                            )}
-                                                        </Link>
+                                                        {(item.status === "Export Success" ) && (
+                                                            <button
+                                                                onClick={() => router.push(`/processing-details/${item.documentId}`)}
+                                                                className="text-blue-600 hover:underline flex items-center gap-1 mx-auto"
+                                                            >
+                                                                <Eye className="w-3 h-3" />
+                                                                View
+                                                            </button>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))

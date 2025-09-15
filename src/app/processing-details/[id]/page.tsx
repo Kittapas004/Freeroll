@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, Calendar, Package, Factory as FactoryIcon, Save, Leaf, Scale, Beaker, BarChart3, Droplets, FlaskConical, LucidePackage, LucideCheck, X } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Package, Factory as FactoryIcon, Save, Leaf, Scale, Beaker, BarChart3, Droplets, FlaskConical, LucidePackage, LucideCheck, X, Printer, Eye } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface BatchInfo {
@@ -48,6 +48,7 @@ export default function RecordDetailsPage() {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [loading, setLoading] = useState(true);
     const [isReadOnly, setIsReadOnly] = useState(false); // เพิ่ม state สำหรับ read-only mode
+    const [userRole, setUserRole] = useState<string>(''); // เพิ่ม state สำหรับบทบาทผู้ใช้
 
     // Batch Information
     const [batchInfo, setBatchInfo] = useState<BatchInfo>({
@@ -120,6 +121,447 @@ export default function RecordDetailsPage() {
         });
     };
 
+    // ฟังก์ชันสำหรับ Print Report
+    const handlePrintReport = () => {
+        // สร้าง iframe สำหรับ print แทน window.open
+        const printFrame = document.createElement('iframe');
+        printFrame.style.position = 'absolute';
+        printFrame.style.top = '-1000px';
+        printFrame.style.left = '-1000px';
+        printFrame.style.width = '0';
+        printFrame.style.height = '0';
+        printFrame.style.border = 'none';
+        document.body.appendChild(printFrame);
+
+        const reportContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Turmeric Factory Processing Report</title>
+    <style>
+        @page {
+            margin: 20mm 15mm 15mm 15mm;
+            size: A4;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.3;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            font-size: 12px;
+        }
+        .main-header {
+            text-align: left;
+            margin-bottom: 30px;
+            padding: 20px 20px 0 20px;
+            page-break-inside: avoid;
+            page-break-after: avoid;
+        }
+        .main-header h1 {
+            color: #22c55e;
+            margin: 0 0 5px 0;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .main-header p {
+            margin: 3px 0;
+            color: #666;
+            font-size: 13px;
+        }
+        .main-header .separator {
+            border-bottom: 3px solid #22c55e;
+            margin: 15px 0 0 0;
+            width: 100%;
+        }
+        .page-header {
+            display: none;
+        }
+        @media print {
+            body { 
+                print-color-adjust: exact;
+            }
+            .page-header {
+                display: block;
+                text-align: left;
+                padding: 10px 20px 15px 20px;
+                margin-bottom: 20px;
+                position: relative;
+            }
+            .page-header h1 {
+                color: #22c55e;
+                margin: 0 0 5px 0;
+                font-size: 20px;
+                font-weight: bold;
+            }
+            .page-header p {
+                margin: 2px 0;
+                color: #666;
+                font-size: 11px;
+            }
+            .page-header .separator {
+                border-bottom: 2px solid #22c55e;
+                margin: 10px 0 0 0;
+                width: 100%;
+            }
+            .main-header {
+                display: none;
+            }
+            .content {
+                padding: 0 20px;
+            }
+        }
+        .content {
+            padding: 0 20px 20px 20px;
+        }
+        .section {
+            margin-bottom: 20px;
+            page-break-inside: avoid;
+        }
+        .section h2 {
+            background-color: #f8f9fa;
+            padding: 8px 12px;
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            color: #333;
+            border-left: 4px solid #22c55e;
+            page-break-after: avoid;
+        }
+        .section:nth-child(n+4) {
+            page-break-before: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+            page-break-inside: avoid;
+        }
+        td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            vertical-align: top;
+        }
+        .label {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            width: 150px;
+        }
+        .value {
+            background-color: white;
+        }
+        .subsection-header {
+            background-color: #f1f5f9;
+            padding: 5px 10px;
+            margin: 15px 0 5px 0;
+            font-weight: bold;
+            color: #374151;
+            page-break-after: avoid;
+        }
+        .subsection {
+            page-break-inside: avoid;
+            margin-bottom: 15px;
+        }
+        .cert-box {
+            background-color: #dcfce7;
+            border: 1px solid #22c55e;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: justify;
+            page-break-inside: avoid;
+        }
+        .signature-section {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 40px;
+            page-break-inside: avoid;
+        }
+        .signature-box {
+            text-align: center;
+            width: 200px;
+        }
+        .signature-line {
+            border-top: 1px solid #333;
+            margin-top: 50px;
+            padding-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header สำหรับทุกหน้าในการพิมพ์ -->
+    <div class="page-header">
+        <h1>Turmeric Factory Processing Report</h1>
+        <p>Comprehensive documentation of turmeric processing and quality assurance</p>
+        <div class="separator"></div>
+    </div>
+
+    <!-- Header สำหรับหน้าจอปกติ -->
+    <div class="main-header">
+        <h1>Turmeric Factory Processing Report</h1>
+        <p>Comprehensive documentation of turmeric processing and quality assurance</p>
+        <div class="separator"></div>
+    </div>
+
+    <div class="content">
+
+    <!-- 1. Batch Information -->
+    <div class="section">
+        <h2>1. Batch Information</h2>
+        <table>
+            <tr>
+                <td class="label">Batch ID</td>
+                <td class="value">${batchInfo.batchId}</td>
+            </tr>
+            <tr>
+                <td class="label">Date Received</td>
+                <td class="value">${batchInfo.harvestDate ? new Date(batchInfo.harvestDate).toLocaleDateString('en-GB') : 'N/A'}</td>
+            </tr>
+            <tr>
+                <td class="label">Farm Source</td>
+                <td class="value">${batchInfo.farmName}</td>
+            </tr>
+            <tr>
+                <td class="label">Raw Material Weight</td>
+                <td class="value">${incomingWeight} kg</td>
+            </tr>
+            <tr>
+                <td class="label">Cultivation Method</td>
+                <td class="value">${batchInfo.cultivation}</td>
+            </tr>
+            <tr>
+                <td class="label">Status</td>
+                <td class="value">${currentStatus}</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- 2. Raw Material Tracking -->
+    <div class="section">
+        <h2>2. Raw Material Tracking</h2>
+        <table>
+            <tr>
+                <td class="label">Raw Material Type</td>
+                <td class="value">${rawMaterialType}</td>
+            </tr>
+            <tr>
+                <td class="label">Farmer Name</td>
+                <td class="value">${rawMaterialSource}</td>
+            </tr>
+            <tr>
+                <td class="label">Lot Number</td>
+                <td class="value">${batchLotNumber}</td>
+            </tr>
+            <tr>
+                <td class="label">Incoming Weight</td>
+                <td class="value">${incomingWeight} kg</td>
+            </tr>
+            <tr>
+                <td class="label">Variety</td>
+                <td class="value">${batchInfo.plantVariety}</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- 3. Processing Details -->
+    <div class="section">
+        <h2>3. Processing Details</h2>
+        <table>
+            <tr>
+                <td class="label">Processing Method</td>
+                <td class="value">${processingMethod}</td>
+            </tr>
+            <tr>
+                <td class="label">Processing Date</td>
+                <td class="value">${processingDate ? new Date(processingDate).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB')}</td>
+            </tr>
+            <tr>
+                <td class="label">Temperature</td>
+                <td class="value">${temperature} °C</td>
+            </tr>
+            <tr>
+                <td class="label">Duration</td>
+                <td class="value">${duration} hours</td>
+            </tr>
+            <tr>
+                <td class="label">Operator/Processor</td>
+                <td class="value">${operatorProcessor}</td>
+            </tr>
+            <tr>
+                <td class="label">Equipment Used</td>
+                <td class="value">${equipmentUsed}</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- 4. Quality Inspection -->
+    <div class="section">
+        <h2>4. Quality Inspection</h2>
+        <div class="subsection-header">Physical & Chemical Tests</div>
+        <div class="subsection">
+            <table>
+                <tr>
+                    <td class="label">Moisture</td>
+                    <td class="value">${qualityData.moisture}%</td>
+                </tr>
+                <tr>
+                    <td class="label">Curcuminoid Content</td>
+                    <td class="value">${qualityData.curcuminoidContent}%</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="subsection-header">Heavy Metals Test (mg/kg)</div>
+        <div class="subsection">
+            <table>
+                <tr>
+                    <td class="label">Lead (Pb)</td>
+                    <td class="value">${qualityData.lead}</td>
+                </tr>
+                <tr>
+                    <td class="label">Cadmium (Cd)</td>
+                    <td class="value">${qualityData.cadmium}</td>
+                </tr>
+                <tr>
+                    <td class="label">Arsenic (As)</td>
+                    <td class="value">${qualityData.arsenic}</td>
+                </tr>
+                <tr>
+                    <td class="label">Mercury (Hg)</td>
+                    <td class="value">${qualityData.mercury}</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="subsection-header">Microbial Tests</div>
+        <div class="subsection">
+            <table>
+                <tr>
+                    <td class="label">Total Plate Count</td>
+                    <td class="value">${qualityData.totalPlateCount} CFU/g</td>
+                </tr>
+                <tr>
+                    <td class="label">Yeast & Mold</td>
+                    <td class="value">${qualityData.yeastMold} CFU/g</td>
+                </tr>
+                <tr>
+                    <td class="label">E. coli</td>
+                    <td class="value">${qualityData.eColi}</td>
+                </tr>
+                <tr>
+                    <td class="label">Salmonella</td>
+                    <td class="value">${qualityData.salmonella}</td>
+                </tr>
+                <tr>
+                    <td class="label">Pesticide Residues</td>
+                    <td class="value">${pesticideResidues || 'Not Detected'}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- 5. Output & Waste -->
+    <div class="section">
+        <h2>5. Output & Waste</h2>
+        <table>
+            <tr>
+                <td class="label">Final Product Type</td>
+                <td class="value">${finalProductType}</td>
+            </tr>
+            <tr>
+                <td class="label">Output Quantity</td>
+                <td class="value">${outputQuantity} ${outputUnit}</td>
+            </tr>
+            <tr>
+                <td class="label">Waste Quantity</td>
+                <td class="value">${wasteQuantity} kg</td>
+            </tr>
+            <tr>
+                <td class="label">Remaining Stock</td>
+                <td class="value">${remainingStock} kg</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- 6. Product Grading -->
+    <div class="section">
+        <h2>6. Product Grading</h2>
+        <table>
+            <tr>
+                <td class="label">Grade</td>
+                <td class="value">${productGrade}</td>
+            </tr>
+            <tr>
+                <td class="label">Target Market / Usage</td>
+                <td class="value">${targetMarket}</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- 7. Compliance & Certification -->
+    <div class="section">
+        <h2>7. Compliance & Certification</h2>
+        <table>
+            <tr>
+                <td class="label">Standard Criteria</td>
+                <td class="value">${standardCriteria}</td>
+            </tr>
+            <tr>
+                <td class="label">Certification Status</td>
+                <td class="value">${certificationStatus}</td>
+            </tr>
+            <tr>
+                <td class="label">Inspector Notes</td>
+                <td class="value">${complianceNotes || 'Product meets safety, hygiene, and processing standards.'}</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- 8. Report Summary -->
+    <div class="section">
+        <h2>8. Report Summary</h2>
+        <div class="cert-box">
+            <strong>This report certifies that Batch ${batchInfo.batchId} has been successfully processed under factory Good Manufacturing Practices (GMP). The turmeric material has passed all required inspections, meeting both quality and safety standards.</strong>
+        </div>
+        
+        <div class="signature-section">
+            <div class="signature-box">
+                <div class="signature-line">
+                    <strong>Prepared by (Processor)</strong>
+                </div>
+            </div>
+            <div class="signature-box">
+                <div class="signature-line">
+                    <strong>Reviewed by (Inspector)</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </div> <!-- ปิด content div -->
+</body>
+</html>`;
+
+        // เขียน HTML content ลงใน iframe
+        const frameDoc = printFrame.contentDocument || printFrame.contentWindow?.document;
+        if (frameDoc) {
+            frameDoc.write(reportContent);
+            frameDoc.close();
+            
+            // รอให้ content โหลดเสร็จแล้วค่อย print
+            setTimeout(() => {
+                if (printFrame.contentWindow) {
+                    printFrame.contentWindow.focus();
+                    printFrame.contentWindow.print();
+                    
+                    // ลบ iframe หลังจาก print เสร็จ
+                    setTimeout(() => {
+                        document.body.removeChild(printFrame);
+                    }, 250);
+                }
+            }, 250);
+        }
+    };
+
     // ฟังก์ชันกำหนดหน่วยเริ่มต้นตามประเภทสินค้า
     const getDefaultUnit = (productType: string): string => {
         switch (productType) {
@@ -156,6 +598,16 @@ export default function RecordDetailsPage() {
         try {
             setLoading(true);
             console.log('🔍 Fetching batch details for ID:', params.id);
+
+            // ตรวจสอบบทบาทผู้ใช้จาก localStorage
+            const currentUserRole = localStorage.getItem("userRole") || 'Factory';
+            setUserRole(currentUserRole);
+            
+            // กำหนด Read Only mode สำหรับ Farmer
+            if (currentUserRole === 'Farmer') {
+                setIsReadOnly(true);
+                console.log('👨‍🌾 User is Farmer - Setting Read Only mode');
+            }
 
             // Fetch factory processing record and farms data
             const [processingResponse, farmsResponse] = await Promise.all([
@@ -422,6 +874,10 @@ export default function RecordDetailsPage() {
     };
 
     useEffect(() => {
+        // ตั้งค่า userRole เริ่มต้นถ้ายังไม่มีใน localStorage
+        if (!localStorage.getItem("userRole")) {
+            localStorage.setItem("userRole", "Factory"); // ค่าเริ่มต้นเป็น Factory
+        }
         fetchBatchDetails();
     }, [params.id]);
 
@@ -462,12 +918,29 @@ export default function RecordDetailsPage() {
                             Back
                         </Button>
                         <h1 className="text-2xl font-semibold">Processing Details</h1>
-                        {isReadOnly && (
+                        {userRole === 'Farmer' && (
+                            <span className="px-3 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full border border-blue-300">
+                                <Eye className="w-3 h-3 inline mr-1" />
+                                View Only - Farmer
+                            </span>
+                        )}
+                        {isReadOnly && userRole !== 'Farmer' && (
                             <span className="px-3 py-1 text-xs font-medium bg-amber-100 text-amber-800 rounded-full border border-amber-300">
                                 Read Only - Completed
                             </span>
                         )}
                     </div>
+                    
+                    {/* Print Report Button for Farmers */}
+                    {userRole === 'Farmer' && (
+                        <Button
+                            onClick={handlePrintReport}
+                            className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
+                        >
+                            <Printer className="w-4 h-4" />
+                            Print Report
+                        </Button>
+                    )}
                 </header>
 
                 <main className="p-6 max-w-6xl mx-auto space-y-6">{/* Batch Information */}
@@ -528,15 +1001,19 @@ export default function RecordDetailsPage() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                                 <div>
                                     <Label className="text-sm font-medium text-gray-600">Processing Status</Label>
-                                    <Select value={processingStatus} onValueChange={setProcessingStatus}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select status" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Processing">Processing</SelectItem>
-                                            <SelectItem value="Completed">Completed</SelectItem>
-                                        </SelectContent>
-                                    </Select>
+                                    {userRole === 'Farmer' ? (
+                                        <Input value={currentStatus} readOnly className="bg-gray-50" />
+                                    ) : (
+                                        <Select value={processingStatus} onValueChange={setProcessingStatus}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Processing">Processing</SelectItem>
+                                                <SelectItem value="Completed">Completed</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    )}
                                 </div>
                             </div>
                         </CardContent>
@@ -556,7 +1033,7 @@ export default function RecordDetailsPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <div>
                                     <Label htmlFor="rawMaterialType" className="text-sm font-medium">Raw Material Type</Label>
-                                    <Select value={rawMaterialType} onValueChange={setRawMaterialType}>
+                                    <Select value={rawMaterialType} onValueChange={setRawMaterialType} disabled={userRole === 'Farmer'}>
                                         <SelectTrigger>
                                             <SelectValue>
                                                 {rawMaterialType ? rawMaterialType : "Select raw material type"}
@@ -577,6 +1054,8 @@ export default function RecordDetailsPage() {
                                         placeholder="Farmer Name"
                                         value={rawMaterialSource}
                                         onChange={(e) => setRawMaterialSource(e.target.value)}
+                                        readOnly={userRole === 'Farmer'}
+                                        className={userRole === 'Farmer' ? 'bg-gray-50' : ''}
                                     />
                                 </div>
 
@@ -587,6 +1066,8 @@ export default function RecordDetailsPage() {
                                         placeholder="Batch Number"
                                         value={batchLotNumber}
                                         onChange={(e) => setBatchLotNumber(e.target.value)}
+                                        readOnly={userRole === 'Farmer'}
+                                        className={userRole === 'Farmer' ? 'bg-gray-50' : ''}
                                     />
                                 </div>
 
@@ -598,6 +1079,8 @@ export default function RecordDetailsPage() {
                                         placeholder="0.00"
                                         value={incomingWeight}
                                         onChange={(e) => setIncomingWeight(e.target.value)}
+                                        readOnly={userRole === 'Farmer'}
+                                        className={userRole === 'Farmer' ? 'bg-gray-50' : ''}
                                     />
                                 </div>
                             </div>
@@ -632,6 +1115,8 @@ export default function RecordDetailsPage() {
                                             value={qualityData.moisture}
                                             onChange={(e) => setQualityData({ ...qualityData, moisture: e.target.value })}
                                             disabled={isReadOnly}
+                                            readOnly={userRole === 'Farmer'}
+                                            className={userRole === 'Farmer' ? 'bg-gray-50' : ''}
                                         />
                                     </div>
                                     <div>
@@ -644,6 +1129,8 @@ export default function RecordDetailsPage() {
                                             value={qualityData.curcuminoidContent}
                                             onChange={(e) => setQualityData({ ...qualityData, curcuminoidContent: e.target.value })}
                                             disabled={isReadOnly}
+                                            readOnly={userRole === 'Farmer'}
+                                            className={userRole === 'Farmer' ? 'bg-gray-50' : ''}
                                         />
                                     </div>
                                 </div>
@@ -665,6 +1152,8 @@ export default function RecordDetailsPage() {
                                             placeholder="0.00"
                                             value={qualityData.lead}
                                             onChange={(e) => setQualityData({ ...qualityData, lead: e.target.value })}
+                                            readOnly={userRole === 'Farmer'}
+                                            className={userRole === 'Farmer' ? 'bg-gray-50' : ''}
                                         />
                                     </div>
                                     <div>
@@ -676,6 +1165,8 @@ export default function RecordDetailsPage() {
                                             placeholder="0.00"
                                             value={qualityData.cadmium}
                                             onChange={(e) => setQualityData({ ...qualityData, cadmium: e.target.value })}
+                                            readOnly={userRole === 'Farmer'}
+                                            className={userRole === 'Farmer' ? 'bg-gray-50' : ''}
                                         />
                                     </div>
                                     <div>
@@ -687,6 +1178,8 @@ export default function RecordDetailsPage() {
                                             placeholder="0.00"
                                             value={qualityData.arsenic}
                                             onChange={(e) => setQualityData({ ...qualityData, arsenic: e.target.value })}
+                                            readOnly={userRole === 'Farmer'}
+                                            className={userRole === 'Farmer' ? 'bg-gray-50' : ''}
                                         />
                                     </div>
                                     <div>
@@ -698,6 +1191,8 @@ export default function RecordDetailsPage() {
                                             placeholder="0.00"
                                             value={qualityData.mercury}
                                             onChange={(e) => setQualityData({ ...qualityData, mercury: e.target.value })}
+                                            readOnly={userRole === 'Farmer'}
+                                            className={userRole === 'Farmer' ? 'bg-gray-50' : ''}
                                         />
                                     </div>
                                 </div>
@@ -718,6 +1213,8 @@ export default function RecordDetailsPage() {
                                             placeholder="1000"
                                             value={qualityData.totalPlateCount}
                                             onChange={(e) => setQualityData({ ...qualityData, totalPlateCount: e.target.value })}
+                                            readOnly={userRole === 'Farmer'}
+                                            className={userRole === 'Farmer' ? 'bg-gray-50' : ''}
                                         />
                                     </div>
                                     <div>
@@ -728,6 +1225,8 @@ export default function RecordDetailsPage() {
                                             placeholder="10"
                                             value={qualityData.yeastMold}
                                             onChange={(e) => setQualityData({ ...qualityData, yeastMold: e.target.value })}
+                                            readOnly={userRole === 'Farmer'}
+                                            className={userRole === 'Farmer' ? 'bg-gray-50' : ''}
                                         />
                                     </div>
                                     <div>
@@ -735,6 +1234,7 @@ export default function RecordDetailsPage() {
                                         <Select
                                             value={qualityData.eColi}
                                             onValueChange={(value) => setQualityData({ ...qualityData, eColi: value })}
+                                            disabled={userRole === 'Farmer'}
                                         >
                                             <SelectTrigger>
                                                 <SelectValue />
@@ -750,6 +1250,7 @@ export default function RecordDetailsPage() {
                                         <Select
                                             value={qualityData.salmonella}
                                             onValueChange={(value) => setQualityData({ ...qualityData, salmonella: value })}
+                                            disabled={userRole === 'Farmer'}
                                         >
                                             <SelectTrigger>
                                                 <SelectValue />
@@ -773,6 +1274,8 @@ export default function RecordDetailsPage() {
                                     onChange={(e) => setQualityData({ ...qualityData, inspectionNotes: e.target.value })}
                                     className="mt-1"
                                     rows={3}
+                                    readOnly={userRole === 'Farmer'}
+                                    style={{ backgroundColor: userRole === 'Farmer' ? '#f9fafb' : '' }}
                                 />
                             </div>
 
@@ -791,6 +1294,8 @@ export default function RecordDetailsPage() {
                                         onChange={(e) => setPesticideResidues(e.target.value)}
                                         className="mt-1"
                                         rows={3}
+                                        readOnly={userRole === 'Farmer'}
+                                        style={{ backgroundColor: userRole === 'Farmer' ? '#f9fafb' : '' }}
                                     />
                                 </div>
                             </div>
@@ -811,7 +1316,7 @@ export default function RecordDetailsPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 <div>
                                     <Label htmlFor="processingMethod" className="text-sm font-medium">Processing Method</Label>
-                                    <Select value={processingMethod} onValueChange={setProcessingMethod}>
+                                    <Select value={processingMethod} onValueChange={setProcessingMethod} disabled={userRole === 'Farmer'}>
                                         <SelectTrigger>
                                             <SelectValue />
                                         </SelectTrigger>
@@ -833,6 +1338,8 @@ export default function RecordDetailsPage() {
                                         type="date"
                                         value={processingDate}
                                         onChange={(e) => setProcessingDate(e.target.value)}
+                                        readOnly={userRole === 'Farmer'}
+                                        className={userRole === 'Farmer' ? 'bg-gray-50' : ''}
                                     />
                                 </div>
 
@@ -843,6 +1350,8 @@ export default function RecordDetailsPage() {
                                         placeholder="Enter operator name"
                                         value={operatorProcessor}
                                         onChange={(e) => setOperatorProcessor(e.target.value)}
+                                        readOnly={userRole === 'Farmer'}
+                                        className={userRole === 'Farmer' ? 'bg-gray-50' : ''}
                                     />
                                 </div>
                             </div>
@@ -857,6 +1366,8 @@ export default function RecordDetailsPage() {
                                         placeholder="0.0"
                                         value={temperature}
                                         onChange={(e) => setTemperature(e.target.value)}
+                                        readOnly={userRole === 'Farmer'}
+                                        className={userRole === 'Farmer' ? 'bg-gray-50' : ''}
                                     />
                                 </div>
 
@@ -869,6 +1380,8 @@ export default function RecordDetailsPage() {
                                         placeholder="0.0"
                                         value={duration}
                                         onChange={(e) => setDuration(e.target.value)}
+                                        readOnly={userRole === 'Farmer'}
+                                        className={userRole === 'Farmer' ? 'bg-gray-50' : ''}
                                     />
                                 </div>
 
@@ -879,6 +1392,8 @@ export default function RecordDetailsPage() {
                                         placeholder="Machine/Equipment"
                                         value={equipmentUsed}
                                         onChange={(e) => setEquipmentUsed(e.target.value)}
+                                        readOnly={userRole === 'Farmer'}
+                                        className={userRole === 'Farmer' ? 'bg-gray-50' : ''}
                                     />
                                 </div>
                             </div>
@@ -979,7 +1494,7 @@ export default function RecordDetailsPage() {
                                 <div className="space-y-4">
                                     <div>
                                         <Label htmlFor="standardCriteria" className="text-sm font-medium">Standard Criteria</Label>
-                                        <Select value={standardCriteria} onValueChange={setStandardCriteria}>
+                                        <Select value={standardCriteria} onValueChange={setStandardCriteria} disabled={userRole === 'Farmer'}>
                                             <SelectTrigger>
                                                 <SelectValue />
                                             </SelectTrigger>
@@ -994,7 +1509,7 @@ export default function RecordDetailsPage() {
 
                                     <div>
                                         <Label htmlFor="certificationStatus" className="text-sm font-medium">Certification Status</Label>
-                                        <Select value={certificationStatus} onValueChange={setCertificationStatus}>
+                                        <Select value={certificationStatus} onValueChange={setCertificationStatus} disabled={userRole === 'Farmer'}>
                                             <SelectTrigger>
                                                 <SelectValue />
                                             </SelectTrigger>
@@ -1014,6 +1529,8 @@ export default function RecordDetailsPage() {
                                             value={complianceNotes}
                                             onChange={(e) => setComplianceNotes(e.target.value)}
                                             rows={3}
+                                            readOnly={userRole === 'Farmer'}
+                                            style={{ backgroundColor: userRole === 'Farmer' ? '#f9fafb' : '' }}
                                         />
                                     </div>
                                 </div>
@@ -1034,7 +1551,7 @@ export default function RecordDetailsPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <Label htmlFor="productGrade" className="text-sm font-medium">Product Grade</Label>
-                                    <Select value={productGrade} onValueChange={setProductGrade}>
+                                    <Select value={productGrade} onValueChange={setProductGrade} disabled={userRole === 'Farmer'}>
                                         <SelectTrigger>
                                             <SelectValue />
                                         </SelectTrigger>
@@ -1051,7 +1568,7 @@ export default function RecordDetailsPage() {
 
                                 <div>
                                     <Label htmlFor="targetMarket" className="text-sm font-medium">Target Market / Usage</Label>
-                                    <Select value={targetMarket} onValueChange={setTargetMarket}>
+                                    <Select value={targetMarket} onValueChange={setTargetMarket} disabled={userRole === 'Farmer'}>
                                         <SelectTrigger>
                                             <SelectValue />
                                         </SelectTrigger>
@@ -1068,21 +1585,36 @@ export default function RecordDetailsPage() {
                     </Card>
 
                     <div className="flex items-center justify-end gap-2 left-1 bottom-0 w-full p-4 bg-white border-t">
-                        {isReadOnly && (
+                        {isReadOnly && userRole !== 'Farmer' && (
                             <div className="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-2 rounded-md border border-amber-200 mr-auto">
                                 <Package size={16} />
                                 <span className="text-sm font-medium">This processing record is completed and cannot be modified</span>
                             </div>
                         )}
+                        {userRole === 'Farmer' && (
+                            <div className="flex items-center gap-2 text-blue-600 bg-blue-50 px-3 py-2 rounded-md border border-blue-200 mr-auto">
+                                <Eye size={16} />
+                                <span className="text-sm font-medium">View only mode - Factory processing data</span>
+                            </div>
+                        )}
                         <Button
-                            onClick={() => router.push('/processing-history')}
+                            onClick={() => router.push(userRole === 'Farmer' ? '/factorysubmission' : '/processing-history')}
                             variant="outline"
                             className="flex items-center gap-2"
                         >
                             <ArrowLeft size={16} />
-                            {isReadOnly ? 'Back to History' : 'Cancel'}
+                            {userRole === 'Farmer' ? 'Back to Factory Submission' : (isReadOnly ? 'Back to History' : 'Cancel')}
                         </Button>
-                        {!isReadOnly && (
+                        {userRole === 'Farmer' && (
+                            <Button
+                                onClick={handlePrintReport}
+                                className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
+                            >
+                                <Printer className="w-4 h-4" />
+                                Print Report
+                            </Button>
+                        )}
+                        {!isReadOnly && userRole !== 'Farmer' && (
                             <Button
                                 onClick={handleSaveRecord}
                                 className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
