@@ -155,14 +155,13 @@ export default function ProcessingReportsPage() {
                 const quantity = item.output_quantity || 0;
                 const outputUnit = item.output_unit || 'kg'; // อ่านหน่วยจาก Strapi แทน if-else
 
-                // เช็คว่า record นี้ถูก export ไปแล้วหรือยังจาก export_factory_history
-                const hasExportHistory = item.export_factory_history && 
-                                       item.export_factory_history !== null && 
-                                       item.export_factory_history.status_export === "Export Success";
+                // เช็คว่า record นี้ถูก export ไปแล้วหรือยังจาก Processing_Status
+                const processingStatus = item.Processing_Status || "Unknown";
+                const hasExportHistory = processingStatus === "Export Success";
 
                 console.log(`Processing record ${item.batch_lot_number}:`, {
                     lotId: item.batch_lot_number,
-                    export_factory_history: item.export_factory_history,
+                    processing_status: processingStatus,
                     hasExportHistory: hasExportHistory
                 });
                 
@@ -505,6 +504,71 @@ export default function ProcessingReportsPage() {
                     if (saveResponse.ok) {
                         const savedRecord = await saveResponse.json();
                         console.log(`✅ Export history saved successfully for ${item.lotId}:`, savedRecord);
+                        
+                        // อัปเดต Processing_Status เป็น "Export Success" เพื่อเป็นสถานะถาวร
+                        try {
+                            console.log(`Attempting to update Processing_Status for ${item.lotId} with ID: ${factoryProcessingId}`);
+                            
+                            // ลองอัปเดตด้วย documentId ก่อน
+                            let updateResponse = await fetch(
+                                `https://api-freeroll-production.up.railway.app/api/factory-processings/${factoryProcessingId}`,
+                                {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                    },
+                                    body: JSON.stringify({
+                                        data: {
+                                            Processing_Status: 'Export Success'
+                                        }
+                                    }),
+                                }
+                            );
+                            
+                            // ถ้าไม่สำเร็จ ลองใช้ item.id แทน
+                            if (!updateResponse.ok && item.id && item.id !== factoryProcessingId) {
+                                console.log(`First update failed (${updateResponse.status}), trying with item.id: ${item.id}`);
+                                updateResponse = await fetch(
+                                    `https://api-freeroll-production.up.railway.app/api/factory-processings/${item.id}`,
+                                    {
+                                        method: 'PUT',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                        },
+                                        body: JSON.stringify({
+                                            data: {
+                                                Processing_Status: 'Export Success'
+                                            }
+                                        }),
+                                    }
+                                );
+                            }
+                            
+                            if (updateResponse.ok) {
+                                const updateResult = await updateResponse.json();
+                                console.log(`✅ Processing status updated to 'Export Success' for ${item.lotId}:`, updateResult);
+                            } else {
+                                let errorText;
+                                try {
+                                    const errorJson = await updateResponse.json();
+                                    errorText = JSON.stringify(errorJson);
+                                } catch (e) {
+                                    errorText = await updateResponse.text();
+                                }
+                                console.error(`❌ Failed to update processing status for ${item.lotId}:`, {
+                                    status: updateResponse.status,
+                                    statusText: updateResponse.statusText,
+                                    error: errorText,
+                                    factoryProcessingId: factoryProcessingId,
+                                    itemId: item.id
+                                });
+                            }
+                        } catch (updateError) {
+                            console.error(`❌ Processing status update error for ${item.lotId}:`, updateError);
+                        }
+                        
                         successCount++;
                     } else {
                         let errorText;
@@ -542,9 +606,16 @@ export default function ProcessingReportsPage() {
 
             // Refresh export history to show the new records
             if (successCount > 0) {
+                console.log(`🎉 Export Summary: ${successCount} items exported successfully`);
                 fetchExportHistory();
                 // Refresh the completed records data เพื่อให้รายการที่ export แล้วหายไปจากหน้า Data Export
                 fetchCompletedRecords();
+                
+                // เพิ่มการ reload หน้าเพื่อให้ Farmer เห็นข้อมูลล่าสุด
+                setTimeout(() => {
+                    console.log(`🔄 Refreshing page to sync farmer data...`);
+                    window.location.reload();
+                }, 2000);
             }
 
             // Mark items as exported
@@ -557,11 +628,11 @@ export default function ProcessingReportsPage() {
             // Show appropriate success/error message
             if (successCount === selectedBatchesData.length) {
                 console.log(`Export successful for ${selectedBatchesData.length} items:`, exportData);
-                alert(`Export completed successfully! ${selectedBatchesData.length} processing records exported as separate entries.`);
+                alert(`✅ Export completed successfully!\n\n${selectedBatchesData.length} processing records exported.\n\n⚠️ Note: If farmer status doesn't update immediately, there may be a database sync issue. Check console for details.`);
             } else if (successCount > 0) {
-                alert(`Partial success: ${successCount} records exported successfully, ${failCount} failed. Check console for details.`);
+                alert(`⚠️ Partial success: ${successCount} records exported successfully, ${failCount} failed.\n\nSome farmer statuses may not update correctly. Check console for details.`);
             } else {
-                alert('Export failed for all selected items. Please check console for details.');
+                alert('❌ Export failed for all selected items. Please check console for details.');
             }
 
         } catch (error) {
@@ -851,17 +922,6 @@ export default function ProcessingReportsPage() {
                             <div className="flex justify-between items-center mb-4">
                                 <div>
                                     <h2 className="text-lg font-medium">Data Export</h2>
-                                    <p className="text-sm text-gray-600 mt-1">
-                                        {filteredData.length === completedData.length 
-                                            ? `Total ${completedData.length} records`
-                                            : `Found ${filteredData.length} of ${completedData.length} records`
-                                        }
-                                        {selectedItems.length > 0 && (
-                                            <span className="ml-2 text-green-600 font-medium">
-                                                • {selectedItems.length} selected for export
-                                            </span>
-                                        )}
-                                    </p>
                                 </div>
                                 <div className="flex gap-2">
                                     <button

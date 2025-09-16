@@ -374,21 +374,28 @@ export default function FactorySubmissionPage() {
                 return;
             }
             
-            // Transform data และเช็คว่ามี export history หรือไม่
+            // Transform data และเช็คสถานะจาก Processing_Status
             const transformedData = data.data.map((item: any) => {
-                // เช็คว่ามี export_factory_history หรือไม่ (อาจเป็น array หรือ object)
-                const hasExportHistory = item.export_factory_history && 
-                    (Array.isArray(item.export_factory_history) ? 
-                        item.export_factory_history.length > 0 : 
-                        item.export_factory_history.id);
+                // ใช้ Processing_Status เป็นหลักในการกำหนดสถานะ (ไม่พึ่งพา export_factory_history)
+                const processingStatus = item.Processing_Status || "Unknown";
                 
-                // กำหนด status ตาม export history
-                let status = item.Processing_Status || "Unknown";
-                if (hasExportHistory) {
+                // กำหนด status ตาม Processing_Status
+                let status = processingStatus;
+                if (processingStatus === "Export Success") {
                     status = "Export Success";
-                } else if (item.Processing_Status === "Completed") {
+                } else if (processingStatus === "Completed") {
                     status = "Awaiting Export";
                 }
+
+                // ใช้ Processing_Status เพื่อกำหนดว่าถูก export แล้วหรือไม่
+                const hasExportHistory = processingStatus === "Export Success";
+
+                console.log(`Processing item ${item.Batch_Id}:`, {
+                    batchId: item.Batch_Id,
+                    processing_status: processingStatus,
+                    final_status: status,
+                    hasExported: hasExportHistory
+                });
 
                 return {
                     id: item.Batch_Id || `batch-${item.id}`,
@@ -401,7 +408,7 @@ export default function FactorySubmissionPage() {
                     unit: item.output_unit || 'kg',
                     status: status,
                     note: item.compliance_notes || item.inspection_notes || '',
-                    hasExportHistory: hasExportHistory, // เพิ่มเพื่อใช้ในการแสดงปุ่ม
+                    hasExportHistory: hasExportHistory, // ใช้ Processing_Status แทน export_factory_history
                 };
             });
 
@@ -419,6 +426,47 @@ export default function FactorySubmissionPage() {
         (currentPage - 1) * itemsPerPage,
         currentPage * itemsPerPage
     );
+
+    // Function สำหรับสร้าง pagination pages
+    const getPaginationPages = () => {
+        const pages = [];
+        const maxVisiblePages = 7; // จำนวนหน้าสูงสุดที่จะแสดง
+        
+        if (totalPages <= maxVisiblePages) {
+            // แสดงทุกหน้าถ้าจำนวนน้อย
+            for (let i = 1; i <= totalPages; i++) {
+                pages.push(i);
+            }
+        } else {
+            // แสดงแบบมีจุด ... ถ้าจำนวนมาก
+            if (currentPage <= 4) {
+                // ถ้าอยู่หน้าแรกๆ แสดง 1,2,3,4,5...สุดท้าย
+                for (let i = 1; i <= 5; i++) {
+                    pages.push(i);
+                }
+                pages.push('...');
+                pages.push(totalPages);
+            } else if (currentPage >= totalPages - 3) {
+                // ถ้าอยู่หน้าท้ายๆ แสดง แรก...N-4,N-3,N-2,N-1,N
+                pages.push(1);
+                pages.push('...');
+                for (let i = totalPages - 4; i <= totalPages; i++) {
+                    pages.push(i);
+                }
+            } else {
+                // ถ้าอยู่ตรงกลาง แสดง 1...currentPage-1,currentPage,currentPage+1...สุดท้าย
+                pages.push(1);
+                pages.push('...');
+                for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+                    pages.push(i);
+                }
+                pages.push('...');
+                pages.push(totalPages);
+            }
+        }
+        
+        return pages;
+    };
 
 
     const toggleSidebar = () => {
@@ -795,18 +843,28 @@ export default function FactorySubmissionPage() {
                                         <ChevronLeft className="w-4 h-4" />
                                     </button>
 
-                                    {[...Array(totalPages)].map((_, i) => (
-                                        <button
-                                            key={i}
-                                            onClick={() => setCurrentPage(i + 1)}
-                                            className={`w-8 h-8 rounded-full border transition ${currentPage === i + 1
-                                                ? "bg-green-600 text-white"
-                                                : "hover:bg-gray-100"
-                                                }`}
-                                        >
-                                            {i + 1}
-                                        </button>
-                                    ))}
+                                    {getPaginationPages().map((page, index) => {
+                                        if (page === '...') {
+                                            return (
+                                                <span key={`ellipsis-${index}`} className="w-8 h-8 flex items-center justify-center text-gray-400">
+                                                    ...
+                                                </span>
+                                            );
+                                        }
+                                        
+                                        return (
+                                            <button
+                                                key={page}
+                                                onClick={() => setCurrentPage(page as number)}
+                                                className={`w-8 h-8 rounded-full border transition ${currentPage === page
+                                                    ? "bg-green-600 text-white border-green-600"
+                                                    : "hover:bg-gray-100 border-gray-300"
+                                                    }`}
+                                            >
+                                                {page}
+                                            </button>
+                                        );
+                                    })}
 
                                     <button
                                         onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
