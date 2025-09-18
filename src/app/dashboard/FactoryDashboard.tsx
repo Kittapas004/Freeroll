@@ -66,12 +66,14 @@ interface ProductionData {
 
 interface FactoryNotification {
   id: string;
-  type: 'new_submission' | 'upcoming_inspection' | 'pass' | 'processing';
+  documentId: string;
+  type: 'new_submission' | 'pass' | 'processing' | 'export_success';
   title: string;
   message: string;
   batchId: string;
   date: string;
   read: boolean;
+  notification_status: 'General' | 'Succeed' | 'Failed' | 'Warning';
 }
 
 interface ProcessingHistory {
@@ -147,6 +149,177 @@ export default function FactoryDashboard() {
     }
   };
 
+  // 🔔 Fetch Factory Notifications from Strapi
+  const fetchFactoryNotifications = async (): Promise<void> => {
+    try {
+      console.log('🔔 Fetching Factory notifications from Strapi...');
+      const response = await fetch(
+        `https://api-freeroll-production.up.railway.app/api/factory-notifications?populate=*&filters[user_documentId][$eq]=${localStorage.getItem("userId")}&sort=createdAt:desc`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error('❌ Failed to fetch notifications');
+        console.error('Response status:', response.status);
+        console.error('Response statusText:', response.statusText);
+        
+        // Try to get error details
+        try {
+          const errorText = await response.text();
+          console.error('Error details:', errorText);
+        } catch (e) {
+          console.error('Could not read error details');
+        }
+        
+        return;
+      }
+
+      const result = await response.json();
+      console.log('✅ Raw notification data:', result);
+
+      if (!result.data || result.data.length === 0) {
+        console.log('📝 No notifications found, setting empty array');
+        setFactoryNotifications([]);
+        return;
+      }
+
+      // Map Strapi notifications to FactoryNotification interface
+      const mappedNotifications: FactoryNotification[] = result.data.map((notification: any) => {
+        // Get batch ID from various sources (relations or fallback)
+        const batchId = notification.batch?.Batch_id || 
+                       notification.factory_submission?.Batch_id || 
+                       notification.factory_processing?.Batch_Id || 
+                       'Unknown';
+        
+        const createdAt = new Date(notification.createdAt || notification.Date);
+        const now = new Date();
+        const timeDiff = now.getTime() - createdAt.getTime();
+        const hoursAgo = Math.floor(timeDiff / (1000 * 60 * 60));
+        const timeAgo = hoursAgo < 1 ? 'Just now' : 
+                       hoursAgo < 24 ? `${hoursAgo} hours ago` : 
+                       `${Math.floor(hoursAgo / 24)} days ago`;
+
+        // Determine notification type based on message content and relations
+        let type: 'new_submission' | 'pass' | 'processing' | 'export_success' = 'processing';
+        
+        if (notification.factory_processing && notification.Text.includes('exported successfully')) {
+          type = 'export_success';
+        } else if (notification.factory_processing && notification.Text.includes('completed successfully')) {
+          type = 'pass';
+        } else if (notification.factory_submission) {
+          type = 'new_submission';
+        } else if (notification.Text.includes('processing')) {
+          type = 'processing';
+        }
+
+        return {
+          id: notification.id.toString(),
+          documentId: notification.documentId,
+          type,
+          title: notification.Text.split(' ').slice(0, 3).join(' ') + '...', // Short title from message
+          message: notification.Text,
+          batchId,
+          date: timeAgo,
+          read: notification.Notification_status !== 'General', // Assume 'General' means unread
+          notification_status: notification.Notification_status || 'General'
+        };
+      });
+
+      console.log('📋 Mapped notifications:', mappedNotifications);
+      setFactoryNotifications(mappedNotifications);
+
+    } catch (err) {
+      console.error('❌ Error fetching factory notifications:', err);
+      setFactoryNotifications([
+        {
+          id: '1',
+          documentId: '1',
+          type: 'new_submission',
+          title: 'Error Loading',
+          message: 'Unable to fetch notifications. Please refresh the page.',
+          batchId: 'System',
+          date: 'now',
+          read: false,
+          notification_status: 'Failed'
+        }
+      ]);
+    }
+  };
+
+  // 🗑️ Delete Factory Notification
+  const deleteFactoryNotification = async (documentId: string): Promise<void> => {
+    if (!confirm("Are you sure you want to delete this notification?")) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(
+        `https://api-freeroll-production.up.railway.app/api/factory-notifications/${documentId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete notification");
+      }
+
+      // Remove from local state
+      setFactoryNotifications((prev) => 
+        prev.filter((n) => n.documentId !== documentId)
+      );
+
+      console.log('✅ Notification deleted successfully');
+    } catch (error) {
+      console.error("❌ Error deleting notification:", error);
+      alert("Failed to delete notification. Please try again.");
+    }
+  };
+
+  // 📩 Create Factory Notification (for use in other functions)
+  const createFactoryNotification = async (
+    message: string, 
+    batchDocumentId?: string, 
+    notificationStatus: 'General' | 'Succeed' | 'Failed' | 'Warning' = 'General'
+  ): Promise<void> => {
+    try {
+      console.log('🔔 Creating notification with userId:', localStorage.getItem("userId"));
+      const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-notifications`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+        },
+        body: JSON.stringify({
+          data: {
+            Text: message,
+            Date: new Date().toISOString(),
+            Notification_status: notificationStatus,
+            batch: batchDocumentId,
+            user_documentId: localStorage.getItem("userId"),
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create notification");
+      }
+
+      console.log('✅ Factory notification created:', message);
+      // Refresh notifications after creating new one
+      fetchFactoryNotifications();
+    } catch (error) {
+      console.error("❌ Error creating factory notification:", error);
+    }
+  };
+
   const fetchFactoryData = async (): Promise<void> => {
     try {
       setLoading(true);
@@ -191,12 +364,17 @@ export default function FactoryDashboard() {
       console.log(`📊 Found ${submissions.length} factory submissions and ${processings.length} processing records`);
       
       if (processings.length > 0) {
-        // Filter only completed processings for calculations
+        // Filter completed and exported processings for calculations (include Export Success)
         const completedProcessings = processings.filter((p: any) => 
-          p.Processing_Status === 'Completed'
+          p.Processing_Status === 'Completed' || p.Processing_Status === 'Export Success'
         );
 
-        console.log('✅ Completed Processings:', completedProcessings);
+        console.log('✅ Completed & Export Success Processings:', completedProcessings);
+        console.log('📊 Processing Status Breakdown:', processings.map((p: any) => ({
+          batch: p.Batch_Id,
+          status: p.Processing_Status,
+          included: (p.Processing_Status === 'Completed' || p.Processing_Status === 'Export Success')
+        })));
         
         // Calculate real stats from completed processing records only
         
@@ -258,9 +436,9 @@ export default function FactoryDashboard() {
           return sum + (parseFloat(p.remaining_stock) || 0);
         }, 0);
 
-        // Calculate batches awaiting export (all processings that are NOT completed yet)
+        // Calculate batches awaiting export (all processings that are NOT completed or exported yet)
         const batchesAwaitingExport = processings.filter((p: any) => 
-          p.Processing_Status !== 'Completed'
+          p.Processing_Status !== 'Completed' && p.Processing_Status !== 'Export Success'
         ).length;
 
         const pendingSubmissions = processings.filter((p: any) => 
@@ -269,11 +447,21 @@ export default function FactoryDashboard() {
         
         const completedBatches = completedProcessings.length; // Count of completed processings
         
+        console.log('🧮 Calculation Summary:', {
+          totalRecords: processings.length,
+          completedAndExported: completedProcessings.length,
+          totalTurmericUsed: Math.round(totalTurmericUsed * 100) / 100,
+          totalWaste: Math.round(totalWaste * 100) / 100,
+          topProductType: topProductTypeName,
+          topProductOutput: Math.round(topProductOutput * 100) / 100,
+          batchesAwaitingExport: batchesAwaitingExport
+        });
+        
         setStats({
-          totalProcessed: Math.round(totalTurmericUsed * 100) / 100, // Total output_quantity from completed only
-          pendingSubmissions: Math.round(totalWaste * 100) / 100, // Total waste_quantity from completed only
+          totalProcessed: Math.round(totalTurmericUsed * 100) / 100, // Total output_quantity from completed + export success
+          pendingSubmissions: Math.round(totalWaste * 100) / 100, // Total waste_quantity from completed + export success
           completedBatches: batchesAwaitingExport, // Batches awaiting export count
-          totalOutput: Math.round(topProductOutput * 100) / 100 // Top product output quantity from completed only
+          totalOutput: Math.round(topProductOutput * 100) / 100 // Top product output quantity from completed + export success
         });
 
         console.log('📊 Updated stats:', {
@@ -297,6 +485,21 @@ export default function FactoryDashboard() {
             productOutput = 'Processing in progress';
           }
 
+          // Map processing status properly for Recent Processing
+          const processingStatus = processing.Processing_Status || 'Processing';
+          let displayStatus: 'Passed' | 'Processing' = 'Processing';
+          
+          // Show "Passed" for both Completed and Export Success
+          if (processingStatus === 'Completed' || processingStatus === 'Export Success') {
+            displayStatus = 'Passed';
+          }
+
+          console.log(`Recent Processing - Batch ${processing.Batch_Id}:`, {
+            originalStatus: processing.Processing_Status,
+            displayStatus: displayStatus,
+            output: productOutput
+          });
+
           return {
             id: processing.id.toString(),
             batchId: processing.Batch_Id || `T-batch-${processing.id}`,
@@ -304,13 +507,13 @@ export default function FactoryDashboard() {
             processor: processing.operator_processor || processing.Factory || 'Factory Processing',
             productOutput,
             processMethod: processing.final_product_type || 'Standard Processing',
-            status: processing.Processing_Status === 'Completed' ? 'Passed' : 'Processing'
+            status: displayStatus
           };
         });
 
         setRecentProcessing(recentProcessingData);
 
-        // Generate processing history from real processing data
+        // Generate processing history from real processing data (including Export Success)
         const history: ProcessingHistory[] = processings.slice(0, 6).map((processing: any) => {
           const output = parseFloat(processing.output_quantity) || 0;
           const finalProductType = processing.final_product_type || 'Unknown';
@@ -323,11 +526,32 @@ export default function FactoryDashboard() {
             outputText = 'Processing';
           }
 
+          // Map processing status to display status
+          const processingStatus = processing.Processing_Status || 'Processing';
+          let displayStatus = processingStatus;
+          
+          // Ensure "Export Success" is displayed properly
+          if (processingStatus === 'Export Success') {
+            displayStatus = 'Export Success';
+          } else if (processingStatus === 'Completed') {
+            displayStatus = 'Completed';
+          } else if (processingStatus === 'Processing') {
+            displayStatus = 'Processing';
+          } else if (processingStatus === 'Received') {
+            displayStatus = 'Received';
+          }
+
+          console.log(`Processing History - Batch ${processing.Batch_Id}:`, {
+            originalStatus: processing.Processing_Status,
+            displayStatus: displayStatus,
+            output: outputText
+          });
+
           return {
             id: processing.id.toString(),
             batchId: processing.Batch_Id || `T-batch-${processing.id}`,
             date: processing.Date_Received || processing.createdAt,
-            status: processing.Processing_Status || 'Processing',
+            status: displayStatus,
             output: outputText
           };
         });
@@ -378,43 +602,8 @@ export default function FactoryDashboard() {
           ]);
         }
 
-        // Generate real notifications based on recent processings
-        const notifications: FactoryNotification[] = processings.slice(0, 4).map((processing: any, index: number) => {
-          const batchId = processing.Batch_Id || `T-batch-${processing.id}`;
-          const timeDiff = new Date().getTime() - new Date(processing.createdAt).getTime();
-          const hoursAgo = Math.floor(timeDiff / (1000 * 60 * 60));
-          const timeAgo = hoursAgo < 24 ? `${hoursAgo} hours ago` : `${Math.floor(hoursAgo / 24)} days ago`;
-
-          let type: 'new_submission' | 'upcoming_inspection' | 'pass' | 'processing' = 'processing';
-          let title = 'Processing';
-          let message = `${batchId} is being processed`;
-
-          if (processing.Processing_Status === 'Completed') {
-            type = 'pass';
-            title = 'Processing Complete!';
-            message = `${batchId} successfully completed processing`;
-          } else if (processing.Processing_Status === 'Received') {
-            type = 'new_submission';
-            title = 'New Processing Request';
-            message = `${batchId} received for processing`;
-          } else if (processing.Processing_Status === 'Processing') {
-            type = 'processing';
-            title = 'In Progress';
-            message = `${batchId} currently being processed`;
-          }
-
-          return {
-            id: processing.id.toString(),
-            type,
-            title,
-            message,
-            batchId,
-            date: timeAgo,
-            read: index > 1 // Mark first 2 as unread
-          };
-        });
-
-        setFactoryNotifications(notifications);
+        // Fetch Factory Notifications from Strapi instead of generating locally
+        fetchFactoryNotifications();
 
         // Generate production data for pie chart based on real data
         const productionPieData: ProductionData[] = [
@@ -511,12 +700,14 @@ export default function FactoryDashboard() {
         setFactoryNotifications([
           {
             id: '1',
+            documentId: '1',
             type: 'new_submission',
             title: 'Welcome to Factory Dashboard',
             message: 'No factory submissions yet. Waiting for farmers to submit batches.',
             batchId: 'System',
             date: 'now',
-            read: false
+            read: false,
+            notification_status: 'General'
           }
         ]);
 
@@ -551,12 +742,14 @@ export default function FactoryDashboard() {
       setFactoryNotifications([
         {
           id: '1',
+          documentId: '1',
           type: 'new_submission',
           title: 'Connection Error',
           message: 'Unable to fetch factory data. Please check your connection.',
           batchId: 'System',
           date: 'now',
-          read: false
+          read: false,
+          notification_status: 'Failed'
         }
       ]);
     } finally {
@@ -567,6 +760,9 @@ export default function FactoryDashboard() {
   useEffect(() => {
     fetchUserData();
     fetchFactoryData();
+    // Auto-refresh notifications every 2 minutes
+    const notificationInterval = setInterval(fetchFactoryNotifications, 120000);
+    return () => clearInterval(notificationInterval);
   }, []);
 
   const notificationsPageCount = Math.ceil(factoryNotifications.length / ITEMS_PER_PAGE);
@@ -883,11 +1079,15 @@ export default function FactoryDashboard() {
                     <div className="flex justify-between items-start mb-2">
                       <span className="font-medium text-sm">{item.batchId}</span>
                       <span className={`text-xs px-2 py-1 rounded-full ${
-                        item.status === 'Completed' 
+                        item.status === 'Export Success' 
+                          ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                          : item.status === 'Completed' 
                           ? 'bg-green-100 text-green-600'
                           : item.status === 'Received'
                           ? 'bg-blue-100 text-blue-800'
-                          : 'bg-yellow-100 text-yellow-600'
+                          : item.status === 'Processing'
+                          ? 'bg-yellow-100 text-yellow-600'
+                          : 'bg-gray-100 text-gray-600'
                       }`}>
                         {item.status}
                       </span>
@@ -965,7 +1165,7 @@ export default function FactoryDashboard() {
                   <div key={notification.id} className="p-3 rounded-md border border-gray-200 hover:shadow-sm transition-shadow">
                     <div className="flex items-start gap-2">
                       {notification.type === 'pass' && <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />}
-                      {notification.type === 'upcoming_inspection' && <AlertCircle className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />}
+                      {notification.type === 'export_success' && <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />}
                       {notification.type === 'processing' && <Settings className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />}
                       {notification.type === 'new_submission' && <Package className="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0" />}
                       <div className="flex-1 min-w-0">
@@ -973,9 +1173,18 @@ export default function FactoryDashboard() {
                         <p className="text-xs text-gray-600 mt-1 break-words">{notification.message}</p>
                         <p className="text-xs text-gray-400 mt-1">{notification.date}</p>
                       </div>
-                      {!notification.read && (
-                        <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1"></div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {!notification.read && (
+                          <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                        )}
+                        <button
+                          className="text-gray-300 hover:text-gray-500 text-xs flex-shrink-0"
+                          onClick={() => deleteFactoryNotification(notification.documentId)}
+                          title="Delete notification"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))

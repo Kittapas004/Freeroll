@@ -864,6 +864,38 @@ export default function RecordDetailsPage() {
 
             const result = await response.json();
             console.log('✅ Processing record saved:', result);
+            
+            // 🔔 Create notification if processing status is "Completed"
+            if (processingStatus === 'Completed') {
+                try {
+                    const notificationResponse = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-notifications`, {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                        },
+                        body: JSON.stringify({
+                            data: {
+                                Text: `Processing for batch ${batchInfo.batchId} has been completed successfully! Output: ${getFormattedOutput()}`,
+                                Date: new Date().toISOString(),
+                                Notification_status: "Succeed",
+                                user_documentId: localStorage.getItem("userId"),
+                                factory_processing: params.id, // Relation to Factory_Processing
+                                // Note: batch relation might need batch documentId if available
+                            }
+                        })
+                    });
+
+                    if (notificationResponse.ok) {
+                        console.log(`✅ Processing completion notification created for ${batchInfo.batchId}`);
+                    } else {
+                        console.error(`❌ Failed to create processing notification for ${batchInfo.batchId}`);
+                    }
+                } catch (notificationError) {
+                    console.error(`❌ Error creating processing notification:`, notificationError);
+                }
+            }
+            
             alert('Processing record saved successfully!');
             router.push('/processing-details');
 

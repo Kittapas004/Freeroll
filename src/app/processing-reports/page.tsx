@@ -549,6 +549,35 @@ export default function ProcessingReportsPage() {
                             if (updateResponse.ok) {
                                 const updateResult = await updateResponse.json();
                                 console.log(`✅ Processing status updated to 'Export Success' for ${item.lotId}:`, updateResult);
+                                
+                                // 🔔 Create Factory Notification for Export Success
+                                try {
+                                    const notificationResponse = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-notifications`, {
+                                        method: "POST",
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                            Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                                        },
+                                        body: JSON.stringify({
+                                            data: {
+                                                Text: `Batch ${item.lotId} has been exported successfully! Data is now available to farmers.`,
+                                                Date: new Date().toISOString(),
+                                                Notification_status: "Succeed",
+                                                user_documentId: localStorage.getItem("userId"),
+                                                factory_processing: factoryProcessingId, // Relation to Factory_Processing
+                                                // batch relation might need to be added if available
+                                            }
+                                        })
+                                    });
+
+                                    if (notificationResponse.ok) {
+                                        console.log(`✅ Export Success notification created for ${item.lotId}`);
+                                    } else {
+                                        console.error(`❌ Failed to create export notification for ${item.lotId}`);
+                                    }
+                                } catch (notificationError) {
+                                    console.error(`❌ Error creating export notification for ${item.lotId}:`, notificationError);
+                                }
                             } else {
                                 let errorText;
                                 try {

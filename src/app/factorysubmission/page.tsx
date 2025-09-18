@@ -271,21 +271,104 @@ export default function FactorySubmissionPage() {
 
             const processingResult = await processingResponse.json();
             console.log("Factory processing record created:", processingResult);
-
-            // Update batch status
-            if (submissionData.batch) {
-                await fetch(`https://api-freeroll-production.up.railway.app/api/batches/${submissionData.batch}`, {
-                    method: "PUT",
+            
+            // 🔔 Create notification for new factory processing (status: Received)
+            try {
+                console.log('Creating notification for received batch...');
+                console.log('Selected factory documentId:', factorySelection);
+                
+                // หา User ที่เป็นเจ้าของ Factory นี้โดยตรง
+                const factoryResponse = await fetch(`https://api-freeroll-production.up.railway.app/api/factories/${factorySelection}?populate=users_permissions_users`, {
                     headers: {
-                        "Content-Type": "application/json",
                         Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                     },
-                    body: JSON.stringify({
-                        data: {
-                            Batch_Status: "Submitted to Factory",
-                        },
-                    }),
                 });
+
+                if (!factoryResponse.ok) {
+                    console.warn('Failed to fetch factory details');
+                } else {
+                    const factoryData = await factoryResponse.json();
+                    console.log('Factory data with users:', factoryData);
+
+                    // ดึง users ที่เกี่ยวข้องกับ Factory นี้
+                    const factoryUsers = factoryData.data.users_permissions_users || [];
+                    console.log('Factory users found:', factoryUsers);
+
+                    if (factoryUsers.length > 0) {
+                        // ส่ง notification ไปให้ Factory users ที่เกี่ยวข้องกับ Factory นี้เท่านั้น
+                        for (const factoryUser of factoryUsers) {
+                            const factoryUserId = factoryUser.documentId;
+                            
+                            console.log('Sending notification to factory owner:', factoryUser.username, 'ID:', factoryUserId);
+
+                            const notificationResponse = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-notifications`, {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                                },
+                                body: JSON.stringify({
+                                    data: {
+                                        Text: `New batch ${submissionData.Batch_id} has been received for processing. Quality: ${submissionData.Quality_Grade}, Yield: ${submissionData.Yield}`,
+                                        Date: new Date().toISOString(),
+                                        Notification_status: "General",
+                                        user_documentId: factoryUserId,
+                                        factory_submission: documentId,
+                                        factory_processing: processingResult.data.documentId, // เพิ่ม relation ไปยัง Factory_Processing
+                                    }
+                                })
+                            });
+
+                            if (notificationResponse.ok) {
+                                console.log(`✅ Factory processing notification created for ${factoryUser.username}`);
+                            } else {
+                                console.error(`❌ Failed to create factory processing notification for ${factoryUser.username}`);
+                            }
+                        }
+                    } else {
+                        console.warn('No users found for this factory');
+                        
+                        // Fallback: หาทุกคนที่มี user_role เป็น Factory
+                        const usersResponse = await fetch(`https://api-freeroll-production.up.railway.app/api/users?filters[user_role][$eq]=Factory`, {
+                            headers: {
+                                Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                            },
+                        });
+
+                        if (usersResponse.ok) {
+                            const usersData = await usersResponse.json();
+                            console.log('Fallback: All factory role users:', usersData);
+
+                            for (const factoryUser of usersData) {
+                                const factoryUserId = factoryUser.documentId;
+                                
+                                const notificationResponse = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-notifications`, {
+                                    method: "POST",
+                                    headers: {
+                                        "Content-Type": "application/json",
+                                        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                                    },
+                                    body: JSON.stringify({
+                                        data: {
+                                            Text: `New batch ${submissionData.Batch_id} has been received for processing. Quality: ${submissionData.Quality_Grade}, Yield: ${submissionData.Yield}`,
+                                            Date: new Date().toISOString(),
+                                            Notification_status: "General",
+                                            user_documentId: factoryUserId,
+                                            factory_submission: documentId,
+                                            factory_processing: processingResult.data.documentId,
+                                        }
+                                    })
+                                });
+
+                                if (notificationResponse.ok) {
+                                    console.log(`✅ Fallback notification created for ${factoryUser.username}`);
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (notificationError) {
+                console.error(`❌ Error creating factory processing notification:`, notificationError);
             }
 
             await fetchFactoryData();
