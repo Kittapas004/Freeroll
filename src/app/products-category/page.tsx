@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,7 +49,7 @@ interface ProductCategory {
     products: FactoryProcessing[];
 }
 
-const ProductsPage = () => {
+const ProductsContent = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [searchTerm, setSearchTerm] = useState('');
@@ -568,6 +568,28 @@ const ProductsPage = () => {
 
             <Footer />
         </div>
+    );
+};
+
+// Loading component for Suspense fallback
+const ProductsLoading = () => (
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-yellow-50">
+        <PublicNavigation />
+        <div className="container mx-auto px-4 py-8">
+            <div className="text-center py-12">
+                <div className="text-gray-500 text-lg">Loading products...</div>
+            </div>
+        </div>
+        <Footer />
+    </div>
+);
+
+// Main component with Suspense wrapper
+const ProductsPage = () => {
+    return (
+        <Suspense fallback={<ProductsLoading />}>
+            <ProductsContent />
+        </Suspense>
     );
 };
 
