@@ -220,7 +220,9 @@ export default function FactoryDashboard() {
           id: notification.id.toString(),
           documentId: notification.documentId,
           type,
-          title: notification.Text.split(' ').slice(0, 3).join(' ') + '...', // Short title from message
+          title: notification.Text.length > 100 
+            ? notification.Text.substring(0, 100) + '...' 
+            : notification.Text, // Show full message if short, or first 50 chars with ellipsis
           message: notification.Text,
           batchId,
           date: timeAgo,
@@ -378,10 +380,10 @@ export default function FactoryDashboard() {
         
         // Calculate real stats from completed processing records only
         
-        // 1. Total Turmeric Used = sum of all output_quantity from completed processings
+        // 1. Total Turmeric Used = sum of all incoming_weight from completed processings
         const totalTurmericUsed = completedProcessings.reduce((sum: number, p: any) => {
-          const output = parseFloat(p.output_quantity) || 0;
-          return sum + output;
+          const incomingWeight = parseFloat(p.incoming_weight) || 0;
+          return sum + incomingWeight;
         }, 0);
 
         // 2. Calculate total waste = sum of all waste_quantity from completed processings
@@ -430,7 +432,7 @@ export default function FactoryDashboard() {
         const unit = latestTopProductProcessing?.output_unit || 'kg';
         setTopProductUnit(unit);
 
-        const totalOutput = totalTurmericUsed; // Same as total turmeric used for simplicity
+        const totalOutput = topProductOutput; // Top product total output quantity
 
         const totalRemaining = completedProcessings.reduce((sum: number, p: any) => {
           return sum + (parseFloat(p.remaining_stock) || 0);
@@ -458,7 +460,7 @@ export default function FactoryDashboard() {
         });
         
         setStats({
-          totalProcessed: Math.round(totalTurmericUsed * 100) / 100, // Total output_quantity from completed + export success
+          totalProcessed: Math.round(totalTurmericUsed * 100) / 100, // Total incoming_weight from completed + export success
           pendingSubmissions: Math.round(totalWaste * 100) / 100, // Total waste_quantity from completed + export success
           completedBatches: batchesAwaitingExport, // Batches awaiting export count
           totalOutput: Math.round(topProductOutput * 100) / 100 // Top product output quantity from completed + export success
@@ -634,7 +636,7 @@ export default function FactoryDashboard() {
           return {
             date: date,
             day: date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
-            turmeric_used: parseFloat(processing.output_quantity) || 0,
+            turmeric_used: parseFloat(processing.incoming_weight) || 0,
             waste: parseFloat(processing.waste_quantity) || 0,
             processing: processing
           };
@@ -1169,8 +1171,7 @@ export default function FactoryDashboard() {
                       {notification.type === 'processing' && <Settings className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />}
                       {notification.type === 'new_submission' && <Package className="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0" />}
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-gray-800">{notification.title}</p>
-                        <p className="text-xs text-gray-600 mt-1 break-words">{notification.message}</p>
+                        <p className="text-xs font-medium text-gray-800 leading-relaxed">{notification.title}</p>
                         <p className="text-xs text-gray-400 mt-1">{notification.date}</p>
                       </div>
                       <div className="flex items-center gap-2">

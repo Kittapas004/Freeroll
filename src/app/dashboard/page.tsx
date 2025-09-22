@@ -585,8 +585,8 @@ export default function DashboardPage() {
                 <span className="text-lg"><ChartColumnBig className="text-green-600" /></span>
               </div>
               <div className="text-xl font-bold text-gray-800 mt-1">
-                {dashboardData?.recent_harvest_record?.length ?? 0 > 0 ? (
-                  dashboardData?.recent_harvest_record.reduce((acc, record) => {
+                {dashboardData?.recent_harvest_record?.length ?? 0 > 0 ? (() => {
+                  const gradeData = dashboardData?.recent_harvest_record.reduce((acc, record) => {
                     const existingGrade = acc.find((item) => item.grade === record.quality_grade);
                     const yieldInKg = record.yleld_unit === "kg" ? record.yleld : record.yleld / 1000;
 
@@ -597,33 +597,19 @@ export default function DashboardPage() {
                     }
 
                     return acc;
-                  }, [] as { grade: string; totalYield: number }[])
-                    .sort((a, b) => b.totalYield - a.totalYield).map((item, index) => (
-                      <div
-                        key={index}
-                        className={
-                          item.totalYield === Math.max(...dashboardData?.recent_harvest_record.reduce((acc, record) => {
-                            const yieldInKg = record.yleld_unit === "kg" ? record.yleld : record.yleld / 1000;
-                            const existingGrade = acc.find((entry) => entry.grade === record.quality_grade);
+                  }, [] as { grade: string; totalYield: number }[]);
 
-                            if (existingGrade) {
-                              existingGrade.totalYield += yieldInKg;
-                            } else {
-                              acc.push({ grade: record.quality_grade, totalYield: yieldInKg });
-                            }
+                  if (!gradeData || gradeData.length === 0) return "No Data";
 
-                            return acc;
-                          }, [] as { grade: string; totalYield: number }[]).map((entry) => entry.totalYield))
-                            ? "text-xl font-bold text-gray-800 mt-1"
-                            : "text-xs text-gray-400 mt-0.5"
-                        }
-                      >
-                        {((item.totalYield / dashboardData?.recent_harvest_record.reduce((sum, record) => sum + (record.yleld_unit === "kg" ? record.yleld : record.yleld / 1000), 0)) * 100).toFixed(0)}% {item.grade}
-                      </div>
-                    ))
-                ) : (
-                  "No Data"
-                )}
+                  const totalYield = gradeData.reduce((sum, item) => sum + item.totalYield, 0);
+                  const highestGrade = gradeData.sort((a, b) => b.totalYield - a.totalYield)[0];
+                  const percentage = ((highestGrade.totalYield / totalYield) * 100).toFixed(0);
+
+                  return `${percentage}% ${highestGrade.grade}`;
+                })() : "No Data"}
+              </div>
+              <div className="text-xs text-gray-400 mt-0.5">
+                {dashboardData?.recent_harvest_record?.length ?? 0 > 0 ? "Highest quality grade" : "No harvest data available"}
               </div>
             </div>
             <div className="bg-white border rounded-2xl shadow-sm p-4">

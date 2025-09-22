@@ -1358,7 +1358,7 @@ export default function PlantingBatchDetail() {
         <table>
             <tr>
                 <td class="label">Batch ID</td>
-                <td class="value">${PlantingBatches?.batches_id || "Kittapas Viriyapipatpoor"}</td>
+                <td class="value">${PlantingBatches?.batches_id || ""}</td>
             </tr>
             <tr>
                 <td class="label">Date of Planting</td>
@@ -1366,23 +1366,23 @@ export default function PlantingBatchDetail() {
             </tr>
             <tr>
                 <td class="label">Plant Variety</td>
-                <td class="value">${PlantingBatches?.plant_variety || "LittleFarm@gmail.com"}</td>
+                <td class="value">${PlantingBatches?.plant_variety || ""}</td>
             </tr>
             <tr>
                 <td class="label">Cultivation Method</td>
-                <td class="value">${PlantingBatches?.cultivation_method || "Organic"}</td>
+                <td class="value">${PlantingBatches?.cultivation_method || ""}</td>
             </tr>
             <tr>
                 <td class="label">Soil pH</td>
-                <td class="value">${PlantingBatches?.soil_pH || "4.0"}</td>
+                <td class="value">${PlantingBatches?.soil_pH || ""}</td>
             </tr>
             <tr>
                 <td class="label">Soil Quality</td>
-                <td class="value">${PlantingBatches?.soil_quality || "Good"}</td>
+                <td class="value">${PlantingBatches?.soil_quality || ""}</td>
             </tr>
             <tr>
                 <td class="label">Water Source</td>
-                <td class="value">${PlantingBatches?.water_source || "Rainwater Harvesting"}</td>
+                <td class="value">${PlantingBatches?.water_source || ""}</td>
             </tr>
         </table>
         
@@ -1394,22 +1394,22 @@ export default function PlantingBatchDetail() {
             </tr>
             <tr>
                 <td class="label">Labor Cost</td>
-                <td class="value">${PlantingBatches?.labor_cost || "2,000"}</td>
+                <td class="value">${PlantingBatches?.labor_cost}</td>
                 <td class="value">Baht</td>
             </tr>
             <tr>
                 <td class="label">Material Cost</td>
-                <td class="value">${PlantingBatches?.material_cost || "6,000"}</td>
+                <td class="value">${PlantingBatches?.material_cost}</td>
                 <td class="value">Baht</td>
             </tr>
             <tr>
                 <td class="label">Other Costs</td>
-                <td class="value">${PlantingBatches?.other_costs || "0"}</td>
+                <td class="value">${PlantingBatches?.other_costs}</td>
                 <td class="value">Baht</td>
             </tr>
             <tr style="font-weight: bold;">
                 <td class="label">Total Planting Cost</td>
-                <td class="value">${PlantingBatches?.total_planting_cost || "8,000"}</td>
+                <td class="value">${PlantingBatches?.total_planting_cost}</td>
                 <td class="value">Baht</td>
             </tr>
         </table>
@@ -4575,21 +4575,21 @@ export default function PlantingBatchDetail() {
                                             <div className="grid grid-cols-3 gap-4">
                                                 <div className="bg-gray-50 p-3 rounded">
                                                     <p className="text-sm text-gray-600">Labor Cost ( THB )</p>
-                                                    <p className="font-bold">฿{PlantingBatches?.labor_cost || "2,000"}</p>
+                                                    <p className="font-bold">฿{PlantingBatches?.labor_cost }</p>
                                                 </div>
                                                 <div className="bg-gray-50 p-3 rounded">
                                                     <p className="text-sm text-gray-600">Material Cost ( THB )</p>
-                                                    <p className="font-bold">฿{PlantingBatches?.material_cost || "3,500"}</p>
+                                                    <p className="font-bold">฿{PlantingBatches?.material_cost }</p>
                                                 </div>
                                                 <div className="bg-gray-50 p-3 rounded">
                                                     <p className="text-sm text-gray-600">Other Cost ( THB )</p>
-                                                    <p className="font-bold">฿{PlantingBatches?.other_costs || "0"}</p>
+                                                    <p className="font-bold">฿{PlantingBatches?.other_costs }</p>
                                                 </div>
                                             </div>
                                             <div className="bg-green-50 border border-green-200 p-3 rounded mt-3">
                                                 <div className="flex justify-between items-center">
                                                     <span className="font-semibold">Total Planting Cost</span>
-                                                    <span className="font-bold text-lg">฿{PlantingBatches?.total_planting_cost || "5,500"}</span>
+                                                    <span className="font-bold text-lg">฿{PlantingBatches?.total_planting_cost }</span>
                                                 </div>
                                             </div>
                                         </div>

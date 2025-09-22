@@ -611,7 +611,7 @@ export default function RecordDetailsPage() {
 
             // Fetch factory processing record and farms data
             const [processingResponse, farmsResponse] = await Promise.all([
-                fetch(`https://api-freeroll-production.up.railway.app/api/factory-processings/${params.id}?populate=factory_submission`, {
+                fetch(`https://api-freeroll-production.up.railway.app/api/factory-processings/${params.id}?populate[factory_submission][populate][batch][populate]=*`, {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                     },
@@ -647,6 +647,7 @@ export default function RecordDetailsPage() {
             let farmLocation = 'Unknown Location';
             let farmName = item.factory_submission?.Farm_Name || 'Unknown Farm';
             let cropType = 'Unknown';
+            let plantVariety = 'Unknown';
             let cultivationMethod = 'Unknown';
 
             // Look up farm data for complete information
@@ -654,12 +655,14 @@ export default function RecordDetailsPage() {
             if (farmName && farmMap.has(farmName)) {
                 farmData = farmMap.get(farmName);
                 farmLocation = farmData.Farm_Address || item.factory_submission?.Farm_Address || farmLocation;
-                cropType = farmData.Crop_Type || item.factory_submission?.Crop_Type || item.factory_submission?.Plant_Variety || cropType;
+                cropType = farmData.Crop_Type || item.factory_submission?.Crop_Type || cropType;
+                plantVariety = farmData.Plant_Variety || item.factory_submission?.batch?.Plant_Variety || item.factory_submission?.Plant_Variety || plantVariety;
                 cultivationMethod = farmData.Cultivation_Method || item.factory_submission?.Cultivation_Method || cultivationMethod;
             } else if (item.factory_submission?.Farm_Address) {
                 // Fallback to factory submission data
                 farmLocation = item.factory_submission.Farm_Address;
-                cropType = item.factory_submission.Crop_Type || item.factory_submission.Plant_Variety || cropType;
+                cropType = item.factory_submission.Crop_Type || cropType;
+                plantVariety = item.factory_submission.batch?.Plant_Variety || item.factory_submission.Plant_Variety || plantVariety;
                 cultivationMethod = item.factory_submission.Cultivation_Method || cultivationMethod;
             }
 
@@ -672,7 +675,7 @@ export default function RecordDetailsPage() {
                 quality: item.factory_submission?.Quality_Grade || 'Unknown',
                 cultivation: cultivationMethod,
                 location: farmLocation,
-                plantVariety: cropType,
+                plantVariety: plantVariety,
             });
 
             // Set raw material tracking - load saved data or defaults
