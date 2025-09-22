@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, MapPin, Calendar, Package, Factory as FactoryIcon, Save, Leaf, Scale, Beaker, BarChart3, Droplets, FlaskConical, LucidePackage, LucideCheck, X, Printer, Eye } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Package, Factory as FactoryIcon, Save, Leaf, Scale, Beaker, BarChart3, Droplets, FlaskConical, LucidePackage, LucideCheck, X, Printer, Eye, PackageSearch, Book } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface BatchInfo {
@@ -982,7 +982,7 @@ export default function RecordDetailsPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <span className="text-green-600"><LucidePackage className="h-5 w-5" /></span>
+                                <span className="text-green-600"><Leaf className="h-5 w-5" /></span>
                                 Batch Information
                             </CardTitle>
                         </CardHeader>
@@ -1577,7 +1577,7 @@ export default function RecordDetailsPage() {
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <span className="text-green-600"><LucideCheck className="h-5 w-5" /></span>
+                                <span className="text-green-600"><PackageSearch className="h-5 w-5" /></span>
                                 Consumer/Product Grading
                             </CardTitle>
                             <p className="text-sm text-gray-600 mt-1">Product quality grading and market classification</p>
