@@ -403,22 +403,21 @@ export default function HomePage() {
                         window.location.href = `/products-category?category=${encodeURIComponent(targetCategory)}`;
                       }}
                     >
-                      <div className="aspect-square bg-gradient-to-br from-green-100 to-green-200 rounded-2xl mb-4 overflow-hidden relative transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-2">
+                      <div className="aspect-square bg-gray-100 rounded-2xl mb-4 overflow-hidden relative transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-2">
                         <img
                           src={category.image}
                           alt={category.title}
-                          className="w-full h-full object-cover transition-transform duration-500"
+                          className="w-full h-full object-cover object-center transition-transform duration-500"
                           loading="eager"
                           onError={(e) => {
                             // Fallback if image fails to load
                             const target = e.currentTarget;
                             const container = target.parentElement!;
                             container.innerHTML = `
-                              <div class="w-full h-full flex items-center justify-center bg-gradient-to-br from-green-100 to-green-200">
+                              <div class="w-full h-full flex items-center justify-center bg-gray-100">
                                 <div class="text-center p-8">
-                                  <div class="text-6xl mb-4">
-                                  </div>
-                                  <p class="text-green-800 font-medium text-sm"></p>
+                                  <div class="text-6xl mb-4 text-gray-400">📦</div>
+                                  <p class="text-gray-500 font-medium text-sm">Image not available</p>
                                 </div>
                               </div>
                             `;

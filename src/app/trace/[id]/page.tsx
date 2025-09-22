@@ -468,7 +468,7 @@ const TraceProductPage = () => {
                                         <span className="font-medium text-gray-900">Certifications:</span>
                                         <div className="mt-1">
                                             <Badge variant="secondary" className="text-xs bg-green-100 text-green-800">
-                                                {productData.batch_info?.certifications || 'GAP'}
+                                               GAP {/* {productData.batch_info?.certifications || 'GAP'} */}
                                             </Badge>
                                         </div>
                                     </div>

@@ -170,10 +170,10 @@ const ProductsContent = () => {
                 // Filter completed items
                 const completedItems = result.data.filter((item: any) => {
                     const status = item.processing_status || item.Processing_Status;
-                    return status === 'Completed' || 
-                           status === 'Complete' ||
-                           status === 'Export Success' ||
-                           status === 'Exported';
+                    return status === 'Completed' ||
+                        status === 'Complete' ||
+                        status === 'Export Success' ||
+                        status === 'Exported';
                 });
 
                 console.log('Filtered completed items:', completedItems);
@@ -191,17 +191,17 @@ const ProductsContent = () => {
                     standard_criteria: item.standard_criteria || '', // เพิ่มฟิลด์ standard_criteria
                     factory_submission: item.factory_submission || null,
                     batch_info: {
-                        plant_variety: item.factory_submission?.batch?.Plant_Variety || 
-                                     item.factory_submission?.Plant_Variety || 
-                                     'Unknown Variety',
-                        farm_name: item.factory_submission?.farm_name || 
-                                  item.factory_submission?.Farm_Name || '',
+                        plant_variety: item.factory_submission?.batch?.Plant_Variety ||
+                            item.factory_submission?.Plant_Variety ||
+                            'Unknown Variety',
+                        farm_name: item.factory_submission?.farm_name ||
+                            item.factory_submission?.Farm_Name || '',
                         location: item.factory_submission?.batch?.Farm?.Farm_Address || ''
                     }
                 }));
 
                 console.log('Processed items with standard_criteria:', processedItems);
-                
+
                 // Log standard_criteria ของแต่ละ item เพื่อตรวจสอบ
                 processedItems.forEach((item: any, index: number) => {
                     console.log(`Item ${index + 1} - standard_criteria:`, item.standard_criteria);
@@ -209,7 +209,7 @@ const ProductsContent = () => {
                     console.log(`Item ${index + 1} - plant_variety:`, item.batch_info?.plant_variety);
                     console.log(`Item ${index + 1} - factory_submission:`, item.factory_submission);
                 });
-                
+
                 setFactoryProcessingData(processedItems);
             } else {
                 console.error('Invalid data structure:', result);
@@ -271,6 +271,22 @@ const ProductsContent = () => {
             });
         }
 
+        if (selectedCategory === 'Capsules') {
+            return factoryProcessingData.filter(product => {
+                const productDetails = getProductDetails(product.final_product_type);
+                const searchableText = `${productDetails.displayName} ${product.final_product_type} ${product.product_grade || ''} ${product.batch_info?.plant_variety || ''}`.toLowerCase();
+                return product.final_product_type === 'Capsule' && searchableText.includes(searchTerm.toLowerCase());
+            });
+        }
+
+        if (selectedCategory === 'Face and body') {
+            return factoryProcessingData.filter(product => {
+                const productDetails = getProductDetails(product.final_product_type);
+                const searchableText = `${productDetails.displayName} ${product.final_product_type} ${product.product_grade || ''} ${product.batch_info?.plant_variety || ''}`.toLowerCase();
+                return (product.final_product_type === 'Oil' || product.final_product_type === 'Extract') && searchableText.includes(searchTerm.toLowerCase());
+            });
+        }
+
         return categories[selectedCategory]?.products.filter(product => {
             const productDetails = getProductDetails(product.final_product_type);
             const searchableText = `${productDetails.displayName} ${product.final_product_type} ${product.product_grade || ''} ${product.batch_info?.plant_variety || ''}`.toLowerCase();
@@ -295,10 +311,18 @@ const ProductsContent = () => {
             return 'Instant drinks';
         }
 
+        if (selectedCategory === 'Capsules') {
+            return 'Capsules';
+        }
+
+        if (selectedCategory === 'Face and body') {
+            return 'Face and body';
+        }
+
         if (selectedCategory === 'Food & Beverage') {
             // Check which subcategory products exist
             const hasSpiceBlends = categoryData.products.some(p => p.final_product_type === 'Powder');
-            const hasInstantDrinks = categoryData.products.some(p => p.final_product_type === 'Tea Bags');
+            const hasInstantDrinks = categoryData.products.some(p => p.final_product_type === 'Tea Bag');
 
             if (hasSpiceBlends && hasInstantDrinks) return 'Spice blends, Instant drinks';
             if (hasSpiceBlends) return 'Spice blends';
@@ -343,7 +367,7 @@ const ProductsContent = () => {
             <div className="bg-green-700 text-white py-2">
                 <div className="container mx-auto px-6">
                     <nav className="flex items-center text-sm">
-                        <span 
+                        <span
                             className="text-green-200 cursor-pointer hover:text-white transition-colors"
                             onClick={() => router.push('/home')}
                         >
@@ -359,7 +383,7 @@ const ProductsContent = () => {
                 <div className="flex gap-8">
                     {/* Left Sidebar - Categories */}
                     <div className="w-64 bg-white rounded-lg shadow-sm p-6 h-fit">
-                        <h2 
+                        <h2
                             className={`text-lg font-semibold mb-6 cursor-pointer transition-colors flex items-center ${selectedCategory === 'All Product' ? 'text-green-600' : 'text-gray-900 hover:text-green-600'
                                 }`}
                             onClick={() => handleCategoryChange('All Product')}
@@ -370,10 +394,9 @@ const ProductsContent = () => {
                         <div className="space-y-4">
                             <div>
                                 <h3
-                                    className={`text-sm font-medium mb-2 cursor-pointer flex items-center ${
-                                        selectedCategory === 'Food & Beverage' || 
-                                        selectedCategory === 'Spice blends' || 
-                                        selectedCategory === 'Instant drinks' 
+                                    className={`text-sm font-medium mb-2 cursor-pointer flex items-center ${selectedCategory === 'Food & Beverage' ||
+                                            selectedCategory === 'Spice blends' ||
+                                            selectedCategory === 'Instant drinks'
                                             ? 'text-green-600' : 'text-gray-700'
                                         }`}
                                     onClick={() => handleCategoryChange('Food & Beverage')}
@@ -382,21 +405,19 @@ const ProductsContent = () => {
                                 </h3>
                                 <div className="ml-4 space-y-1 text-sm text-gray-600">
                                     <div
-                                        className={`cursor-pointer ${
-                                            selectedCategory === 'Spice blends' 
-                                                ? 'text-green-600 font-medium' 
+                                        className={`cursor-pointer ${selectedCategory === 'Spice blends'
+                                                ? 'text-green-600 font-medium'
                                                 : 'hover:text-green-600'
-                                        }`}
+                                            }`}
                                         onClick={() => handleCategoryChange('Spice blends')}
                                     >
                                         Spice blends
                                     </div>
                                     <div
-                                        className={`cursor-pointer ${
-                                            selectedCategory === 'Instant drinks' 
-                                                ? 'text-green-600 font-medium' 
+                                        className={`cursor-pointer ${selectedCategory === 'Instant drinks'
+                                                ? 'text-green-600 font-medium'
                                                 : 'hover:text-green-600'
-                                        }`}
+                                            }`}
                                         onClick={() => handleCategoryChange('Instant drinks')}
                                     >
                                         Instant drinks
@@ -406,7 +427,7 @@ const ProductsContent = () => {
 
                             <div>
                                 <h3
-                                    className={`text-sm font-medium mb-2 cursor-pointer flex items-center ${selectedCategory === 'Health Supplements' ? 'text-green-600' : 'text-gray-700'
+                                    className={`text-sm font-medium mb-2 cursor-pointer flex items-center ${selectedCategory === 'Health Supplements' || selectedCategory === 'Capsules' ? 'text-green-600' : 'text-gray-700'
                                         }`}
                                     onClick={() => handleCategoryChange('Health Supplements')}
                                 >
@@ -414,8 +435,8 @@ const ProductsContent = () => {
                                 </h3>
                                 <div className="ml-4 space-y-1 text-sm text-gray-600">
                                     <div
-                                        className="cursor-pointer hover:text-green-600"
-                                        onClick={() => handleCategoryChange('Health Supplements')}
+                                        className={`cursor-pointer hover:text-green-600 ${selectedCategory === 'Capsules' ? 'text-green-600 font-medium' : ''}`}
+                                        onClick={() => handleCategoryChange('Capsules')}
                                     >
                                         Capsules
                                     </div>
@@ -424,7 +445,7 @@ const ProductsContent = () => {
 
                             <div>
                                 <h3
-                                    className={`text-sm font-medium mb-2 cursor-pointer flex items-center ${selectedCategory === 'Beauty & Personal Care' ? 'text-green-600' : 'text-gray-700'
+                                    className={`text-sm font-medium mb-2 cursor-pointer flex items-center ${selectedCategory === 'Beauty & Personal Care' || selectedCategory === 'Face and body' ? 'text-green-600' : 'text-gray-700'
                                         }`}
                                     onClick={() => handleCategoryChange('Beauty & Personal Care')}
                                 >
@@ -432,8 +453,8 @@ const ProductsContent = () => {
                                 </h3>
                                 <div className="ml-4 space-y-1 text-sm text-gray-600">
                                     <div
-                                        className="cursor-pointer hover:text-green-600"
-                                        onClick={() => handleCategoryChange('Beauty & Personal Care')}
+                                        className={`cursor-pointer hover:text-green-600 ${selectedCategory === 'Face and body' ? 'text-green-600 font-medium' : ''}`}
+                                        onClick={() => handleCategoryChange('Face and body')}
                                     >
                                         Face and body
                                     </div>
@@ -449,17 +470,22 @@ const ProductsContent = () => {
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-4">
                                     <div className="text-2xl">
-                                        {selectedCategory === 'All Product' ? <Package className="w-8 h-8 mr-2" /> : 
-                                         selectedCategory === 'Food & Beverage' || 
-                                         selectedCategory === 'Spice blends' || 
-                                         selectedCategory === 'Instant drinks' ? <SoupIcon className="w-8 h-8 mr-2" /> :
-                                         selectedCategory === 'Health Supplements' ? <Heart className="w-8 h-8 mr-2" /> : <Sparkle className="w-8 h-8 mr-2" />}
+                                        {selectedCategory === 'All Product' ? <Package className="w-8 h-8 mr-2" /> :
+                                            selectedCategory === 'Food & Beverage' ||
+                                                selectedCategory === 'Spice blends' ||
+                                                selectedCategory === 'Instant drinks' ? <SoupIcon className="w-8 h-8 mr-2" /> :
+                                                selectedCategory === 'Health Supplements' ||
+                                                selectedCategory === 'Capsules' ? <Heart className="w-8 h-8 mr-2" /> :
+                                                selectedCategory === 'Beauty & Personal Care' ||
+                                                selectedCategory === 'Face and body' ? <Sparkle className="w-8 h-8 mr-2" /> : <Package className="w-8 h-8 mr-2" />}
                                     </div>
                                     <div className="text-2xl">
                                         <h1 className="text-xl font-semibold">
-                                            {selectedCategory === 'Spice blends' ? 'Food & Beverage' : 
-                                             selectedCategory === 'Instant drinks' ? 'Food & Beverage' : 
-                                             selectedCategory}
+                                            {selectedCategory === 'Spice blends' ? 'Food & Beverage' :
+                                                selectedCategory === 'Instant drinks' ? 'Food & Beverage' :
+                                                selectedCategory === 'Capsules' ? 'Health Supplements' :
+                                                selectedCategory === 'Face and body' ? 'Beauty & Personal Care' :
+                                                    selectedCategory}
                                         </h1>
                                         <p className="text-gray-600 text-sm">{getCategorySubtitle()}</p>
                                     </div>
@@ -529,14 +555,14 @@ const ProductsContent = () => {
                                                             {product.standard_criteria}
                                                         </Badge>
                                                     )}
-                                                    
+
                                                     {/* แสดง cultivation_method ถ้ามี */}
                                                     {product.factory_submission?.harvest_records?.farm?.cultivation_method && (
                                                         <Badge variant="secondary" className="text-xs">
                                                             {product.factory_submission.harvest_records.farm.cultivation_method}
                                                         </Badge>
                                                     )}
-                                                    
+
                                                     {/* แสดง placeholder ถ้าไม่มีข้อมูล certification */}
                                                     {!product.standard_criteria && !product.factory_submission?.harvest_records?.farm?.cultivation_method && (
                                                         <Badge variant="secondary" className="text-xs text-gray-400">
@@ -544,7 +570,7 @@ const ProductsContent = () => {
                                                         </Badge>
                                                     )}
                                                 </div>
-                                                </div>
+                                            </div>
                                         </CardContent>
                                     </Card>
                                 );
