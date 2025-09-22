@@ -1,7 +1,7 @@
 'use client'
 
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import PublicNavigation from '@/components/public-navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -19,65 +19,113 @@ interface SearchResult {
   batchId?: string
 }
 
-export default function SearchPage() {
+function SearchContent() {
   const searchParams = useSearchParams()
   const query = searchParams.get('q') || ''
   const [results, setResults] = useState<SearchResult[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Simulate search API call
     const searchData = async () => {
       setIsLoading(true)
 
-      // Mock search results based on query
-      const mockResults: SearchResult[] = [
-        {
-          id: 'batch-001',
-          type: 'batch',
-          title: 'Turmeric Batch #TUR-2024-001',
-          description: 'Premium organic turmeric harvested from Chiang Mai farms',
-          location: 'Chiang Mai, Thailand',
-          status: 'Ready for Processing',
-          batchId: 'TUR-2024-001'
-        },
-        {
-          id: 'product-001',
-          type: 'product',
-          title: 'TurmeRic Curcumin Capsules',
-          description: 'High-potency curcumin extract with 95% curcuminoids',
-          status: 'Available'
-        },
-        {
-          id: 'farm-001',
-          type: 'farm',
-          title: 'Golden Fields Farm',
-          description: 'Certified organic turmeric farm in Northern Thailand',
-          location: 'Chiang Mai, Thailand',
-          status: 'Active'
-        },
-        {
-          id: 'process-001',
-          type: 'process',
-          title: 'Advanced Extraction Process',
-          description: 'CO2 supercritical extraction for maximum purity',
-          status: 'Operational'
+      if (!query) {
+        // Show sample/popular searches when no query
+        const mockResults: SearchResult[] = [
+          {
+            id: 'batch-001',
+            type: 'batch',
+            title: 'Turmeric Batch #TUR-2024-001',
+            description: 'Premium organic turmeric harvested from Chiang Mai farms',
+            location: 'Chiang Mai, Thailand',
+            status: 'Ready for Processing',
+            batchId: 'TUR-2024-001'
+          },
+          {
+            id: 'product-001',
+            type: 'product',
+            title: 'TurmeRic Curcumin Capsules',
+            description: 'High-potency curcumin extract with 95% curcuminoids',
+            status: 'Available'
+          },
+          {
+            id: 'farm-001',
+            type: 'farm',
+            title: 'Golden Fields Farm',
+            description: 'Certified organic turmeric farm in Northern Thailand',
+            location: 'Chiang Mai, Thailand',
+            status: 'Active'
+          }
+        ]
+        
+        setTimeout(() => {
+          setResults(mockResults)
+          setIsLoading(false)
+        }, 500)
+        return
+      }
+
+      try {
+        const searchResults: SearchResult[] = []
+
+        // Search for products by lot number
+        const productResponse = await fetch(`${process.env.NEXT_PUBLIC_STRAPI_URL}/api/products?populate=*&filters[batch_lot_number][$containsi]=${query}`)
+        if (productResponse.ok) {
+          const productData = await productResponse.json()
+          productData.data.forEach((product: any) => {
+            searchResults.push({
+              id: product.documentId,
+              type: 'product',
+              title: `${product.plant_variety} - Lot ${product.batch_lot_number}`,
+              description: `${product.product_type} from ${product.farm_origin || 'Unknown Farm'}`,
+              status: 'Traceable',
+              batchId: product.batch_lot_number
+            })
+          })
         }
-      ]
 
-      // Filter results based on query
-      const filteredResults = query
-        ? mockResults.filter(result =>
-          result.title.toLowerCase().includes(query.toLowerCase()) ||
-          result.description.toLowerCase().includes(query.toLowerCase()) ||
-          result.location?.toLowerCase().includes(query.toLowerCase())
-        )
-        : mockResults
+        // Search for factory processing batches
+        const batchResponse = await fetch(`${process.env.NEXT_PUBLIC_STRAPI_URL}/api/factory-processings?populate=*&filters[batch_lot_number][$containsi]=${query}`)
+        if (batchResponse.ok) {
+          const batchData = await batchResponse.json()
+          batchData.data.forEach((batch: any) => {
+            searchResults.push({
+              id: batch.documentId,
+              type: 'batch',
+              title: `Processing Batch #${batch.batch_lot_number}`,
+              description: `${batch.processing_type || 'Processing'} at ${batch.factory?.factory_name || 'Factory'}`,
+              location: batch.factory?.location || 'Unknown Location',
+              status: batch.processing_status || 'In Progress',
+              batchId: batch.batch_lot_number
+            })
+          })
+        }
 
-      setTimeout(() => {
-        setResults(filteredResults)
+        // Search by general terms in product names and descriptions
+        if (searchResults.length === 0) {
+          const generalProductResponse = await fetch(`${process.env.NEXT_PUBLIC_STRAPI_URL}/api/products?populate=*&filters[$or][0][plant_variety][$containsi]=${query}&filters[$or][1][product_type][$containsi]=${query}&filters[$or][2][farm_origin][$containsi]=${query}`)
+          if (generalProductResponse.ok) {
+            const generalProductData = await generalProductResponse.json()
+            generalProductData.data.slice(0, 5).forEach((product: any) => {
+              searchResults.push({
+                id: product.documentId,
+                type: 'product',
+                title: `${product.plant_variety} - Lot ${product.batch_lot_number}`,
+                description: `${product.product_type} from ${product.farm_origin || 'Unknown Farm'}`,
+                status: 'Traceable',
+                batchId: product.batch_lot_number
+              })
+            })
+          }
+        }
+
+        setResults(searchResults)
+      } catch (error) {
+        console.error('Search error:', error)
+        setResults([])
+      } finally {
         setIsLoading(false)
-      }, 500)
+      }
     }
 
     searchData()
@@ -108,7 +156,7 @@ export default function SearchPage() {
       case 'batch':
         return `/trace/${result.batchId || result.id}`
       case 'product':
-        return `/home#products`
+        return `/trace/${result.id}` // Link to trace page using product documentId
       case 'farm':
         return `/home#farm`
       case 'process':
@@ -225,5 +273,13 @@ export default function SearchPage() {
         )}
       </main>
     </div>
+  )
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div>Loading search...</div>}>
+      <SearchContent />
+    </Suspense>
   )
 }
