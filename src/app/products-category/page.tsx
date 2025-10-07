@@ -58,9 +58,12 @@ const ProductsContent = () => {
     const [selectedCategory, setSelectedCategory] = useState('All Product');
     const [factoryProcessingData, setFactoryProcessingData] = useState<FactoryProcessing[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showQRPopover, setShowQRPopover] = useState<string | null>(null);
+    const [qrCodeData, setQrCodeData] = useState<{url: string, productName: string} | null>(null);
 
-    // Generate QR Code for specific product
-    const generateProductQRCode = async (productId: string, productName: string) => {
+    // Generate QR Code for popover display
+    const showProductQRCode = async (productId: string, productName: string, event: React.MouseEvent) => {
+        event.stopPropagation();
         try {
             const traceUrl = `${window.location.origin}/trace/${productId}`;
             const qrDataUrl = await QRCode.toDataURL(traceUrl, {
@@ -72,11 +75,8 @@ const ProductsContent = () => {
                 }
             });
             
-            // Create download link
-            const link = document.createElement('a');
-            link.download = `${productName}-trace-qr.png`;
-            link.href = qrDataUrl;
-            link.click();
+            setQrCodeData({ url: qrDataUrl, productName });
+            setShowQRPopover(productId);
         } catch (error) {
             console.error('Error generating QR code:', error);
             alert('Error generating QR code. Please try again.');
@@ -364,6 +364,24 @@ const ProductsContent = () => {
         fetchFactoryProcessingData();
     }, []);
 
+    // Close QR popover when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (showQRPopover) {
+                setShowQRPopover(null);
+                setQrCodeData(null);
+            }
+        };
+
+        if (showQRPopover) {
+            document.addEventListener('click', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, [showQRPopover]);
+
     const filteredProducts = getFilteredProducts();
 
     if (loading) {
@@ -391,25 +409,88 @@ const ProductsContent = () => {
             <PublicNavigation />
 
             {/* Breadcrumb */}
-            <div className="bg-green-700 text-white py-2">
-                <div className="container mx-auto px-6">
-                    <nav className="flex items-center text-sm">
+            <div className="bg-green-700 text-white py-2 md:py-3">
+                <div className="container mx-auto px-4 md:px-6">
+                    <nav className="flex items-center text-xs md:text-sm">
                         <span
                             className="text-green-200 cursor-pointer hover:text-white transition-colors"
                             onClick={() => router.push('/home')}
                         >
                             Home Page
                         </span>
-                        <span className="mx-2">{'>'}</span>
+                        <span className="mx-1 md:mx-2">{'>'}</span>
                         <span>Product</span>
                     </nav>
                 </div>
             </div>
 
-            <div className="container mx-auto px-6 py-8">
-                <div className="flex gap-8">
-                    {/* Left Sidebar - Categories */}
-                    <div className="w-64 bg-white rounded-lg shadow-sm p-6 h-fit">
+            <div className="container mx-auto px-4 md:px-6 py-6 md:py-8">
+                {/* Mobile Category Navigation */}
+                <div className="lg:hidden mb-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <h1 className="text-xl font-semibold">Products</h1>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                            <Input
+                                type="text"
+                                placeholder="Search Product"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-10 w-48"
+                            />
+                        </div>
+                    </div>
+                    
+                    {/* Horizontal scrollable categories for mobile */}
+                    <div className="overflow-x-auto">
+                        <div className="flex space-x-2 pb-2 min-w-max">
+                            <button
+                                className={`px-4 py-2 rounded-full text-sm whitespace-nowrap ${
+                                    selectedCategory === 'All Product' 
+                                        ? 'bg-green-600 text-white' 
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                                onClick={() => handleCategoryChange('All Product')}
+                            >
+                                All Product
+                            </button>
+                            <button
+                                className={`px-4 py-2 rounded-full text-sm whitespace-nowrap ${
+                                    selectedCategory === 'Food & Beverage' 
+                                        ? 'bg-green-600 text-white' 
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                                onClick={() => handleCategoryChange('Food & Beverage')}
+                            >
+                                Food & Beverage
+                            </button>
+                            <button
+                                className={`px-4 py-2 rounded-full text-sm whitespace-nowrap ${
+                                    selectedCategory === 'Health Supplements' 
+                                        ? 'bg-green-600 text-white' 
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                                onClick={() => handleCategoryChange('Health Supplements')}
+                            >
+                                Health Supplements
+                            </button>
+                            <button
+                                className={`px-4 py-2 rounded-full text-sm whitespace-nowrap ${
+                                    selectedCategory === 'Beauty & Personal Care' 
+                                        ? 'bg-green-600 text-white' 
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                                onClick={() => handleCategoryChange('Beauty & Personal Care')}
+                            >
+                                Beauty & Care
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+                    {/* Desktop Sidebar - Hidden on mobile */}
+                    <div className="hidden lg:block w-64 bg-white rounded-lg shadow-sm p-6 h-fit">
                         <h2
                             className={`text-lg font-semibold mb-6 cursor-pointer transition-colors flex items-center ${selectedCategory === 'All Product' ? 'text-green-600' : 'text-gray-900 hover:text-green-600'
                                 }`}
@@ -492,8 +573,8 @@ const ProductsContent = () => {
 
                     {/* Main Content */}
                     <div className="flex-1">
-                        {/* Category Header */}
-                        <div className="mb-6">
+                        {/* Desktop Category Header - Hidden on mobile */}
+                        <div className="hidden lg:block mb-6">
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-4">
                                     <div className="text-2xl">
@@ -535,8 +616,15 @@ const ProductsContent = () => {
                             </div>
                         </div>
 
+                        {/* Mobile Category Title */}
+                        <div className="lg:hidden mb-4">
+                            <div className="bg-green-700 text-white px-4 py-2 rounded">
+                                {getCategorySubtitle()}
+                            </div>
+                        </div>
+
                         {/* Products Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                             {filteredProducts.map((product) => {
                                 const productDetails = getProductDetails(product.final_product_type);
 
@@ -545,9 +633,9 @@ const ProductsContent = () => {
                                         key={product.documentId}
                                         className="hover:shadow-lg transition-shadow"
                                     >
-                                        <CardContent className="p-4">
+                                        <CardContent className="p-3 md:p-4">
                                             <div 
-                                                className="aspect-square bg-gray-100 rounded-lg mb-4 flex items-center justify-center overflow-hidden cursor-pointer"
+                                                className="aspect-square bg-gray-100 rounded-lg mb-3 md:mb-4 flex items-center justify-center overflow-hidden cursor-pointer"
                                                 onClick={() => router.push(`/trace/${product.documentId}`)}
                                             >
                                                 <img
@@ -561,15 +649,15 @@ const ProductsContent = () => {
                                             </div>
 
                                             <div onClick={() => router.push(`/trace/${product.documentId}`)} className="cursor-pointer">
-                                                <h3 className="font-medium text-sm mb-2">{productDetails.displayName}</h3>
+                                                <h3 className="font-medium text-sm md:text-base mb-2 line-clamp-2">{productDetails.displayName}</h3>
 
-                                                <div className="space-y-1 text-xs text-gray-600">
-                                                    <div>Quality Grade: {product.factory_submission?.quality_grade || product.product_grade || ''}</div>
-                                                    <div>Quantity: {product.output_quantity || 'N/A'} {product.output_unit || ''}</div>
-                                                    <div>Plant Variety: {product.batch_info?.plant_variety || 'Unknown Variety'}</div>
+                                                <div className="space-y-1 text-xs md:text-sm text-gray-600">
+                                                    <div className="truncate">Quality Grade: {product.factory_submission?.quality_grade || product.product_grade || 'N/A'}</div>
+                                                    <div className="truncate">Quantity: {product.output_quantity || 'N/A'} {product.output_unit || ''}</div>
+                                                    <div className="truncate">Plant Variety: {product.batch_info?.plant_variety || 'Unknown Variety'}</div>
                                                 </div>
 
-                                                <div className="mt-3">
+                                                <div className="mt-2 md:mt-3">
                                                     <Badge variant="outline" className="text-xs">
                                                         {product.final_product_type}
                                                     </Badge>
@@ -604,26 +692,73 @@ const ProductsContent = () => {
                                             </div>
 
                                             {/* Action Buttons */}
-                                            <div className="flex gap-2 mt-4">
+                                            <div className="flex gap-2 mt-3 md:mt-4">
                                                 <Button
                                                     size="sm"
-                                                    className="flex-1 bg-green-600 hover:bg-green-700"
+                                                    className="flex-1 bg-green-600 hover:bg-green-700 text-xs md:text-sm"
                                                     onClick={() => router.push(`/trace/${product.documentId}`)}
                                                 >
                                                     Trace Back
                                                 </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    className="px-3"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        generateProductQRCode(product.documentId, productDetails.displayName);
-                                                    }}
-                                                    title="Download QR Code for this product"
-                                                >
-                                                    <QrCode className="h-4 w-4" />
-                                                </Button>
+                                                <div className="relative">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="px-3"
+                                                        onClick={(e) => showProductQRCode(product.documentId, productDetails.displayName, e)}
+                                                        title="Show QR Code for this product"
+                                                    >
+                                                        <QrCode className="h-4 w-4" />
+                                                    </Button>
+                                                    
+                                                    {/* QR Popover */}
+                                                    {showQRPopover === product.documentId && qrCodeData && (
+                                                        <div className="absolute right-0 top-full mt-2 z-50">
+                                                            <div className="bg-white rounded-lg shadow-lg border p-4 w-56">
+                                                                {/* Arrow pointing up */}
+                                                                <div className="absolute -top-2 right-4 w-4 h-4 bg-white border-l border-t transform rotate-45"></div>
+                                                                
+                                                                <div className="text-center">
+                                                                    <p className="text-sm font-medium text-gray-900 mb-3">
+                                                                        {qrCodeData.productName}
+                                                                    </p>
+                                                                    <div className="flex justify-center mb-3">
+                                                                        <img 
+                                                                            src={qrCodeData.url} 
+                                                                            alt="QR Code"
+                                                                            className="w-32 h-32 border rounded"
+                                                                        />
+                                                                    </div>
+                                                                    <p className="text-xs text-gray-600 mb-3">
+                                                                        Scan to trace product
+                                                                    </p>
+                                                                    <div className="flex gap-1">
+                                                                        <button
+                                                                            className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs py-1.5 px-2 rounded transition-colors"
+                                                                            onClick={() => {
+                                                                                const link = document.createElement('a');
+                                                                                link.download = `${qrCodeData.productName}-qr.png`;
+                                                                                link.href = qrCodeData.url;
+                                                                                link.click();
+                                                                            }}
+                                                                        >
+                                                                            Download
+                                                                        </button>
+                                                                        <button
+                                                                            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs py-1.5 px-2 rounded transition-colors"
+                                                                            onClick={() => {
+                                                                                setShowQRPopover(null);
+                                                                                setQrCodeData(null);
+                                                                            }}
+                                                                        >
+                                                                            Close
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -632,9 +767,9 @@ const ProductsContent = () => {
                         </div>
 
                         {filteredProducts.length === 0 && (
-                            <div className="text-center py-12">
-                                <div className="text-gray-500 text-lg mb-2">No products found</div>
-                                <div className="text-gray-400 text-sm">
+                            <div className="text-center py-8 md:py-12">
+                                <div className="text-gray-500 text-base md:text-lg mb-2">No products found</div>
+                                <div className="text-gray-400 text-sm md:text-base px-4">
                                     {searchTerm
                                         ? `No products match "${searchTerm}" in ${selectedCategory}`
                                         : `No products available in ${selectedCategory}`

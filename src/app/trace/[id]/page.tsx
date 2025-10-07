@@ -443,40 +443,43 @@ const TraceProductPage = () => {
 
                 {/* QR Code Modal */}
                 {showQRCode && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                    <div className="fixed inset-0 bg-transparent backdrop-blur-none flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-2xl border border-gray-300">
                             <div className="text-center">
-                                <h2 className="text-xl font-bold text-gray-800 mb-4">Product Trace QR Code</h2>
-                                <p className="text-sm text-gray-600 mb-4">
+                                <h2 className="text-xl font-bold text-gray-800 mb-2">Product Trace QR Code</h2>
+                                <p className="text-sm text-gray-600 mb-6">
                                     Scan this QR code to trace the journey of this specific product
                                 </p>
                                 
                                 {qrCodeUrl && (
-                                    <div className="mb-4">
+                                    <div className="mb-6 bg-gray-50 p-4 rounded-lg">
                                         <img 
                                             src={qrCodeUrl} 
                                             alt="Product Trace QR Code"
-                                            className="mx-auto border border-gray-200 rounded-lg"
+                                            className="mx-auto w-48 h-48 border-2 border-gray-200 rounded-lg bg-white"
                                         />
                                     </div>
                                 )}
                                 
-                                <div className="space-y-2">
-                                    <p className="text-xs text-gray-500">
-                                        Product: {getProductDisplayName(productData.final_product_type)}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                        Lot ID: {productData.documentId}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                        Quantity: {productData.output_quantity} {productData.output_unit}
-                                    </p>
+                                <div className="space-y-2 mb-6 text-left bg-gray-50 rounded-lg p-4">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-medium text-gray-700">Product:</span>
+                                        <span className="text-xs text-gray-600">{getProductDisplayName(productData.final_product_type)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-medium text-gray-700">Lot ID:</span>
+                                        <span className="text-xs text-gray-600">{productData.documentId}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-medium text-gray-700">Quantity:</span>
+                                        <span className="text-xs text-gray-600">{productData.output_quantity} {productData.output_unit}</span>
+                                    </div>
                                 </div>
                                 
-                                <div className="flex gap-2 mt-6">
+                                <div className="flex gap-3">
                                     <Button
                                         onClick={downloadQRCode}
-                                        className="flex-1 bg-green-600 hover:bg-green-700"
+                                        className="flex-1 bg-green-600 hover:bg-green-700 text-sm"
                                     >
                                         <Download className="mr-2 h-4 w-4" />
                                         Download QR
@@ -484,7 +487,7 @@ const TraceProductPage = () => {
                                     <Button
                                         onClick={() => setShowQRCode(false)}
                                         variant="outline"
-                                        className="flex-1"
+                                        className="flex-1 text-sm"
                                     >
                                         Close
                                     </Button>
