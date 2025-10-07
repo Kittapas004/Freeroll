@@ -796,13 +796,6 @@ export default function FactorySubmissionPage() {
                                                                 )}
                                                             </SelectContent>
                                                         </Select>
-                                                        <button
-                                                            onClick={() => handleSubmitToFactory(batch.documentId, factorySelections[batch.documentId])}
-                                                            className="px-3 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors"
-                                                            disabled={!factorySelections[batch.documentId]}
-                                                        >
-                                                            Submit
-                                                        </button>
                                                     </div>
                                                 </td>
 

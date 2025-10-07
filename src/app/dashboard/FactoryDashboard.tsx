@@ -393,7 +393,7 @@ export default function FactoryDashboard() {
 
         // 3. Find Top Product Output by grouping final_product_type and summing output_quantity from completed processings
         const productTypeTotals = completedProcessings.reduce((acc: any, p: any) => {
-          const productType = p.final_product_type || 'Unknown Product';
+          const productType = p.final_product_type || 'N/A';
           const output = parseFloat(p.output_quantity) || 0;
           
           if (!acc[productType]) {
@@ -407,7 +407,7 @@ export default function FactoryDashboard() {
         console.log('🏷️ Product Type Totals:', productTypeTotals);
 
         // Find the product type with highest total output
-        let topProductTypeName = 'Unknown Product';
+        let topProductTypeName = 'N/A';
         let topProductOutput = 0;
         Object.entries(productTypeTotals).forEach(([type, total]: [string, any]) => {
           if (total > topProductOutput) {
@@ -474,44 +474,63 @@ export default function FactoryDashboard() {
           topProductTypeName
         });
 
-        // Process real recent processing data from processings collection
-        const recentProcessingData: RecentProcessing[] = processings.slice(0, 10).map((processing: any) => {
-          const output = parseFloat(processing.output_quantity) || 0;
-          const finalProductType = processing.final_product_type || 'Unknown Product';
-          
-          let productOutput = '';
-          if (output > 0) {
-            const unit = processing.output_unit || 'kg';
-            productOutput = `${finalProductType}: ${output} ${unit}`;
-          } else {
-            productOutput = 'Processing in progress';
-          }
+        // Process real recent processing data from processings collection - แสดงเฉพาะที่ประมวลผลแล้ว
+        const recentProcessingData: RecentProcessing[] = processings
+          .filter((processing: any) => {
+            // แสดงเฉพาะที่มีการประมวลผลแล้ว (ไม่ใช่ "Received" หรือ status เริ่มต้น)
+            const status = processing.Processing_Status;
+            return status && 
+                   status !== 'Received' && 
+                   status !== 'Pending' &&
+                   processing.operator_processor && // ต้องมีผู้ประมวลผล
+                   (processing.output_quantity || processing.final_product_type); // ต้องมีผลผลิตหรือประเภทสินค้า
+          })
+          .sort((a: any, b: any) => {
+            // เรียงตามวันที่ล่าสุดก่อน
+            const dateA = new Date(a.processing_date_custom || a.Date_Received || a.createdAt);
+            const dateB = new Date(b.processing_date_custom || b.Date_Received || b.createdAt);
+            return dateB.getTime() - dateA.getTime();
+          })
+          .slice(0, 5) // เอา 10 รายการล่าสุด
+          .map((processing: any) => {
+            const output = parseFloat(processing.output_quantity) || 0;
+            const finalProductType = processing.final_product_type || 'N/A';
+            
+            let productOutput = '';
+            if (output > 0) {
+              const unit = processing.output_unit || 'kg';
+              productOutput = `${finalProductType}: ${output} ${unit}`;
+            } else {
+              productOutput = 'Processing in progress';
+            }
 
-          // Map processing status properly for Recent Processing
-          const processingStatus = processing.Processing_Status || 'Processing';
-          let displayStatus: 'Passed' | 'Processing' = 'Processing';
-          
-          // Show "Passed" for both Completed and Export Success
-          if (processingStatus === 'Completed' || processingStatus === 'Export Success') {
-            displayStatus = 'Passed';
-          }
+            // Map processing status properly for Recent Processing
+            const processingStatus = processing.Processing_Status || 'Processing';
+            let displayStatus: 'Passed' | 'Processing' = 'Processing';
+            
+            // Show "Passed" for both Completed and Export Success
+            if (processingStatus === 'Completed' || processingStatus === 'Export Success') {
+              displayStatus = 'Passed';
+            }
 
-          console.log(`Recent Processing - Batch ${processing.Batch_Id}:`, {
-            originalStatus: processing.Processing_Status,
-            displayStatus: displayStatus,
-            output: productOutput
+            console.log(`Recent Processing (Filtered) - Batch ${processing.Batch_Id}:`, {
+              originalStatus: processing.Processing_Status,
+              displayStatus: displayStatus,
+              output: productOutput,
+              hasOperator: !!processing.operator_processor,
+              hasOutput: !!processing.output_quantity
+            });
+
+            return {
+              id: processing.id.toString(),
+              batchId: processing.Batch_Id || `T-batch-${processing.id}`,
+              date: processing.processing_date_custom || processing.Date_Received || processing.createdAt,
+              processor: processing.operator_processor || processing.Factory || 'Factory Processing',
+              productOutput,
+              processMethod: processing.final_product_type || 'Standard Processing',
+              status: displayStatus
+            };
           });
-
-          return {
-            id: processing.id.toString(),
-            batchId: processing.Batch_Id || `T-batch-${processing.id}`,
-            date: processing.Date_Received || processing.createdAt,
-            processor: processing.operator_processor || processing.Factory || 'Factory Processing',
-            productOutput,
-            processMethod: processing.final_product_type || 'Standard Processing',
-            status: displayStatus
-          };
-        });
 
         setRecentProcessing(recentProcessingData);
 

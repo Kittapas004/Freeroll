@@ -6,15 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Heart, Package, Search, SoupIcon, Sparkle } from "lucide-react";
+import { Heart, Package, Search, SoupIcon, Sparkle, QrCode } from "lucide-react";
 import PublicNavigation from "@/components/public-navigation";
 import Footer from "@/components/Footer";
+import QRCode from 'qrcode';
 
 interface FactoryProcessing {
     id: number;
     documentId: string;
     final_product_type: string;
     output_quantity: string;
+    output_unit?: string; // เพิ่ม output_unit
     processing_status: string;
     processing_date: string;
     operator_processor: string;
@@ -56,6 +58,30 @@ const ProductsContent = () => {
     const [selectedCategory, setSelectedCategory] = useState('All Product');
     const [factoryProcessingData, setFactoryProcessingData] = useState<FactoryProcessing[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Generate QR Code for specific product
+    const generateProductQRCode = async (productId: string, productName: string) => {
+        try {
+            const traceUrl = `${window.location.origin}/trace/${productId}`;
+            const qrDataUrl = await QRCode.toDataURL(traceUrl, {
+                width: 200,
+                margin: 1,
+                color: {
+                    dark: '#16a34a',
+                    light: '#ffffff'
+                }
+            });
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.download = `${productName}-trace-qr.png`;
+            link.href = qrDataUrl;
+            link.click();
+        } catch (error) {
+            console.error('Error generating QR code:', error);
+            alert('Error generating QR code. Please try again.');
+        }
+    };
 
     // Set initial category from URL params
     useEffect(() => {
@@ -184,6 +210,7 @@ const ProductsContent = () => {
                     documentId: item.documentId || `item-${item.id}`,
                     final_product_type: item.final_product_type || 'Unknown',
                     output_quantity: item.output_quantity || 'N/A',
+                    output_unit: item.output_unit || '', // เพิ่ม output_unit
                     processing_status: item.processing_status || 'Unknown',
                     processing_date: item.processing_date || item.processing_date_custom,
                     operator_processor: item.operator_processor || 'Unknown',
@@ -516,11 +543,13 @@ const ProductsContent = () => {
                                 return (
                                     <Card
                                         key={product.documentId}
-                                        className="cursor-pointer hover:shadow-lg transition-shadow"
-                                        onClick={() => router.push(`/trace/${product.documentId}`)}
+                                        className="hover:shadow-lg transition-shadow"
                                     >
                                         <CardContent className="p-4">
-                                            <div className="aspect-square bg-gray-100 rounded-lg mb-4 flex items-center justify-center overflow-hidden">
+                                            <div 
+                                                className="aspect-square bg-gray-100 rounded-lg mb-4 flex items-center justify-center overflow-hidden cursor-pointer"
+                                                onClick={() => router.push(`/trace/${product.documentId}`)}
+                                            >
                                                 <img
                                                     src={productDetails.image}
                                                     alt={productDetails.displayName}
@@ -531,45 +560,70 @@ const ProductsContent = () => {
                                                 />
                                             </div>
 
-                                            <h3 className="font-medium text-sm mb-2">{productDetails.displayName}</h3>
+                                            <div onClick={() => router.push(`/trace/${product.documentId}`)} className="cursor-pointer">
+                                                <h3 className="font-medium text-sm mb-2">{productDetails.displayName}</h3>
 
-                                            <div className="space-y-1 text-xs text-gray-600">
-                                                <div>Quality Grade: {product.factory_submission?.quality_grade || product.product_grade || ''}</div>
-                                                <div>Quantity: {product.output_quantity || 'N/A'}</div>
-                                                <div>Plant Variety: {product.batch_info?.plant_variety || 'Unknown Variety'}</div>
-                                            </div>
-
-                                            <div className="mt-3">
-                                                <Badge variant="outline" className="text-xs">
-                                                    {product.final_product_type}
-                                                </Badge>
-                                            </div>
-
-                                            {/* Certifications */}
-                                            <div className="mt-2">
-                                                <div className="text-xs text-gray-500 mb-1">Certifications:</div>
-                                                <div className="flex flex-wrap gap-1">
-                                                    {/* แสดง standard_criteria จริงจาก API */}
-                                                    {product.standard_criteria && (
-                                                        <Badge variant="secondary" className="text-xs">
-                                                            {product.standard_criteria}
-                                                        </Badge>
-                                                    )}
-
-                                                    {/* แสดง cultivation_method ถ้ามี */}
-                                                    {product.factory_submission?.harvest_records?.farm?.cultivation_method && (
-                                                        <Badge variant="secondary" className="text-xs">
-                                                            {product.factory_submission.harvest_records.farm.cultivation_method}
-                                                        </Badge>
-                                                    )}
-
-                                                    {/* แสดง placeholder ถ้าไม่มีข้อมูล certification */}
-                                                    {!product.standard_criteria && !product.factory_submission?.harvest_records?.farm?.cultivation_method && (
-                                                        <Badge variant="secondary" className="text-xs text-gray-400">
-                                                            No certification data
-                                                        </Badge>
-                                                    )}
+                                                <div className="space-y-1 text-xs text-gray-600">
+                                                    <div>Quality Grade: {product.factory_submission?.quality_grade || product.product_grade || ''}</div>
+                                                    <div>Quantity: {product.output_quantity || 'N/A'} {product.output_unit || ''}</div>
+                                                    <div>Plant Variety: {product.batch_info?.plant_variety || 'Unknown Variety'}</div>
                                                 </div>
+
+                                                <div className="mt-3">
+                                                    <Badge variant="outline" className="text-xs">
+                                                        {product.final_product_type}
+                                                    </Badge>
+                                                </div>
+
+                                                {/* Certifications */}
+                                                <div className="mt-2">
+                                                    <div className="text-xs text-gray-500 mb-1">Certifications:</div>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {/* แสดง standard_criteria จริงจาก API */}
+                                                        {product.standard_criteria && (
+                                                            <Badge variant="secondary" className="text-xs">
+                                                                {product.standard_criteria}
+                                                            </Badge>
+                                                        )}
+
+                                                        {/* แสดง cultivation_method ถ้ามี */}
+                                                        {product.factory_submission?.harvest_records?.farm?.cultivation_method && (
+                                                            <Badge variant="secondary" className="text-xs">
+                                                                {product.factory_submission.harvest_records.farm.cultivation_method}
+                                                            </Badge>
+                                                        )}
+
+                                                        {/* แสดง placeholder ถ้าไม่มีข้อมูล certification */}
+                                                        {!product.standard_criteria && !product.factory_submission?.harvest_records?.farm?.cultivation_method && (
+                                                            <Badge variant="secondary" className="text-xs text-gray-400">
+                                                                No certification data
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Action Buttons */}
+                                            <div className="flex gap-2 mt-4">
+                                                <Button
+                                                    size="sm"
+                                                    className="flex-1 bg-green-600 hover:bg-green-700"
+                                                    onClick={() => router.push(`/trace/${product.documentId}`)}
+                                                >
+                                                    Trace Back
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="px-3"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        generateProductQRCode(product.documentId, productDetails.displayName);
+                                                    }}
+                                                    title="Download QR Code for this product"
+                                                >
+                                                    <QrCode className="h-4 w-4" />
+                                                </Button>
                                             </div>
                                         </CardContent>
                                     </Card>

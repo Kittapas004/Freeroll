@@ -4266,7 +4266,7 @@ export default function PlantingBatchDetail() {
                                                             const isCompleted = lab_rec.status === 'Completed';
                                                             const isExported = lab_rec.exported === true;
                                                             const exportStatus = lab_rec.export_status || 'Unknown';
-                                                            const testingMethod = lab_rec.testing_method || 'NIR Spectroscopy';
+                                                            const testingMethod = lab_rec.testing_method ;
 
                                                             if (isCompleted && isExported) {
                                                                 // ✅ แสดง View Report เมื่อ Completed และ Exported แล้ว

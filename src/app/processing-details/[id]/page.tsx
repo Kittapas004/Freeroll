@@ -1632,15 +1632,15 @@ export default function RecordDetailsPage() {
                                 <span className="text-sm font-medium">View only mode - Factory processing data</span>
                             </div>
                         )}
-                        <Button
+                        {/* <Button
                             onClick={() => router.push(userRole === 'Farmer' ? '/factorysubmission' : '/processing-history')}
                             variant="outline"
                             className="flex items-center gap-2"
                         >
                             <ArrowLeft size={16} />
                             {userRole === 'Farmer' ? 'Back to Factory Submission' : (isReadOnly ? 'Back to History' : 'Cancel')}
-                        </Button>
-                        {userRole === 'Farmer' && (
+                        </Button> */}
+                        {/* {userRole === 'Farmer' && (
                             <Button
                                 onClick={handlePrintReport}
                                 className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
@@ -1648,7 +1648,7 @@ export default function RecordDetailsPage() {
                                 <Printer className="w-4 h-4" />
                                 Print Report
                             </Button>
-                        )}
+                        )} */}
                         {!isReadOnly && userRole !== 'Farmer' && (
                             <Button
                                 onClick={handleSaveRecord}

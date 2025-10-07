@@ -5,15 +5,17 @@ import { useParams, useRouter } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, MapPin, Calendar, Factory, Leaf, Package, FileText } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Factory, Leaf, Package, FileText, QrCode, Download, Share2 } from "lucide-react";
 import PublicNavigation from "@/components/public-navigation";
 import Footer from "@/components/Footer";
+import QRCode from 'qrcode';
 
 interface ProductData {
     id: number;
     documentId: string;
     final_product_type: string;
     output_quantity: string;
+    output_unit?: string; // เพิ่ม output_unit
     processing_status: string;
     processing_date: string;
     operator_processor: string;
@@ -63,6 +65,12 @@ interface ProductData {
         moisture: string;
         curcumin_content: string;
         certifications: string[];
+        lead_ppm?: string;
+        cadmium_ppm?: string;
+        arsenic_ppm?: string;
+        mercury_ppm?: string;
+        total_plate_count?: string;
+        yeast_mold?: string;
     };
 }
 
@@ -72,6 +80,60 @@ const TraceProductPage = () => {
     const [productData, setProductData] = useState<ProductData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+    const [showQRCode, setShowQRCode] = useState(false);
+
+    // Generate QR Code for this product's trace URL
+    const generateQRCode = async () => {
+        try {
+            const traceUrl = `${window.location.origin}/trace/${params.id}`;
+            const qrDataUrl = await QRCode.toDataURL(traceUrl, {
+                width: 256,
+                margin: 2,
+                color: {
+                    dark: '#16a34a', // Green color
+                    light: '#ffffff'
+                }
+            });
+            setQrCodeUrl(qrDataUrl);
+            setShowQRCode(true);
+        } catch (error) {
+            console.error('Error generating QR code:', error);
+        }
+    };
+
+    // Download QR Code as image
+    const downloadQRCode = () => {
+        if (qrCodeUrl) {
+            const link = document.createElement('a');
+            link.download = `turmeric-trace-${params.id}.png`;
+            link.href = qrCodeUrl;
+            link.click();
+        }
+    };
+
+    // Share QR Code
+    const shareTrace = async () => {
+        const traceUrl = `${window.location.origin}/trace/${params.id}`;
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: `TurmeRic Product Trace - ${productData?.final_product_type}`,
+                    text: 'Scan this QR code or visit this link to trace the product journey',
+                    url: traceUrl
+                });
+            } catch (error) {
+                console.log('Error sharing:', error);
+                // Fallback to copying to clipboard
+                navigator.clipboard.writeText(traceUrl);
+                alert('Trace URL copied to clipboard!');
+            }
+        } else {
+            // Fallback to copying to clipboard
+            navigator.clipboard.writeText(traceUrl);
+            alert('Trace URL copied to clipboard!');
+        }
+    };
 
     // Get product image based on type
     const getProductImage = (productType: string) => {
@@ -213,6 +275,7 @@ const TraceProductPage = () => {
                     documentId: item.documentId,
                     final_product_type: item.final_product_type,
                     output_quantity: item.output_quantity,
+                    output_unit: item.output_unit || '', // เพิ่ม output_unit
                     processing_status: item.processing_status,
                     processing_date: item.processing_date || item.processing_date_custom,
                     operator_processor: item.operator_processor,
@@ -252,7 +315,13 @@ const TraceProductPage = () => {
                     quality_data: {
                         moisture: item.moisture || '< 10%',
                         curcumin_content: item.curcuminoid_content || '> 3%',
-                        certifications: item.standard_criteria ? [item.standard_criteria] : ['GMP', 'HACCP', 'Organic', 'FDA']
+                        certifications: item.standard_criteria ? [item.standard_criteria] : ['GMP', 'HACCP', 'Organic', 'FDA'],
+                        lead_ppm: item.lead_ppm || 'N/A',
+                        cadmium_ppm: item.cadmium_ppm || 'N/A',
+                        arsenic_ppm: item.arsenic_ppm || 'N/A',
+                        mercury_ppm: item.mercury_ppm || 'N/A',
+                        total_plate_count: item.total_plate_count || 'N/A',
+                        yeast_mold: item.yeast_mold || 'N/A'
                     }
                 };
 
@@ -344,15 +413,86 @@ const TraceProductPage = () => {
             </div>
 
             <div className="container mx-auto px-6 py-8">
-                {/* Back Button */}
-                <Button
-                    variant="ghost"
-                    onClick={() => router.push('/products-category')}
-                    className="mb-6"
-                >
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Products
-                </Button>
+                {/* Back Button and QR Code Actions */}
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                    <Button
+                        variant="ghost"
+                        onClick={() => router.push('/products-category')}
+                    >
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Products
+                    </Button>
+                    
+                    <div className="flex gap-2">
+                        <Button
+                            onClick={generateQRCode}
+                            className="bg-green-600 hover:bg-green-700"
+                        >
+                            <QrCode className="mr-2 h-4 w-4" />
+                            Generate QR Code
+                        </Button>
+                        <Button
+                            onClick={shareTrace}
+                            variant="outline"
+                        >
+                            <Share2 className="mr-2 h-4 w-4" />
+                            Share Trace
+                        </Button>
+                    </div>
+                </div>
+
+                {/* QR Code Modal */}
+                {showQRCode && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                            <div className="text-center">
+                                <h2 className="text-xl font-bold text-gray-800 mb-4">Product Trace QR Code</h2>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    Scan this QR code to trace the journey of this specific product
+                                </p>
+                                
+                                {qrCodeUrl && (
+                                    <div className="mb-4">
+                                        <img 
+                                            src={qrCodeUrl} 
+                                            alt="Product Trace QR Code"
+                                            className="mx-auto border border-gray-200 rounded-lg"
+                                        />
+                                    </div>
+                                )}
+                                
+                                <div className="space-y-2">
+                                    <p className="text-xs text-gray-500">
+                                        Product: {getProductDisplayName(productData.final_product_type)}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                        Lot ID: {productData.documentId}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                        Quantity: {productData.output_quantity} {productData.output_unit}
+                                    </p>
+                                </div>
+                                
+                                <div className="flex gap-2 mt-6">
+                                    <Button
+                                        onClick={downloadQRCode}
+                                        className="flex-1 bg-green-600 hover:bg-green-700"
+                                    >
+                                        <Download className="mr-2 h-4 w-4" />
+                                        Download QR
+                                    </Button>
+                                    <Button
+                                        onClick={() => setShowQRCode(false)}
+                                        variant="outline"
+                                        className="flex-1"
+                                    >
+                                        Close
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     {/* Product Image and Basic Info */}
@@ -387,7 +527,7 @@ const TraceProductPage = () => {
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <Package className="h-4 w-4" />
-                                                <span>Quantity: {productData.output_quantity || 'N/A'}</span>
+                                                <span>Quantity: {productData.output_quantity || 'N/A'} {productData.output_unit || ''}</span>
                                             </div>
                                         </div>
 
@@ -496,18 +636,19 @@ const TraceProductPage = () => {
                                     Quality Assurance
                                 </CardTitle>
                             </CardHeader>
-                            <CardContent className="space-y-3">
+                            <CardContent className="space-y-4">
+                                {/* Basic Quality Data */}
                                 <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div>
+                                    {/* <div>
                                         <span className="font-medium text-gray-900">Test Type:</span>
                                         <p className="text-gray-600">
                                             {productData.factory_submission?.test_type || 'Curcuminoid'}
                                         </p>
-                                    </div>
+                                    </div> */}
                                     <div>
                                         <span className="font-medium text-gray-900">Quality Grade:</span>
                                         <p className="text-gray-600">
-                                            {productData.factory_submission?.quality_grade || productData.product_grade || 'Grade A'}
+                                            {productData.factory_submission?.quality_grade  || productData.product_grade || 'Grade A'}
                                         </p>
                                     </div>
                                     <div>
@@ -518,13 +659,43 @@ const TraceProductPage = () => {
                                         <span className="font-medium text-gray-900">Curcumin Content:</span>
                                         <p className="text-gray-600">{productData.quality_data?.curcumin_content || '> 3%'}</p>
                                     </div>
-                                    <div>
-                                        <span className="font-medium text-gray-900">Heavy Metals:</span>
-                                        <p className="text-gray-600">Within safe limits</p>
+                                </div>
+
+                                {/* Heavy Metals Analysis */}
+                                <div className="border-t pt-4">
+                                    <h4 className="font-medium text-gray-900 mb-3">Heavy Metals Analysis (mg/kg)</h4>
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                            <span className="font-medium text-gray-900">Lead (Pb):</span>
+                                            <p className="text-gray-600">{productData.quality_data?.lead_ppm || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <span className="font-medium text-gray-900">Cadmium (Cd):</span>
+                                            <p className="text-gray-600">{productData.quality_data?.cadmium_ppm || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <span className="font-medium text-gray-900">Arsenic (As):</span>
+                                            <p className="text-gray-600">{productData.quality_data?.arsenic_ppm || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <span className="font-medium text-gray-900">Mercury (Hg):</span>
+                                            <p className="text-gray-600">{productData.quality_data?.mercury_ppm || 'N/A'}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <span className="font-medium text-gray-900">Microbiology:</span>
-                                        <p className="text-gray-600">Passed all tests</p>
+                                </div>
+
+                                {/* Microbiological Analysis */}
+                                <div className="border-t pt-4">
+                                    <h4 className="font-medium text-gray-900 mb-3">Microbiological Analysis (CFU/g)</h4>
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                            <span className="font-medium text-gray-900">Total Plate Count:</span>
+                                            <p className="text-gray-600">{productData.quality_data?.total_plate_count || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <span className="font-medium text-gray-900">Yeast & Mold:</span>
+                                            <p className="text-gray-600">{productData.quality_data?.yeast_mold || 'N/A'}</p>
+                                        </div>
                                     </div>
                                 </div>
                             </CardContent>

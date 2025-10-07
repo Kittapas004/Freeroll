@@ -2,7 +2,6 @@
 
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import ChemicalChart from "@/components/ChemicalChart";
-import RecentActivity from "@/components/RecentActivity";
 import QuickActions from "@/components/QuickActions";
 import NotificationPanel from "@/components/NotificationPanel";
 import { AppSidebar } from "@/components/app-sidebar";
