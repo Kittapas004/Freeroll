@@ -151,16 +151,39 @@ export default function ProcessingReportsPage() {
 
             // Map the data to our interface
             const processedRecords: ProcessingRecord[] = data.data.map((item: any) => {
-                const productType = item.final_product_type || 'Powder';
-                const quantity = item.output_quantity || 0;
-                const outputUnit = item.output_unit || 'kg'; // อ่านหน่วยจาก Strapi แทน if-else
+                // Get Batch ID (from Batch_Id field or generate)
+                const batchId = item.Batch_Id || `T-Batch-${String(item.id).padStart(3, '0')}`;
+                
+                // Parse output_records_json to get all output records
+                let outputRecords = [];
+                try {
+                    if (item.output_records_json) {
+                        outputRecords = JSON.parse(item.output_records_json);
+                    }
+                } catch (e) {
+                    console.error('Error parsing output_records_json:', e);
+                }
+
+                // Get processors from output records (unique list)
+                const processors = outputRecords.length > 0 
+                    ? [...new Set(outputRecords.map((rec: any) => rec.processor))].join(', ')
+                    : (item.operator_processor || userName);
+
+                // Get product outputs (all records formatted)
+                const productOutputs = outputRecords.length > 0
+                    ? outputRecords.map((rec: any) => 
+                        `${rec.productType}: ${rec.quantity} ${rec.unit}`
+                      ).join('\n')
+                    : `${item.final_product_type || 'Powder'}: ${item.output_quantity || 0} ${item.output_unit || 'kg'}`;
 
                 // เช็คว่า record นี้ถูก export ไปแล้วหรือยังจาก Processing_Status
                 const processingStatus = item.Processing_Status || "Unknown";
                 const hasExportHistory = processingStatus === "Export Success";
 
-                console.log(`Processing record ${item.batch_lot_number}:`, {
-                    lotId: item.batch_lot_number,
+                console.log(`Processing record ${batchId}:`, {
+                    batchId: batchId,
+                    processors: processors,
+                    outputRecords: outputRecords.length,
                     processing_status: processingStatus,
                     hasExportHistory: hasExportHistory
                 });
@@ -168,20 +191,20 @@ export default function ProcessingReportsPage() {
                 return {
                     id: item.id.toString(),
                     documentId: item.documentId,
-                    lotId: item.batch_lot_number|| `Lot-${String(item.id).padStart(3, '0')}`,
+                    lotId: batchId, // ใช้ Batch ID แทน
                     farmName: item.factory_submission?.Farm_Name || 'Unknown Farm',
-                    processor: item.operator_processor || userName,
-                    productType: productType,
-                    output: quantity, // ใช้ quantity แทน output
-                    outputUnit: outputUnit,
+                    processor: processors, // แสดง processors จาก output_records_json
+                    productType: productOutputs, // เก็บ product outputs ทั้งหมด
+                    output: 0, // ไม่ใช้แล้ว
+                    outputUnit: '', // ไม่ใช้แล้ว
                     dateOfResult: new Date(item.processing_date_custom || item.Date_Received || item.createdAt).toLocaleDateString('en-US', {
                         year: 'numeric',
                         month: 'short',
                         day: 'numeric'
                     }),
                     status: 'Complete',
-                    exported: hasExportHistory, // ใช้เฉพาะใน UI แต่ไม่บันทึกลง database
-                    exportStatus: hasExportHistory ? 'Export Success' : 'Not Exported' // ใช้เฉพาะใน UI แต่ไม่บันทึกลง database
+                    exported: hasExportHistory,
+                    exportStatus: hasExportHistory ? 'Export Success' : 'Not Exported'
                 };
             });
 
@@ -271,8 +294,16 @@ export default function ProcessingReportsPage() {
     // Get unique farm names for dropdown
     const uniqueFarmNames = [...new Set(completedData.map(item => item.farmName))];
 
-    // Get unique product types for dropdown
-    const uniqueProductTypes = [...new Set(completedData.map(item => item.productType))];
+    // Get unique product types for dropdown (extract from multi-line productType strings)
+    const uniqueProductTypes = [...new Set(
+        completedData.flatMap(item => {
+            // Extract product types from the formatted string "ProductType: quantity unit"
+            return item.productType.split('\n').map(line => {
+                const match = line.match(/^([^:]+):/);
+                return match ? match[1].trim() : null;
+            }).filter((type): type is string => Boolean(type)); // Type guard to filter out null/undefined
+        })
+    )] as string[]; // Explicitly type as string array
     
     // Filter data based on search criteria
     const filteredData = completedData.filter((item: ProcessingRecord) => {
@@ -290,8 +321,9 @@ export default function ProcessingReportsPage() {
         // Farm name match
         const farmMatch = selectedFarm === "All Farms" || item.farmName === selectedFarm;
         
-        // Product type match - use actual productType field
-        const productTypeMatch = selectedProductType === "All Types" || item.productType === selectedProductType;
+        // Product type match - check if any product in the multi-line string matches
+        const productTypeMatch = selectedProductType === "All Types" || 
+            item.productType.toLowerCase().includes(selectedProductType.toLowerCase());
         
         // Lot ID match
         const lotMatch = !lotIdFilter || item.lotId.toLowerCase().includes(lotIdFilter.toLowerCase());
@@ -1006,7 +1038,9 @@ export default function ProcessingReportsPage() {
                                                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.lotId}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-900">{item.farmName}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-900">{item.processor}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-900">{formatProductOutput(item.productType, item.output, item.outputUnit)}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-900">
+                                                    <div className="whitespace-pre-line">{item.productType}</div>
+                                                </td>
                                                 <td className="px-6 py-4 text-sm text-gray-900">
                                                     {new Date(item.dateOfResult).toLocaleDateString('en-US', {
                                                         year: 'numeric',

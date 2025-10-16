@@ -23,7 +23,12 @@ import {
     User,
     Clock,
     Loader2,
-    FileText
+    FileText,
+    FlaskConical,
+    Microscope,
+    Factory,
+    PackageCheck,
+    Award
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -44,6 +49,8 @@ interface BatchData {
     contact: string;
     dateReceived: string;
     factory?: string;
+    workflowStep?: number;
+    isProcessingMode?: boolean;
 }
 
 export default function ProcessingDetailsPage() {
@@ -57,6 +64,7 @@ export default function ProcessingDetailsPage() {
         farmName: "",
         testType: "",
         dateReceived: "",
+        workflowStep: "",
     });
 
     const toggleSidebar = () => {
@@ -193,7 +201,9 @@ export default function ProcessingDetailsPage() {
                     farmer: farmerName,
                     contact: farmerContact,
                     dateReceived: item.Date_Received || item.createdAt || new Date().toISOString(),
-                    factory: item.Factory || factoryName
+                    factory: item.Factory || factoryName,
+                    workflowStep: item.workflow_step || 0,
+                    isProcessingMode: item.is_processing_mode || false
                 };
             });
 
@@ -230,9 +240,24 @@ export default function ProcessingDetailsPage() {
                 return itemDate === filters.dateReceived;
             });
         }
+        if (filters.workflowStep && filters.workflowStep !== "all") {
+            const stepNum = parseInt(filters.workflowStep);
+            if (stepNum === 0) {
+                // Show only batches that haven't started
+                filtered = filtered.filter(item => !item.isProcessingMode || item.workflowStep === 0);
+            } else {
+                // Show batches at specific step
+                filtered = filtered.filter(item => item.workflowStep === stepNum);
+            }
+        }
 
         setFilteredData(filtered);
     };
+
+    // Auto-search when filters change
+    useEffect(() => {
+        handleSearch();
+    }, [filters, batchData]);
 
     const handleReset = () => {
         setFilters({
@@ -240,6 +265,7 @@ export default function ProcessingDetailsPage() {
             farmName: "",
             testType: "",
             dateReceived: "",
+            workflowStep: "",
         });
         setFilteredData(batchData);
     };
@@ -272,6 +298,23 @@ export default function ProcessingDetailsPage() {
             default:
                 return 'text-gray-600';
         }
+    };
+
+    const getStepInfo = (workflowStep: number) => {
+        // If workflowStep > 0, processing has started
+        // Show "Not Started" only if workflowStep is 0
+        if (!workflowStep || workflowStep === 0) {
+            return { name: 'Not Started', icon: '⏸️', color: 'bg-gray-100 text-gray-700' };
+        }
+        
+        const steps = [
+            { name: 'Quality Inspection', icon: <Microscope className="h-6 w-6" />, color: 'bg-blue-100 text-blue-700' },
+            { name: 'Processing', icon: <Factory className="h-6 w-6" />, color: 'bg-purple-100 text-purple-700' },
+            { name: 'Output & Compliance', icon: <PackageCheck className="h-6 w-6" />, color: 'bg-orange-100 text-orange-700' },
+            { name: 'Processing Summary', icon: <Award className="h-6 w-6" />, color: 'bg-green-100 text-green-700' }
+        ];
+        
+        return steps[workflowStep - 1] || { name: 'Unknown', icon: '❓', color: 'bg-gray-100 text-gray-700' };
     };
 
     useEffect(() => {
@@ -322,6 +365,25 @@ export default function ProcessingDetailsPage() {
                                 />
                             </div>
                             <div>
+                                <Label htmlFor="workflowStep" className="text-sm font-medium">Workflow Step</Label>
+                                <Select
+                                    value={filters.workflowStep}
+                                    onValueChange={(value) => setFilters({...filters, workflowStep: value})}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="All Steps" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Steps</SelectItem>
+                                        <SelectItem value="0">Not Started</SelectItem>
+                                        <SelectItem value="1">Step 1: Quality Inspection</SelectItem>
+                                        <SelectItem value="2">Step 2: Processing</SelectItem>
+                                        <SelectItem value="3">Step 3: Output & Compliance</SelectItem>
+                                        <SelectItem value="4">Step 4: Processing Summary</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            {/* <div>
                                 <Label htmlFor="testType" className="text-sm font-medium">Test Type</Label>
                                 <Select
                                     value={filters.testType}
@@ -337,15 +399,11 @@ export default function ProcessingDetailsPage() {
                                         <SelectItem value="Quality">Quality Test</SelectItem>
                                     </SelectContent>
                                 </Select>
-                            </div>
+                            </div> */}
                         </div>
                         <div className="flex justify-end gap-2 mt-4">
                             <Button variant="outline" onClick={handleReset}>
-                                Reset
-                            </Button>
-                            <Button onClick={handleSearch} className="bg-green-600 hover:bg-green-700">
-                                <Search className="w-4 h-4 mr-2" />
-                                Search
+                                Reset Filters
                             </Button>
                         </div>
                     </Card>
@@ -365,11 +423,11 @@ export default function ProcessingDetailsPage() {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {filteredData.map((batch) => (
-                                <Card key={batch.id} className="p-6 hover:shadow-lg transition-shadow">
-                                    <div className="space-y-4">
+                                <Card key={batch.id} className="p-6 hover:shadow-lg transition-shadow flex flex-col h-full">
+                                    <div className="space-y-4 flex-1 flex flex-col">
                                         {/* Header */}
                                         <div className="flex items-start justify-between">
-                                            <div>
+                                            <div className="flex-1">
                                                 <h3 className="font-semibold text-lg">{batch.batchId}</h3>
                                                 <div className="flex items-center text-sm text-gray-600 mt-1">
                                                     <MapPin className="w-4 h-4 mr-1" />
@@ -379,6 +437,51 @@ export default function ProcessingDetailsPage() {
                                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(batch.status)}`}>
                                                 {batch.status}
                                             </span>
+                                        </div>
+
+                                        {/* Workflow Step Indicator - Fixed Height Container */}
+                                        <div className="min-h-[60px]">
+                                            {batch.workflowStep && batch.workflowStep > 0 ? (
+                                                <div className="flex items-center gap-2 p-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
+                                                    <span className="text-lg">{getStepInfo(batch.workflowStep).icon}</span>
+                                                    <div className="flex-1">
+                                                        <p className="text-xs text-gray-600 font-medium">Current Step</p>
+                                                        <p className={`text-sm font-semibold ${getStepInfo(batch.workflowStep).color.replace('bg-', 'text-').replace('-100', '-700')}`}>
+                                                            Step {batch.workflowStep}: {getStepInfo(batch.workflowStep).name}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex gap-1">
+                                                        {[1, 2, 3, 4].map((step) => (
+                                                            <div
+                                                                key={step}
+                                                                className={`w-2 h-2 rounded-full ${
+                                                                    step <= (batch.workflowStep || 0)
+                                                                        ? 'bg-green-500'
+                                                                        : 'bg-gray-300'
+                                                                }`}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2 p-2 bg-gradient-to-r from-gray-50 to-slate-50 rounded-lg border border-gray-200">
+                                                    <span className="text-lg">⏸️</span>
+                                                    <div className="flex-1">
+                                                        <p className="text-xs text-gray-600 font-medium">Processing Status</p>
+                                                        <p className="text-sm font-semibold text-gray-600">
+                                                            Processing has not started yet.
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex gap-1">
+                                                        {[1, 2, 3, 4].map((step) => (
+                                                            <div
+                                                                key={step}
+                                                                className="w-2 h-2 rounded-full bg-gray-200"
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Farm Info */}
@@ -394,7 +497,7 @@ export default function ProcessingDetailsPage() {
                                         </div>
 
                                         {/* Details */}
-                                        <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div className="grid grid-cols-2 gap-4 text-sm flex-1">
                                             <div>
                                                 <div className="flex items-center text-gray-600">
                                                     <Weight className="w-4 h-4 mr-1" />
@@ -418,16 +521,18 @@ export default function ProcessingDetailsPage() {
                                         </div>
 
                                         {/* Factory Info */}
-                                        {batch.factory && (
-                                            <div className="flex items-center text-sm text-gray-600 pt-2 border-t">
-                                                <FactoryIcon className="w-4 h-4 mr-2" />
-                                                <span>Assigned to: {batch.factory}</span>
-                                            </div>
-                                        )}
+                                        <div className="min-h-[40px] flex items-center">
+                                            {batch.factory && (
+                                                <div className="flex items-center text-sm text-gray-600 pt-2 border-t w-full">
+                                                    <FactoryIcon className="w-4 h-4 mr-2" />
+                                                    <span>Assigned to: {batch.factory}</span>
+                                                </div>
+                                            )}
+                                        </div>
 
                                         {/* Action Button */}
                                         <Button 
-                                            className="w-full mt-4 bg-gray-800 hover:bg-gray-900 active:bg-gray-950 hover:shadow-lg active:shadow-sm transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 flex items-center gap-2 cursor-pointer"
+                                            className="w-full mt-auto bg-gray-800 hover:bg-gray-900 active:bg-gray-950 hover:shadow-lg active:shadow-sm transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 flex items-center gap-2 cursor-pointer"
                                             onClick={() => router.push(`/processing-details/${batch.documentId}`)}
                                         >
                                             <FileText className="w-4 h-4" />

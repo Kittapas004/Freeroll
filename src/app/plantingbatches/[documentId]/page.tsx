@@ -362,7 +362,7 @@ export default function PlantingBatchDetail() {
                     kamincal_first_time: record.kamincal_first_time || 0,
                     kamincal_analytical_instrument: record.kamincal_analytical_instrument || "UV-Vis",
                     kamincal_second_time: record.kamincal_second_time || 0,
-                    kamincal_curcuminoid_content: record.kamincal_curcuminoid_content || "Pass",
+                    kamincal_curcuminoid_content: record.kamincal_curcuminoid_content || "",
                     kamincal_curcuminoid_percentage: record.kamincal_curcuminoid_percentage || 0,
                     kamincal_third_time: record.kamincal_third_time || 0,
                     // เพิ่ม Harvest Cost Tracking
@@ -540,7 +540,7 @@ export default function PlantingBatchDetail() {
                         kamincal_first_time: parseFloat(kaminCALData.first_time) || 0,
                         kamincal_analytical_instrument: kaminCALData.analytical_instrument || "HPLC",
                         kamincal_second_time: parseFloat(kaminCALData.second_time) || 0,
-                        kamincal_curcuminoid_content: kaminCALData.curcuminoid_content || "Pass",
+                        kamincal_curcuminoid_content: kaminCALData.curcuminoid_content || "",
                         kamincal_curcuminoid_percentage: parseFloat(kaminCALData.curcuminoid_percentage) || 0,
                         kamincal_third_time: parseFloat(kaminCALData.third_time) || 0,
                         // เพิ่ม Harvest Cost Tracking
@@ -1039,7 +1039,7 @@ export default function PlantingBatchDetail() {
                         kamincal_first_time: parseFloat(kaminCALData.first_time) || 0,
                         kamincal_analytical_instrument: kaminCALData.analytical_instrument || "UV-Vis",
                         kamincal_second_time: parseFloat(kaminCALData.second_time) || 0,
-                        kamincal_curcuminoid_content: kaminCALData.curcuminoid_content || "Pass",
+                        kamincal_curcuminoid_content: kaminCALData.curcuminoid_content || "",
                         kamincal_curcuminoid_percentage: parseFloat(kaminCALData.curcuminoid_percentage) || 0,
                         kamincal_third_time: parseFloat(kaminCALData.third_time) || 0,
                         // เพิ่ม Harvest Cost Tracking
@@ -4015,7 +4015,7 @@ export default function PlantingBatchDetail() {
                                                                         first_time: harvest_record.kamincal_first_time?.toString() || "",
                                                                         analytical_instrument: harvest_record.kamincal_analytical_instrument || "UV-Vis",
                                                                         second_time: harvest_record.kamincal_second_time?.toString() || "",
-                                                                        curcuminoid_content: harvest_record.kamincal_curcuminoid_content || "Pass",
+                                                                        curcuminoid_content: harvest_record.kamincal_curcuminoid_content || "",
                                                                         curcuminoid_percentage: harvest_record.kamincal_curcuminoid_percentage?.toString() || "",
                                                                         third_time: harvest_record.kamincal_third_time?.toString() || "",
                                                                     });
@@ -4101,6 +4101,42 @@ export default function PlantingBatchDetail() {
                                                                         <div>
                                                                             <p className="text-gray-500">% Accuracy</p>
                                                                             <h1>{harvest_record.kamincal_curcuminoid_content || "N/A"}</h1>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                {/* Cost Tracking Section */}
+                                                                <div className="p-4 border-t">
+                                                                    <h1 className="text-green-600 text-xl font-semibold flex items-center gap-2">
+                                                                        Cost Tracking
+                                                                    </h1>
+                                                                    <div className="grid grid-cols-3 gap-6 mt-4">
+                                                                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                                                            <p className="text-gray-600 text-sm font-medium mb-1">Labor Cost</p>
+                                                                            <h1 className="text-2xl font-bold text-blue-700">
+                                                                                {harvest_record.labor_cost 
+                                                                                    ? `฿${Number(harvest_record.labor_cost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                                                                    : "฿0.00"
+                                                                                }
+                                                                            </h1>
+                                                                        </div>
+                                                                        <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                                                                            <p className="text-gray-600 text-sm font-medium mb-1">Equipment Cost</p>
+                                                                            <h1 className="text-2xl font-bold text-orange-700">
+                                                                                {harvest_record.equipment_cost 
+                                                                                    ? `฿${Number(harvest_record.equipment_cost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                                                                    : "฿0.00"
+                                                                                }
+                                                                            </h1>
+                                                                        </div>
+                                                                        <div className="bg-green-50 p-3 rounded-lg border border-green-300">
+                                                                            <p className="text-gray-600 text-sm font-medium mb-1">Total Harvest Cost</p>
+                                                                            <h1 className="text-2xl font-bold text-green-700">
+                                                                                {harvest_record.total_harvest_cost 
+                                                                                    ? `฿${Number(harvest_record.total_harvest_cost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                                                                    : `฿${((Number(harvest_record.labor_cost) || 0) + (Number(harvest_record.equipment_cost) || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                                                                }
+                                                                            </h1>
                                                                         </div>
                                                                     </div>
                                                                 </div>

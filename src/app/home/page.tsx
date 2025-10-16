@@ -182,7 +182,9 @@ export default function HomePage() {
     const processings = processingData.data || []
     const harvests = harvestData.data || []
 
-    console.log('🌾 Raw harvest data:', harvests)
+    console.log('� Processing factory data...')
+    console.log('📊 Total processing records:', processings.length)
+    console.log('�🌾 Raw harvest data:', harvests)
     console.log('🌾 Number of harvest records:', harvests.length)
 
     if (processings.length > 0) {
@@ -190,17 +192,37 @@ export default function HomePage() {
       const completedProcessings = processings.filter((p: any) =>
         p.Processing_Status === 'Completed' || p.Processing_Status === 'Export Success'
       )
+      
+      console.log('✅ Completed processings:', completedProcessings.length)
 
-      // Calculate total turmeric used (sum of incoming_weight from completed processings)
+      // Calculate total turmeric used (sum of processed_weight from completed processings)
       const totalTurmericUsed = completedProcessings.reduce((sum: number, p: any) => {
-        const incomingWeight = parseFloat(p.incoming_weight) || 0
-        return sum + incomingWeight
+        // Use processed_weight to show actual amount USED (not incoming/original)
+        const processedWeight = parseFloat(p.processed_weight) || 0
+        console.log(`  - Processing ${p.id}: processed_weight = ${processedWeight} kg`)
+        return sum + processedWeight
       }, 0)
+      
+      console.log('📦 Total Turmeric Used:', totalTurmericUsed, 'kg')
 
-      // Calculate total waste (sum of waste_quantity from completed processings)
-      const totalWaste = completedProcessings.reduce((sum: number, p: any) => {
-        return sum + (parseFloat(p.waste_quantity) || 0)
-      }, 0)
+      // Calculate total waste from output_records_json
+      let totalWaste = 0
+      completedProcessings.forEach((p: any) => {
+        if (p.output_records_json) {
+          try {
+            const outputRecords = JSON.parse(p.output_records_json)
+            outputRecords.forEach((record: any) => {
+              const wasteQty = parseFloat(record.wasteQuantity) || 0
+              console.log(`  - Waste from ${record.batchLotNumber}: ${wasteQty} kg`)
+              totalWaste += wasteQty
+            })
+          } catch (e) {
+            console.error('❌ Error parsing output_records_json for waste:', e)
+          }
+        }
+      })
+      
+      console.log('🗑️ Total Waste:', totalWaste, 'kg')
 
       // Calculate total harvest yield (sum of yleld from all harvest records)
       const totalHarvestYield = harvests.reduce((sum: number, h: any) => {
@@ -211,21 +233,34 @@ export default function HomePage() {
 
       console.log('🌾 Total harvest yield calculated:', totalHarvestYield)
 
-      // Find top product type by grouping final_product_type and summing incoming_weight
-      const productTypeTotals = completedProcessings.reduce((acc: any, p: any) => {
-        const productType = p.final_product_type || 'Unknown Product'
-        const incomingWeight = parseFloat(p.incoming_weight) || 0
-
-        if (!acc[productType]) {
-          acc[productType] = 0
+      // Find top product type by grouping productType from output_records_json and summing quantity
+      const productTypeTotals: { [key: string]: number } = {}
+      
+      completedProcessings.forEach((p: any) => {
+        if (p.output_records_json) {
+          try {
+            const outputRecords = JSON.parse(p.output_records_json)
+            outputRecords.forEach((record: any) => {
+              const productType = record.productType || 'Unknown Product'
+              const quantity = parseFloat(record.quantity) || 0
+              
+              console.log(`  - Product: ${productType}, Quantity: ${quantity} ${record.unit}`)
+              
+              if (!productTypeTotals[productType]) {
+                productTypeTotals[productType] = 0
+              }
+              productTypeTotals[productType] += quantity
+            })
+          } catch (e) {
+            console.error('❌ Error parsing output_records_json for product type:', e)
+          }
         }
-        acc[productType] += incomingWeight
-
-        return acc
-      }, {})
+      })
+      
+      console.log('📈 Product Type Totals:', productTypeTotals)
 
       // Find the product type with highest total incoming weight
-      let topProductTypeName = 'Capsule' // Default from Dashboard
+      let topProductTypeName = 'N/A'
       let topProductWeight = 0
       Object.entries(productTypeTotals).forEach(([type, total]: [string, any]) => {
         if (total > topProductWeight) {
@@ -233,8 +268,10 @@ export default function HomePage() {
           topProductTypeName = type
         }
       })
+      
+      console.log('🏆 Top Product:', topProductTypeName, '(', topProductWeight, 'kg )')
 
-      console.log('📊 Calculated statistics:', {
+      console.log('📊 Final Calculated statistics:', {
         totalTurmericUsed: Math.round(totalTurmericUsed * 100) / 100,
         topProductType: topProductTypeName,
         processingWaste: Math.round(totalWaste * 100) / 100,

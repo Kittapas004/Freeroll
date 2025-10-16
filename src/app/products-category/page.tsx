@@ -14,14 +14,17 @@ import QRCode from 'qrcode';
 interface FactoryProcessing {
     id: number;
     documentId: string;
+    batchLotNumber: string; // เพิ่ม batch lot number
+    processor: string; // เปลี่ยนจาก operator_processor
     final_product_type: string;
-    output_quantity: string;
-    output_unit?: string; // เพิ่ม output_unit
+    output_quantity: number; // เปลี่ยนเป็น number
+    output_unit: string;
     processing_status: string;
     processing_date: string;
-    operator_processor: string;
     product_grade: string;
-    standard_criteria?: string; // เพิ่ม standard_criteria
+    target_market: string; // เพิ่ม target market
+    standard_criteria?: string;
+    wasteQuantity: number; // เพิ่ม waste quantity
     factory_submission?: {
         batch_id: string;
         farm_name: string;
@@ -177,7 +180,7 @@ const ProductsContent = () => {
         try {
             setLoading(true);
 
-            // Populate with deeper nested data including batch information for Plant Variety
+            // Fetch factory processing data with output_records_json
             let response = await fetch('https://api-freeroll-production.up.railway.app/api/factory-processings?populate[factory_submission][populate][batch][populate]=*', {
                 method: 'GET',
                 headers: {
@@ -190,54 +193,63 @@ const ProductsContent = () => {
             }
 
             const result = await response.json();
-            console.log('Factory Processing API Response:', result);
+            console.log('🏭 Factory Processing API Response:', result);
 
             if (result?.data && Array.isArray(result.data)) {
-                // Filter completed items
+                // Filter ONLY Completed items
                 const completedItems = result.data.filter((item: any) => {
-                    const status = item.processing_status || item.Processing_Status;
-                    return status === 'Completed' ||
-                        status === 'Complete' ||
-                        status === 'Export Success' ||
-                        status === 'Exported';
+                    const status = item.Processing_Status;
+                    return status === 'Completed' || status === 'Export Success';
                 });
 
-                console.log('Filtered completed items:', completedItems);
+                console.log('✅ Filtered completed items:', completedItems.length);
 
-                // Process and structure the data properly
-                const processedItems = completedItems.map((item: any) => ({
-                    id: item.id,
-                    documentId: item.documentId || `item-${item.id}`,
-                    final_product_type: item.final_product_type || 'Unknown',
-                    output_quantity: item.output_quantity || 'N/A',
-                    output_unit: item.output_unit || '', // เพิ่ม output_unit
-                    processing_status: item.processing_status || 'Unknown',
-                    processing_date: item.processing_date || item.processing_date_custom,
-                    operator_processor: item.operator_processor || 'Unknown',
-                    product_grade: item.product_grade || '',
-                    standard_criteria: item.standard_criteria || '', // เพิ่มฟิลด์ standard_criteria
-                    factory_submission: item.factory_submission || null,
-                    batch_info: {
-                        plant_variety: item.factory_submission?.batch?.Plant_Variety ||
-                            item.factory_submission?.Plant_Variety ||
-                            'Unknown Variety',
-                        farm_name: item.factory_submission?.farm_name ||
-                            item.factory_submission?.Farm_Name || '',
-                        location: item.factory_submission?.batch?.Farm?.Farm_Address || ''
+                // Parse output_records_json and create individual product records
+                const allProducts: FactoryProcessing[] = [];
+
+                completedItems.forEach((item: any) => {
+                    // Parse output_records_json to get multiple output records
+                    if (item.output_records_json) {
+                        try {
+                            const outputRecords = JSON.parse(item.output_records_json);
+                            
+                            // Each output record becomes a separate product
+                            outputRecords.forEach((record: any) => {
+                                allProducts.push({
+                                    id: item.id,
+                                    documentId: record.batchLotNumber || `${item.documentId}-${record.id}`, // Use batchLotNumber as unique ID
+                                    batchLotNumber: record.batchLotNumber || 'N/A',
+                                    processor: record.processor || 'Unknown',
+                                    final_product_type: record.productType || 'Unknown',
+                                    output_quantity: parseFloat(record.quantity) || 0,
+                                    output_unit: record.unit || 'kg',
+                                    processing_status: item.Processing_Status || 'Completed',
+                                    processing_date: item.processing_date_custom || item.Date_Received || item.createdAt,
+                                    product_grade: record.productGrade || '',
+                                    target_market: record.targetMarket || '',
+                                    standard_criteria: item.standard_criteria || '',
+                                    wasteQuantity: parseFloat(record.wasteQuantity) || 0,
+                                    factory_submission: item.factory_submission || null,
+                                    batch_info: {
+                                        plant_variety: item.factory_submission?.batch?.Plant_Variety ||
+                                            item.factory_submission?.Plant_Variety ||
+                                            'Unknown Variety',
+                                        farm_name: item.factory_submission?.Farm_Name ||
+                                            item.factory_submission?.farm_name || '',
+                                        location: item.factory_submission?.batch?.Farm?.Farm_Address || ''
+                                    }
+                                });
+                            });
+                        } catch (e) {
+                            console.error('❌ Error parsing output_records_json:', e);
+                        }
                     }
-                }));
-
-                console.log('Processed items with standard_criteria:', processedItems);
-
-                // Log standard_criteria ของแต่ละ item เพื่อตรวจสอบ
-                processedItems.forEach((item: any, index: number) => {
-                    console.log(`Item ${index + 1} - standard_criteria:`, item.standard_criteria);
-                    console.log(`Item ${index + 1} - final_product_type:`, item.final_product_type);
-                    console.log(`Item ${index + 1} - plant_variety:`, item.batch_info?.plant_variety);
-                    console.log(`Item ${index + 1} - factory_submission:`, item.factory_submission);
                 });
 
-                setFactoryProcessingData(processedItems);
+                console.log('📦 Total products from output records:', allProducts.length);
+                console.log('📊 Sample products:', allProducts.slice(0, 3));
+
+                setFactoryProcessingData(allProducts);
             } else {
                 console.error('Invalid data structure:', result);
                 setFactoryProcessingData([]);

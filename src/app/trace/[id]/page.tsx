@@ -164,7 +164,7 @@ const TraceProductPage = () => {
             setLoading(true);
             setError(null);
 
-            // Fetch factory processing data with simple populate
+            // Fetch factory processing data with output_records_json
             const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-processings?populate[factory_submission][populate][batch][populate]=*`, {
                 method: 'GET',
                 headers: {
@@ -179,17 +179,44 @@ const TraceProductPage = () => {
             const result = await response.json();
 
             if (result.data && Array.isArray(result.data)) {
-                // Find the specific product by documentId
-                const foundProduct = result.data.find((item: any) =>
+                // Search for product in output_records_json by Batch Lot Number
+                let foundItem: any = null;
+                let foundRecord: any = null;
+
+                // First try to find by documentId (backward compatibility)
+                foundItem = result.data.find((item: any) =>
                     item.documentId === params.id || item.id === parseInt(params.id as string)
                 );
 
-                if (!foundProduct) {
+                // If not found, search in output_records_json by batch lot number
+                if (!foundItem) {
+                    for (const item of result.data) {
+                        if (item.output_records_json) {
+                            try {
+                                const outputRecords = JSON.parse(item.output_records_json);
+                                const record = outputRecords.find((r: any) => 
+                                    r.batchLotNumber === params.id
+                                );
+                                
+                                if (record) {
+                                    foundItem = item;
+                                    foundRecord = record;
+                                    console.log('✅ Found product by Batch Lot Number:', params.id);
+                                    break;
+                                }
+                            } catch (e) {
+                                continue;
+                            }
+                        }
+                    }
+                }
+
+                if (!foundItem) {
                     throw new Error('Product not found');
                 }
 
                 // Process the found product
-                const item = foundProduct;
+                const item = foundItem;
 
                 // Get factory name from factory_submission first, then try to fetch factory details
                 let factoryName = ''; // Default to known factory name
@@ -272,20 +299,20 @@ const TraceProductPage = () => {
 
                 const processedData: ProductData = {
                     id: item.id,
-                    documentId: item.documentId,
-                    final_product_type: item.final_product_type,
-                    output_quantity: item.output_quantity,
-                    output_unit: item.output_unit || '', // เพิ่ม output_unit
-                    processing_status: item.processing_status,
-                    processing_date: item.processing_date || item.processing_date_custom,
-                    operator_processor: item.operator_processor,
-                    product_grade: item.product_grade,
-                    standard_criteria: item.standard_criteria || '', // เพิ่ม standard_criteria
-                    batch_lot_number: item.batch_lot_number || '', // เพิ่ม batch_lot_number จาก root level
-                    certification_status: item.certification_status || '', // เพิ่ม certification_status
+                    documentId: foundRecord?.batchLotNumber || item.documentId,
+                    final_product_type: foundRecord?.productType || item.final_product_type,
+                    output_quantity: foundRecord?.quantity || item.output_quantity,
+                    output_unit: foundRecord?.unit || item.output_unit || 'kg',
+                    processing_status: item.Processing_Status || item.processing_status,
+                    processing_date: item.processing_date_custom || item.processing_date || item.Date_Received,
+                    operator_processor: foundRecord?.processor || item.operator_processor,
+                    product_grade: foundRecord?.productGrade || item.product_grade,
+                    standard_criteria: item.standard_criteria || '',
+                    batch_lot_number: foundRecord?.batchLotNumber || item.batch_lot_number || '',
+                    certification_status: item.certification_status || '',
                     factory_submission: {
                         ...item.factory_submission,
-                        Factory_Name: factoryName // เพิ่ม Factory_Name ที่ประมวลผลแล้ว
+                        Factory_Name: factoryName
                     },
                     batch_info: {
                         plant_variety: item.factory_submission?.batch?.Plant_Variety ||
@@ -468,7 +495,7 @@ const TraceProductPage = () => {
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-xs font-medium text-gray-700">Lot ID:</span>
-                                        <span className="text-xs text-gray-600">{productData.documentId}</span>
+                                        <span className="text-xs text-gray-600">{productData.batch_lot_number}</span>
                                     </div>
                                     <div className="flex justify-between items-center">
                                         <span className="text-xs font-medium text-gray-700">Quantity:</span>

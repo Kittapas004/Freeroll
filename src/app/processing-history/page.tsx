@@ -50,7 +50,7 @@ export default function ProcessingHistoryPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("All status");
-    const [dateFilter, setDateFilter] = useState("Last 7 days");
+    const [dateFilter, setDateFilter] = useState("All time");
     const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
     const [isDateDropdownOpen, setIsDateDropdownOpen] = useState(false);
     const [filters, setFilters] = useState({
@@ -79,7 +79,8 @@ export default function ProcessingHistoryPage() {
             setLoading(true);
             console.log('📋 Fetching processing history...');
 
-            const response = await fetch('https://api-freeroll-production.up.railway.app/api/factory-processings?populate=*&filters[Processing_Status][$eq]=Completed', {
+            // Fetch both Completed and Export Success statuses
+            const response = await fetch('https://api-freeroll-production.up.railway.app/api/factory-processings?populate=*&filters[$or][0][Processing_Status][$eq]=Completed&filters[$or][1][Processing_Status][$eq]=Export Success', {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },
@@ -92,41 +93,72 @@ export default function ProcessingHistoryPage() {
             const data = await response.json();
             console.log('✅ Processing history fetched:', data);
             
-            // Log sample item to check output_unit field
+            // Log sample item to check output_records_json field
             if (data.data && data.data.length > 0) {
                 console.log('🔍 Sample item fields:', {
-                    final_product_type: data.data[0].final_product_type,
-                    output_quantity: data.data[0].output_quantity,
-                    output_unit: data.data[0].output_unit,
+                    output_records_json: data.data[0].output_records_json,
                     processing_method: data.data[0].processing_method
                 });
             }
 
-            const formattedData: HistoryData[] = data.data.map((item: any) => ({
-                id: item.id.toString(),
-                documentId: item.documentId,
-                lotId: item.batch_lot_number || `T-Batch-${String(item.id).padStart(3, '0')}`,
-                farmName: item.factory_submission?.Farm_Name || 'Lamine Yamal',
-                date: new Date(item.processing_date_custom || item.Date_Received || item.createdAt).toLocaleDateString('en-US', {
+            // Flatten output records - each record becomes a separate row
+            const formattedData: HistoryData[] = [];
+            
+            data.data.forEach((item: any) => {
+                const baseDate = new Date(item.processing_date_custom || item.Date_Received || item.createdAt).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'short',
                     day: 'numeric'
-                }),
-                processor: item.operator_processor || 'Lamine Yamal',
-                productOutput: (() => {
-                    const productType = item.final_product_type || 'Powder';
-                    const quantity = item.output_quantity || 0;
-                    const unit = item.output_unit || 'kg'; // อ่านหน่วยจาก Strapi
+                });
+                const farmName = item.factory_submission?.Farm_Name || 'Lamine Yamal';
+                const processMethod = item.processing_method || item.final_product_type || 'Processing';
+                const status = item.Processing_Status || 'Complete';
 
-                    // ใช้ข้อมูลจาก Strapi แทน if-else logic
-                    return `${productType}: ${quantity} ${unit}`;
-                })(),
-                processMethod: item.processing_method || item.final_product_type || 'Processing',
-                status: item.Processing_Status || 'Complete'
-            }));
+                // Check if item has output_records_json (new format)
+                if (item.output_records_json && typeof item.output_records_json === 'string') {
+                    try {
+                        const records = JSON.parse(item.output_records_json);
+                        if (Array.isArray(records) && records.length > 0) {
+                            // Create separate row for each output record
+                            records.forEach((record: any) => {
+                                formattedData.push({
+                                    id: `${item.id}-${record.id}`,
+                                    documentId: item.documentId,
+                                    lotId: record.batchLotNumber || `T-Batch-${String(item.id).padStart(3, '0')}`,
+                                    farmName: farmName,
+                                    date: baseDate,
+                                    processor: record.processor || item.operator_processor || 'N/A',
+                                    productOutput: `${record.productType}: ${record.quantity} ${record.unit} (${record.productGrade})`,
+                                    processMethod: processMethod,
+                                    status: status
+                                });
+                            });
+                            return; // Skip fallback
+                        }
+                    } catch (e) {
+                        console.error('Error parsing output_records_json:', e);
+                    }
+                }
+                
+                // Fallback to old format for backward compatibility (single row)
+                formattedData.push({
+                    id: item.id.toString(),
+                    documentId: item.documentId,
+                    lotId: item.batch_lot_number || `T-Batch-${String(item.id).padStart(3, '0')}`,
+                    farmName: farmName,
+                    date: baseDate,
+                    processor: item.operator_processor || 'Lamine Yamal',
+                    productOutput: `${item.final_product_type || 'Powder'}: ${item.output_quantity || 0} ${item.output_unit || 'kg'}`,
+                    processMethod: processMethod,
+                    status: status
+                });
+            });
 
             setHistoryData(formattedData);
             setFilteredData(formattedData);
+            
+            console.log('📊 Formatted data:', formattedData);
+            console.log('📊 Total rows:', formattedData.length);
         } catch (error) {
             console.error('❌ Error fetching processing history:', error);
             setHistoryData([]);
@@ -165,8 +197,8 @@ export default function ProcessingHistoryPage() {
     };
 
     const handleViewDetails = (processingId: string) => {
-        // Navigate to processing details page
-        router.push(`/processing-details/${processingId}`);
+        // Navigate to processing details page in read-only mode from history
+        router.push(`/processing-details/${processingId}?readonly=true&from=history`);
     };
 
     const getStatusColor = (status: string) => {
@@ -174,11 +206,28 @@ export default function ProcessingHistoryPage() {
             case 'completed':
             case 'complete':
                 return 'bg-green-100 text-green-800';
+            case 'export success':
+                return 'bg-blue-100 text-blue-800';
             case 'pending':
             case 'processing':
                 return 'bg-yellow-100 text-yellow-800';
             default:
                 return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    const getStatusIcon = (status: string) => {
+        switch (status.toLowerCase()) {
+            case 'completed':
+            case 'complete':
+                return '✓';
+            case 'export success':
+                return '📦';
+            case 'pending':
+            case 'processing':
+                return '⏳';
+            default:
+                return '•';
         }
     };
 
@@ -200,10 +249,20 @@ export default function ProcessingHistoryPage() {
 
         // Status filter
         if (statusFilter !== "All status") {
-            filtered = filtered.filter(item => 
-                item.status.toLowerCase() === statusFilter.toLowerCase() ||
-                (statusFilter === "Complete" && item.status.toLowerCase() === "completed")
-            );
+            filtered = filtered.filter(item => {
+                const itemStatus = item.status.toLowerCase();
+                const filterStatus = statusFilter.toLowerCase();
+                
+                // Handle various status name variations
+                if (filterStatus === "completed" || filterStatus === "complete") {
+                    return itemStatus === "completed" || itemStatus === "complete";
+                }
+                if (filterStatus === "export success") {
+                    return itemStatus === "export success";
+                }
+                
+                return itemStatus === filterStatus;
+            });
         }
 
         // Date filter
@@ -273,7 +332,7 @@ export default function ProcessingHistoryPage() {
                                 {isStatusDropdownOpen && (
                                     <div className="absolute right-0 mt-1 w-full sm:w-40 bg-white border border-gray-200 rounded-md shadow-lg z-10">
                                         <div className="py-1">
-                                            {["All status", "Complete", "Completed"].map((status) => (
+                                            {["All status", "Completed", "Export Success"].map((status) => (
                                                 <button
                                                     key={status}
                                                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
@@ -316,10 +375,22 @@ export default function ProcessingHistoryPage() {
                     </div>
 
                     {/* Results Summary */}
-                    <div className="mb-4">
+                    <div className="mb-4 flex items-center justify-between">
                         <p className="text-sm text-gray-600">
                             Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredData.length)} of {filteredData.length} processing records
                         </p>
+                        {(statusFilter !== "All status" || dateFilter !== "All time" || searchQuery) && (
+                            <button
+                                onClick={() => {
+                                    setSearchQuery("");
+                                    setStatusFilter("All status");
+                                    setDateFilter("All time");
+                                }}
+                                className="text-sm text-blue-600 hover:text-blue-800 underline"
+                            >
+                                Clear all filters
+                            </button>
+                        )}
                     </div>
 
                     {/* Processing History Table */}
@@ -352,7 +423,6 @@ export default function ProcessingHistoryPage() {
                                                 <th className="text-left py-3 px-4 font-medium text-gray-600">Date</th>
                                                 <th className="text-left py-3 px-4 font-medium text-gray-600">Processor</th>
                                                 <th className="text-left py-3 px-4 font-medium text-gray-600">Product Output</th>
-                                                <th className="text-left py-3 px-4 font-medium text-gray-600">Process Method</th>
                                                 <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
                                                 <th className="text-left py-3 px-4 font-medium text-gray-600">Actions</th>
                                             </tr>
@@ -364,10 +434,9 @@ export default function ProcessingHistoryPage() {
                                                     <td className="py-3 px-4">{item.date}</td>
                                                     <td className="py-3 px-4">{item.processor}</td>
                                                     <td className="py-3 px-4">{item.productOutput}</td>
-                                                    <td className="py-3 px-4">{item.processMethod}</td>
                                                     <td className="py-3 px-4">
                                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
-                                                            ✓ {item.status}
+                                                            {getStatusIcon(item.status)} {item.status}
                                                         </span>
                                                     </td>
                                                     <td className="pr-6 py-4 whitespace-nowrap text-sm ">

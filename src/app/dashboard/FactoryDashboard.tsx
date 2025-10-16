@@ -366,43 +366,65 @@ export default function FactoryDashboard() {
       console.log(`📊 Found ${submissions.length} factory submissions and ${processings.length} processing records`);
       
       if (processings.length > 0) {
-        // Filter completed and exported processings for calculations (include Export Success)
-        const completedProcessings = processings.filter((p: any) => 
-          p.Processing_Status === 'Completed' || p.Processing_Status === 'Export Success'
+        // Filter Processing, Completed and Export Success for calculations (รวมทั้ง Processing)
+        const relevantProcessings = processings.filter((p: any) => 
+          p.Processing_Status === 'Processing' ||
+          p.Processing_Status === 'Completed' || 
+          p.Processing_Status === 'Export Success'
         );
 
-        console.log('✅ Completed & Export Success Processings:', completedProcessings);
+        console.log('✅ Processing + Completed + Export Success Processings:', relevantProcessings);
         console.log('📊 Processing Status Breakdown:', processings.map((p: any) => ({
           batch: p.Batch_Id,
           status: p.Processing_Status,
-          included: (p.Processing_Status === 'Completed' || p.Processing_Status === 'Export Success')
+          included: (p.Processing_Status === 'Processing' || p.Processing_Status === 'Completed' || p.Processing_Status === 'Export Success')
         })));
         
-        // Calculate real stats from completed processing records only
+        // Calculate real stats from Processing + Completed + Export Success records
         
-        // 1. Total Turmeric Used = sum of all incoming_weight from completed processings
-        const totalTurmericUsed = completedProcessings.reduce((sum: number, p: any) => {
-          const incomingWeight = parseFloat(p.incoming_weight) || 0;
-          return sum + incomingWeight;
+        // 1. Total Turmeric Used = sum of all processed_weight from relevant processings
+        const totalTurmericUsed = relevantProcessings.reduce((sum: number, p: any) => {
+          const processedWeight = parseFloat(p.processed_weight) || 0;
+          return sum + processedWeight;
         }, 0);
 
-        // 2. Calculate total waste = sum of all waste_quantity from completed processings
-        const totalWaste = completedProcessings.reduce((sum: number, p: any) => {
-          return sum + (parseFloat(p.waste_quantity) || 0);
-        }, 0);
-
-        // 3. Find Top Product Output by grouping final_product_type and summing output_quantity from completed processings
-        const productTypeTotals = completedProcessings.reduce((acc: any, p: any) => {
-          const productType = p.final_product_type || 'N/A';
-          const output = parseFloat(p.output_quantity) || 0;
-          
-          if (!acc[productType]) {
-            acc[productType] = 0;
+        // 2. Calculate total waste from output_records_json
+        const totalWaste = relevantProcessings.reduce((sum: number, p: any) => {
+          try {
+            if (p.output_records_json) {
+              const outputRecords = JSON.parse(p.output_records_json);
+              const wasteSum = outputRecords.reduce((wasteTotal: number, rec: any) => {
+                return wasteTotal + (parseFloat(rec.wasteQuantity) || 0);
+              }, 0);
+              return sum + wasteSum;
+            }
+          } catch (e) {
+            console.error('Error parsing output_records_json for waste:', e);
           }
-          acc[productType] += output;
-          
-          return acc;
-        }, {});
+          return sum;
+        }, 0);
+
+        // 3. Find Top Product Output by parsing output_records_json and grouping by productType
+        const productTypeTotals: { [key: string]: number } = {};
+        
+        relevantProcessings.forEach((p: any) => {
+          try {
+            if (p.output_records_json) {
+              const outputRecords = JSON.parse(p.output_records_json);
+              outputRecords.forEach((rec: any) => {
+                const productType = rec.productType || 'N/A';
+                const quantity = parseFloat(rec.quantity) || 0;
+                
+                if (!productTypeTotals[productType]) {
+                  productTypeTotals[productType] = 0;
+                }
+                productTypeTotals[productType] += quantity;
+              });
+            }
+          } catch (e) {
+            console.error('Error parsing output_records_json for products:', e);
+          }
+        });
 
         console.log('🏷️ Product Type Totals:', productTypeTotals);
 
@@ -416,25 +438,35 @@ export default function FactoryDashboard() {
           }
         });
 
-        console.log(`🥇 Top Product: ${topProductTypeName} with ${topProductOutput} kg`);
+        console.log(`🥇 Top Product: ${topProductTypeName} with ${topProductOutput}`);
 
         // Set the top product type state
         setTopProductType(topProductTypeName);
         
-        // Get unit from the most recent processing record of the top product type
-        const topProductProcessings = completedProcessings.filter((p: any) => 
-          p.final_product_type === topProductTypeName
-        );
-        const latestTopProductProcessing = topProductProcessings.length > 0 
-          ? topProductProcessings[topProductProcessings.length - 1] 
-          : null;
+        // Get unit from output_records_json for the top product type
+        let topProductUnit = 'kg'; // default
+        for (const p of relevantProcessings) {
+          try {
+            if (p.output_records_json) {
+              const outputRecords = JSON.parse(p.output_records_json);
+              const topProductRecord = outputRecords.find((rec: any) => 
+                rec.productType === topProductTypeName
+              );
+              if (topProductRecord) {
+                topProductUnit = topProductRecord.unit || 'kg';
+                break; // Found the unit, exit loop
+              }
+            }
+          } catch (e) {
+            console.error('Error finding unit for top product:', e);
+          }
+        }
         
-        const unit = latestTopProductProcessing?.output_unit || 'kg';
-        setTopProductUnit(unit);
+        setTopProductUnit(topProductUnit);
 
         const totalOutput = topProductOutput; // Top product total output quantity
 
-        const totalRemaining = completedProcessings.reduce((sum: number, p: any) => {
+        const totalRemaining = relevantProcessings.reduce((sum: number, p: any) => {
           return sum + (parseFloat(p.remaining_stock) || 0);
         }, 0);
 
@@ -447,11 +479,11 @@ export default function FactoryDashboard() {
           p.Processing_Status === 'Received' || p.Processing_Status === 'Processing'
         ).length;
         
-        const completedBatches = completedProcessings.length; // Count of completed processings
+        const completedBatches = relevantProcessings.length; // Count of relevant processings
         
         console.log('🧮 Calculation Summary:', {
           totalRecords: processings.length,
-          completedAndExported: completedProcessings.length,
+          relevantProcessings: relevantProcessings.length,
           totalTurmericUsed: Math.round(totalTurmericUsed * 100) / 100,
           totalWaste: Math.round(totalWaste * 100) / 100,
           topProductType: topProductTypeName,
@@ -460,10 +492,10 @@ export default function FactoryDashboard() {
         });
         
         setStats({
-          totalProcessed: Math.round(totalTurmericUsed * 100) / 100, // Total incoming_weight from completed + export success
-          pendingSubmissions: Math.round(totalWaste * 100) / 100, // Total waste_quantity from completed + export success
+          totalProcessed: Math.round(totalTurmericUsed * 100) / 100, // Total from Processing + Completed + Export Success
+          pendingSubmissions: Math.round(totalWaste * 100) / 100, // Total waste from Processing + Completed + Export Success
           completedBatches: batchesAwaitingExport, // Batches awaiting export count
-          totalOutput: Math.round(topProductOutput * 100) / 100 // Top product output quantity from completed + export success
+          totalOutput: Math.round(topProductOutput * 100) / 100 // Top product output from Processing + Completed + Export Success
         });
 
         console.log('📊 Updated stats:', {
@@ -474,16 +506,17 @@ export default function FactoryDashboard() {
           topProductTypeName
         });
 
-        // Process real recent processing data from processings collection - แสดงเฉพาะที่ประมวลผลแล้ว
+        // Process real recent processing data from processings collection - แสดงทั้งที่กำลัง Processing และ Completed
         const recentProcessingData: RecentProcessing[] = processings
           .filter((processing: any) => {
-            // แสดงเฉพาะที่มีการประมวลผลแล้ว (ไม่ใช่ "Received" หรือ status เริ่มต้น)
+            // แสดงเฉพาะที่อยู่ในสถานะ Processing, Completed หรือ Export Success
             const status = processing.Processing_Status;
-            return status && 
-                   status !== 'Received' && 
-                   status !== 'Pending' &&
-                   processing.operator_processor && // ต้องมีผู้ประมวลผล
-                   (processing.output_quantity || processing.final_product_type); // ต้องมีผลผลิตหรือประเภทสินค้า
+            
+            return status && (
+              status === 'Processing' || 
+              status === 'Completed' || 
+              status === 'Export Success'
+            );
           })
           .sort((a: any, b: any) => {
             // เรียงตามวันที่ล่าสุดก่อน
@@ -491,17 +524,38 @@ export default function FactoryDashboard() {
             const dateB = new Date(b.processing_date_custom || b.Date_Received || b.createdAt);
             return dateB.getTime() - dateA.getTime();
           })
-          .slice(0, 5) // เอา 10 รายการล่าสุด
+          .slice(0, 5) // เอา 5 รายการล่าสุด
           .map((processing: any) => {
-            const output = parseFloat(processing.output_quantity) || 0;
-            const finalProductType = processing.final_product_type || 'N/A';
+            // Parse output_records_json to get product output
+            let productOutput = 'Processing in progress';
+            let processor = 'Factory Processing';
             
-            let productOutput = '';
-            if (output > 0) {
-              const unit = processing.output_unit || 'kg';
-              productOutput = `${finalProductType}: ${output} ${unit}`;
-            } else {
-              productOutput = 'Processing in progress';
+            try {
+              if (processing.output_records_json) {
+                const outputRecords = JSON.parse(processing.output_records_json);
+                if (outputRecords.length > 0) {
+                  // แสดง output records ทั้งหมด (สูงสุด 2 รายการ)
+                  const outputs = outputRecords.slice(0, 2).map((rec: any) => 
+                    `${rec.productType}: ${rec.quantity} ${rec.unit}`
+                  ).join(', ');
+                  productOutput = outputRecords.length > 2 
+                    ? `${outputs}, +${outputRecords.length - 2} more`
+                    : outputs;
+                  
+                  // Get processor from first output record
+                  processor = outputRecords[0].processor || 'Factory Processing';
+                }
+              } else {
+                // ถ้ายังไม่มี output_records_json แสดงว่ากำลัง processing อยู่
+                productOutput = 'Processing in progress';
+                // ลอง get processor จาก operator_processor field หรือ inspector
+                processor = processing.operator_processor || 
+                           processing.inspector_name || 
+                           processing.processor || 
+                           'Factory Processing';
+              }
+            } catch (e) {
+              console.error('Error parsing output_records_json:', e);
             }
 
             // Map processing status properly for Recent Processing
@@ -517,17 +571,16 @@ export default function FactoryDashboard() {
               originalStatus: processing.Processing_Status,
               displayStatus: displayStatus,
               output: productOutput,
-              hasOperator: !!processing.operator_processor,
-              hasOutput: !!processing.output_quantity
+              processor: processor
             });
 
             return {
               id: processing.id.toString(),
-              batchId: processing.Batch_Id || `T-batch-${processing.id}`,
+              batchId: processing.Batch_Id || `T-Batch-${String(processing.id).padStart(3, '0')}`,
               date: processing.processing_date_custom || processing.Date_Received || processing.createdAt,
-              processor: processing.operator_processor || processing.Factory || 'Factory Processing',
+              processor: processor,
               productOutput,
-              processMethod: processing.final_product_type || 'Standard Processing',
+              processMethod: processing.output_records_json ? 'Multi-Product Processing' : 'Standard Processing',
               status: displayStatus
             };
           });
@@ -536,15 +589,23 @@ export default function FactoryDashboard() {
 
         // Generate processing history from real processing data (including Export Success)
         const history: ProcessingHistory[] = processings.slice(0, 6).map((processing: any) => {
-          const output = parseFloat(processing.output_quantity) || 0;
-          const finalProductType = processing.final_product_type || 'Unknown';
+          // Parse output_records_json to get product output
+          let outputText = 'Processing';
           
-          let outputText = '';
-          if (output > 0) {
-            const unit = processing.output_unit || 'kg';
-            outputText = `${finalProductType}: ${output} ${unit}`;
-          } else {
-            outputText = 'Processing';
+          try {
+            if (processing.output_records_json) {
+              const outputRecords = JSON.parse(processing.output_records_json);
+              if (outputRecords.length > 0) {
+                // แสดง output record แรก
+                const firstOutput = outputRecords[0];
+                outputText = `${firstOutput.productType}: ${firstOutput.quantity} ${firstOutput.unit}`;
+                if (outputRecords.length > 1) {
+                  outputText += ` +${outputRecords.length - 1} more`;
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Error parsing output_records_json for history:', e);
           }
 
           // Map processing status to display status
@@ -570,7 +631,7 @@ export default function FactoryDashboard() {
 
           return {
             id: processing.id.toString(),
-            batchId: processing.Batch_Id || `T-batch-${processing.id}`,
+            batchId: processing.Batch_Id || `T-Batch-${String(processing.id).padStart(3, '0')}`,
             date: processing.Date_Received || processing.createdAt,
             status: displayStatus,
             output: outputText
@@ -580,37 +641,47 @@ export default function FactoryDashboard() {
         setProcessingHistory(history);
 
         // Set completed reports for Recent Activity
-        setCompletedReports(completedProcessings.slice(0, 3)); // Keep latest 3 completed reports
+        setCompletedReports(relevantProcessings.slice(0, 3)); // Keep latest 3 relevant reports
 
-        // Update processing trend with real data from completed processings only by grouping by month
-        const monthlyData = completedProcessings.reduce((acc: any, processing: any) => {
+        // Update processing trend with real data from output_records_json by grouping by month
+        const monthlyData: { [key: string]: { month: string; powder: number; extract: number; capsule: number; tea_bag: number } } = {};
+        
+        relevantProcessings.forEach((processing: any) => {
           const processingDate = processing.processing_date_custom || processing.Date_Received || processing.createdAt;
           const date = new Date(processingDate);
           const monthKey = date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
           
-          if (!acc[monthKey]) {
-            acc[monthKey] = { month: monthKey, powder: 0, extract: 0, capsule: 0, tea_bag: 0 };
+          if (!monthlyData[monthKey]) {
+            monthlyData[monthKey] = { month: monthKey, powder: 0, extract: 0, capsule: 0, tea_bag: 0 };
           }
           
-          const output = parseFloat(processing.output_quantity) || 0;
-          const productType = (processing.final_product_type || '').toLowerCase();
-          
-          // Categorize by actual product types from Strapi
-          if (productType.includes('powder')) {
-            acc[monthKey].powder += output;
-          } else if (productType.includes('extract')) {
-            acc[monthKey].extract += output;
-          } else if (productType.includes('capsule')) {
-            acc[monthKey].capsule += output;
-          } else if (productType.includes('tea bag') || productType.includes('tea_bag')) {
-            acc[monthKey].tea_bag += output;
-          } else {
-            // Default to powder if type is unclear
-            acc[monthKey].powder += output;
+          // Parse output_records_json to get product outputs
+          try {
+            if (processing.output_records_json) {
+              const outputRecords = JSON.parse(processing.output_records_json);
+              outputRecords.forEach((rec: any) => {
+                const quantity = parseFloat(rec.quantity) || 0;
+                const productType = (rec.productType || '').toLowerCase();
+                
+                // Categorize by product types
+                if (productType.includes('powder')) {
+                  monthlyData[monthKey].powder += quantity;
+                } else if (productType.includes('extract')) {
+                  monthlyData[monthKey].extract += quantity;
+                } else if (productType.includes('capsule')) {
+                  monthlyData[monthKey].capsule += quantity;
+                } else if (productType.includes('tea bag') || productType.includes('tea_bag')) {
+                  monthlyData[monthKey].tea_bag += quantity;
+                } else {
+                  // Default to powder if type is unclear
+                  monthlyData[monthKey].powder += quantity;
+                }
+              });
+            }
+          } catch (e) {
+            console.error('Error parsing output_records_json for trend:', e);
           }
-          
-          return acc;
-        }, {});
+        });
 
         const trendData = Object.values(monthlyData) as ProcessingTrend[];
         if (trendData.length > 0) {
@@ -647,16 +718,30 @@ export default function FactoryDashboard() {
 
         setProductionData(productionPieData);
 
-        // Generate turmeric usage vs waste data for line chart from completed processing data only
-        const processedData = completedProcessings.map((processing: any) => {
+        // Generate turmeric usage vs waste data for line chart from Processing + Completed + Export Success
+        const processedData = relevantProcessings.map((processing: any) => {
           // Use processing_date_custom if available, otherwise fallback to Date_Received or createdAt
           const processingDate = processing.processing_date_custom || processing.Date_Received || processing.createdAt;
           const date = new Date(processingDate);
+          
+          // Calculate total waste from output_records_json
+          let totalWasteForBatch = 0;
+          try {
+            if (processing.output_records_json) {
+              const outputRecords = JSON.parse(processing.output_records_json);
+              totalWasteForBatch = outputRecords.reduce((sum: number, rec: any) => {
+                return sum + (parseFloat(rec.wasteQuantity) || 0);
+              }, 0);
+            }
+          } catch (e) {
+            console.error('Error parsing output_records_json for waste chart:', e);
+          }
+          
           return {
             date: date,
             day: date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
-            turmeric_used: parseFloat(processing.incoming_weight) || 0,
-            waste: parseFloat(processing.waste_quantity) || 0,
+            turmeric_used: parseFloat(processing.processed_weight) || 0, // Use processed_weight instead of incoming_weight
+            waste: totalWasteForBatch,
             processing: processing
           };
         });
@@ -684,17 +769,17 @@ export default function FactoryDashboard() {
 
         const dailyUsageData = Object.values(groupedByDay);
 
-        console.log('📈 Daily Usage Data (Completed Only):', dailyUsageData);
+        console.log('📈 Daily Usage Data (Processing + Completed + Export Success):', dailyUsageData);
 
-        // If we have real completed data, use it; otherwise show empty chart
+        // If we have real data, use it; otherwise show empty chart
         const finalDailyData = dailyUsageData.length >= 1 ? dailyUsageData : [];
         
         setDailyUsageData(finalDailyData);
 
-        console.log('📊 Real data statistics (Completed Processings Only):', {
+        console.log('📊 Real data statistics (Processing + Completed + Export Success):', {
           totalSubmissions: submissions.length,
           totalProcessings: processings.length,
-          completedProcessings: completedProcessings.length,
+          relevantProcessings: relevantProcessings.length,
           totalTurmericUsed,
           totalOutput,
           totalWaste,

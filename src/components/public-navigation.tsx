@@ -105,36 +105,58 @@ export default function PublicNavigation({ className = "" }: PublicNavigationPro
                                status === 'Exported'
                     })
 
+                    // Parse output_records_json and create searchable products
+                    const allProducts: any[] = []
+                    
+                    completedItems.forEach((item: any) => {
+                        if (item.output_records_json) {
+                            try {
+                                const outputRecords = JSON.parse(item.output_records_json)
+                                outputRecords.forEach((record: any) => {
+                                    allProducts.push({
+                                        parentItem: item,
+                                        record: record
+                                    })
+                                })
+                            } catch (e) {
+                                console.error('Error parsing output_records_json:', e)
+                            }
+                        }
+                    })
+
                     // Filter by search query
-                    const filtered = completedItems.filter((item: any) => {
+                    const filtered = allProducts.filter((product: any) => {
+                        const { record, parentItem } = product
                         const searchableText = `
-                            ${getProductDisplayName(item.final_product_type)} 
-                            ${item.final_product_type} 
-                            ${item.product_grade || ''} 
-                            ${item.factory_submission?.batch?.Plant_Variety || ''} 
-                            ${item.factory_submission?.batch?.Farm?.Farm_Name || ''}
-                            ${item.documentId || ''}
-                            ${item.batch_lot_number || ''}
+                            ${getProductDisplayName(record.productType)} 
+                            ${record.productType} 
+                            ${record.productGrade || ''} 
+                            ${parentItem.factory_submission?.batch?.Plant_Variety || ''} 
+                            ${parentItem.factory_submission?.batch?.Farm?.Farm_Name || ''}
+                            ${record.batchLotNumber || ''}
                         `.toLowerCase()
                         
                         return searchableText.includes(searchQuery.toLowerCase())
                     })
 
-                    const processedResults = filtered.slice(0, 5).map((item: any) => ({
-                        id: item.id,
-                        documentId: item.documentId || `item-${item.id}`,
-                        final_product_type: item.final_product_type || 'Unknown',
-                        output_quantity: item.output_quantity || 'N/A',
-                        product_grade: item.product_grade || 'Standard',
-                        batch_info: {
-                            plant_variety: item.factory_submission?.batch?.Plant_Variety || 
-                                          item.factory_submission?.Plant_Variety || 
-                                          'Curcuma longa',
-                            farm_name: item.factory_submission?.batch?.Farm?.Farm_Name ||
-                                      item.factory_submission?.farm_name || 
-                                      'Unknown Farm'
+                    const processedResults = filtered.slice(0, 5).map((product: any) => {
+                        const { record, parentItem } = product
+                        return {
+                            id: parentItem.id,
+                            documentId: record.batchLotNumber, // Use batch lot number as ID for tracing
+                            final_product_type: record.productType || 'Unknown',
+                            output_quantity: record.quantity || 'N/A',
+                            product_grade: record.productGrade || 'Standard',
+                            batch_info: {
+                                plant_variety: parentItem.factory_submission?.batch?.Plant_Variety || 
+                                              parentItem.factory_submission?.Plant_Variety || 
+                                              'Curcuma longa',
+                                farm_name: parentItem.factory_submission?.batch?.Farm?.Farm_Name ||
+                                          parentItem.factory_submission?.farm_name || 
+                                          'Unknown Farm'
+                            }
                         }
-                    }))
+                    })
 
                     setSearchResults(processedResults)
                     setIsDropdownOpen(processedResults.length > 0)
@@ -183,8 +205,8 @@ export default function PublicNavigation({ className = "" }: PublicNavigationPro
             
             if (lotIdPattern.test(searchQuery.trim())) {
                 try {
-                    // Search for product with matching Lot ID in factory-processings
-                    const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-processings?populate=*&filters[batch_lot_number][$eq]=${encodeURIComponent(searchQuery.trim())}`, {
+                    // Search for product with matching Batch Lot Number in output_records_json
+                    const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-processings?populate=*`, {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
@@ -195,10 +217,25 @@ export default function PublicNavigation({ className = "" }: PublicNavigationPro
                         const result = await response.json()
                         
                         if (result.data && result.data.length > 0) {
-                            const product = result.data[0]
-                            // Redirect to trace page with product documentId
-                            window.location.href = `/trace/${product.documentId}`
-                            return
+                            // Search through all processings for matching batch lot number
+                            for (const item of result.data) {
+                                if (item.output_records_json) {
+                                    try {
+                                        const outputRecords = JSON.parse(item.output_records_json)
+                                        const matchingRecord = outputRecords.find((r: any) => 
+                                            r.batchLotNumber === searchQuery.trim()
+                                        )
+                                        
+                                        if (matchingRecord) {
+                                            // Redirect to trace page with batch lot number
+                                            window.location.href = `/trace/${matchingRecord.batchLotNumber}`
+                                            return
+                                        }
+                                    } catch (e) {
+                                        console.error('Error parsing output_records_json:', e)
+                                    }
+                                }
+                            }
                         }
                     }
                 } catch (error) {

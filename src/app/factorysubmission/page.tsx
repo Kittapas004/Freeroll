@@ -894,9 +894,9 @@ export default function FactorySubmissionPage() {
                                                         <StatusBadge status={item.status} />
                                                     </td>
                                                     <td className="py-2 px-2 text-center">
-                                                        {(item.status === "Export Success" ) && (
+                                                        {(item.status === "Export Success" || item.status === "Awaiting Export") && (
                                                             <button
-                                                                onClick={() => router.push(`/processing-details/${item.documentId}`)}
+                                                                onClick={() => router.push(`/processing-details/${item.documentId}?readonly=true&from=submission`)}
                                                                 className="text-blue-600 hover:underline flex items-center gap-1 mx-auto"
                                                             >
                                                                 <Eye className="w-3 h-3" />
