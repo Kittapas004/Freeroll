@@ -95,6 +95,7 @@ export default function FactorySubmissionPage() {
     });
     const [factorySelections, setFactorySelections] = useState<{ [key: string]: string }>({});
     const [factories, setFactories] = useState<any[]>([]);
+    const [showBatchDropdown, setShowBatchDropdown] = useState(false);
 
     const fetchFactories = async () => {
         try {
@@ -604,9 +605,11 @@ export default function FactorySubmissionPage() {
                                     value={filters.batchId}
                                     onChange={(e) => {
                                         setFilters({ ...filters, batchId: e.target.value });
+                                        setShowBatchDropdown(true);
                                     }}
+                                    onFocus={() => setShowBatchDropdown(true)}
                                 />
-                                {filters.batchId && (
+                                {filters.batchId && showBatchDropdown && (
                                     <div className="absolute z-10 bg-white border rounded shadow mt-1 w-full max-h-40 overflow-y-auto">
                                         {Array.from(
                                             new Set(
@@ -622,6 +625,7 @@ export default function FactorySubmissionPage() {
                                                 className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
                                                 onClick={() => {
                                                     setFilters({ ...filters, batchId: uniqueBatchId });
+                                                    setShowBatchDropdown(false);
                                                 }}
                                             >
                                                 {uniqueBatchId}
@@ -864,9 +868,7 @@ export default function FactorySubmissionPage() {
                                         <tr className="border-b text-left">
                                             <th className="py-2 px-2">Batch</th>
                                             <th className="py-2 px-2">Farm Name</th>
-                                            <th className="py-2 px-2">Product Output</th>
                                             <th className="py-2 px-2">Remaining Turmeric</th>
-                                            <th className="py-2 px-2">Waste Turmeric</th>
                                             <th className="py-2 px-2">Status</th>
                                             <th className="py-2 px-2 text-center">Actions</th>
                                         </tr>
@@ -884,12 +886,10 @@ export default function FactorySubmissionPage() {
                                                     <td className="py-2 px-2">{item.id}</td>
                                                     <td className="py-2 px-2">{item.farm}</td>
                                                     <td className="py-2 px-2">
-                                                        {item.product_output && item.unit
-                                                            ? `${item.product_output} ${item.unit} (${item.product_type || 'Powder'})`
+                                                        {item.remaining_turmeric !== null && item.remaining_turmeric !== undefined && item.unit 
+                                                            ? `${item.remaining_turmeric} ${item.unit}` 
                                                             : "-"}
                                                     </td>
-                                                    <td className="py-2 px-2">{item.remaining_turmeric && item.unit ? `${item.remaining_turmeric} ${item.unit}` : "-"}</td>
-                                                    <td className="py-2 px-2">{item.waste_turmeric && item.unit ? `${item.waste_turmeric} ${item.unit}` : "-"}</td>
                                                     <td className="py-2 px-2">
                                                         <StatusBadge status={item.status} />
                                                     </td>

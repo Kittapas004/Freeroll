@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { Label } from "@/components/ui/label";
@@ -465,6 +465,13 @@ export default function QualityInspectionPage() {
     uploadedFile: null as File | null // เปลี่ยนจาก csvFile
   });
 
+  // Router and params
+  const router = useRouter();
+  const params = useParams();
+  const searchParams = useSearchParams();
+  const recordId = params.id as string;
+  const fromHistory = searchParams.get('from') === 'history';
+
   // KaminCAL states
   const [kaminCALData, setKaminCALData] = useState({
     sample_name: '',
@@ -653,9 +660,6 @@ export default function QualityInspectionPage() {
       }));
     }
   };
-  const router = useRouter();
-  const params = useParams();
-  const recordId = params.id as string;
 
   const ALLOWED_ROLES = ['Quality Inspection'];
 
@@ -2088,7 +2092,7 @@ export default function QualityInspectionPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => router.push('/inspection-details')}
+              onClick={() => router.push(fromHistory ? '/inspection-history' : '/inspection-details')}
               className="flex items-center gap-2"
             >
               <ArrowLeft size={16} />
@@ -2171,8 +2175,9 @@ export default function QualityInspectionPage() {
                   onValueChange={(value) =>
                     setTestResults({ ...testResults, status: value })
                   }
+                  disabled={isReadOnly}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -2199,14 +2204,14 @@ export default function QualityInspectionPage() {
                   <Select
                     value={testParameters.testingMethod}
                     onValueChange={handleTestingMethodChange}
+                    disabled={isReadOnly}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className={isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="NIR Spectroscopy">NIR Spectroscopy</SelectItem>
                       <SelectItem value="HPLC">HPLC</SelectItem>
-                      <SelectItem value="UV-Vis">UV-Vis</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -2223,6 +2228,7 @@ export default function QualityInspectionPage() {
                           onCheckedChange={(checked) =>
                             setTestParameters({ ...testParameters, curcuminoidTest: !!checked })
                           }
+                          disabled={isReadOnly}
                         />
                         <Label htmlFor="curcuminoid" className="text-sm">
                           Curcuminoid Test
@@ -2235,6 +2241,7 @@ export default function QualityInspectionPage() {
                           onCheckedChange={(checked) =>
                             setTestParameters({ ...testParameters, moistureContent: !!checked })
                           }
+                          disabled={isReadOnly}
                         />
                         <Label htmlFor="moisture" className="text-sm">
                           Moisture Content
@@ -2596,6 +2603,9 @@ export default function QualityInspectionPage() {
                               setTestResults({ ...testResults, curcuminoidQuality: e.target.value })
                             }
                             placeholder="Enter percentage"
+                            readOnly={isReadOnly}
+                            className={isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}
+                            onClick={isReadOnly ? showCompletedWarning : undefined}
                           />
                         </div>
                         <div className="mt-6">
@@ -2618,6 +2628,9 @@ export default function QualityInspectionPage() {
                               setTestResults({ ...testResults, moistureQuality: e.target.value })
                             }
                             placeholder="Enter percentage"
+                            readOnly={isReadOnly}
+                            className={isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}
+                            onClick={isReadOnly ? showCompletedWarning : undefined}
                           />
                         </div>
                         <div className="mt-6">
@@ -2634,6 +2647,9 @@ export default function QualityInspectionPage() {
                         onChange={(e) =>
                           setTestResults({ ...testResults, testDate: e.target.value })
                         }
+                        readOnly={isReadOnly}
+                        className={isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}
+                        onClick={isReadOnly ? showCompletedWarning : undefined}
                       />
                     </div>
 
@@ -2650,8 +2666,9 @@ export default function QualityInspectionPage() {
                           <Select
                             value={hplcData.quality_assessment}
                             onValueChange={(value) => setHplcData({ ...hplcData, quality_assessment: value })}
+                            disabled={isReadOnly}
                           >
-                            <SelectTrigger className="bg-white ">
+                            <SelectTrigger className={`bg-white ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}>
                               <SelectValue placeholder="Select assessment" />
                             </SelectTrigger>
                             <SelectContent>
@@ -2678,7 +2695,9 @@ export default function QualityInspectionPage() {
                             value={hplcData.analyst_name}
                             onChange={handleHPLCChange}
                             placeholder="Enter analyst name"
-                            className="bg-white "
+                            className={`bg-white ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                            readOnly={isReadOnly}
+                            onClick={isReadOnly ? showCompletedWarning : undefined}
                           />
                         </div>
 
@@ -2689,7 +2708,9 @@ export default function QualityInspectionPage() {
                             value={hplcData.reviewer_name}
                             onChange={handleHPLCChange}
                             placeholder="Enter reviewer name"
-                            className="bg-white "
+                            className={`bg-white ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                            readOnly={isReadOnly}
+                            onClick={isReadOnly ? showCompletedWarning : undefined}
                           />
                         </div>
                       </div>
@@ -2705,10 +2726,12 @@ export default function QualityInspectionPage() {
                     <div>
                       <Label className="text-sm font-medium mb-2"><span className="text-green-600"><Label><Upload className="h-4 w-4" /></Label></span>Upload Results File</Label>
                       <div
-                        className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-blue-500 transition cursor-pointer bg-gray-50 relative p-4"
-                        onClick={() => !processingFile && fileInputRef.current?.click()}
-                        onDrop={handleDrop}
-                        onDragOver={handleDragOver}
+                        className={`w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 transition bg-gray-50 relative p-4 ${
+                          isReadOnly ? 'opacity-50 cursor-not-allowed' : 'hover:border-blue-500 cursor-pointer'
+                        }`}
+                        onClick={() => !processingFile && !isReadOnly && fileInputRef.current?.click()}
+                        onDrop={isReadOnly ? undefined : handleDrop}
+                        onDragOver={isReadOnly ? undefined : handleDragOver}
                       >
                         {processingFile ? (
                           <div className="flex flex-col items-center gap-2">
@@ -2720,25 +2743,31 @@ export default function QualityInspectionPage() {
                         ) : (
                           <div className="flex flex-col items-center gap-2 text-center">
                             <Upload className="h-12 w-12 text-gray-400" />
-                            <p className="text-sm font-medium">Drag & drop a file here</p>
-                            <p className="text-xs text-gray-400">or click to browse</p>
-                            <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                              <div className="flex items-center gap-1">
-                                <ImageIcon size={12} />
-                                <span>Images</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Table size={12} />
-                                <span>CSV</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <FileText size={12} />
-                                <span>Excel</span>
-                              </div>
-                            </div>
-                            <p className="text-xs text-gray-500 mt-1">
-                              PNG, JPG, GIF, CSV, XLS, XLSX up to 10MB
+                            <p className="text-sm font-medium">
+                              {isReadOnly ? 'File upload disabled (Read-only mode)' : 'Drag & drop a file here'}
                             </p>
+                            {!isReadOnly && (
+                              <>
+                                <p className="text-xs text-gray-400">or click to browse</p>
+                                <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                                  <div className="flex items-center gap-1">
+                                    <ImageIcon size={12} />
+                                    <span>Images</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Table size={12} />
+                                    <span>CSV</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <FileText size={12} />
+                                    <span>Excel</span>
+                                  </div>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  PNG, JPG, GIF, CSV, XLS, XLSX up to 10MB
+                                </p>
+                              </>
+                            )}
                           </div>
                         )}
                         <input
@@ -2752,7 +2781,7 @@ export default function QualityInspectionPage() {
                             }
                           }}
                           className="hidden"
-                          disabled={processingFile}
+                          disabled={processingFile || isReadOnly}
                         />
                       </div>
                       {testResults.uploadedFile && (
@@ -2771,7 +2800,9 @@ export default function QualityInspectionPage() {
                           setTestResults({ ...testResults, inspectorNotes: e.target.value })
                         }
                         rows={4}
-                        className="min-h-[100px] max-h-[100px]"
+                        className={`min-h-[100px] max-h-[100px] ${isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                        readOnly={isReadOnly}
+                        onClick={isReadOnly ? showCompletedWarning : undefined}
                       />
                     </div>
                   </div>
@@ -2797,7 +2828,9 @@ export default function QualityInspectionPage() {
                     setTestResults({ ...testResults, inspectorNotes: e.target.value })
                   }
                   rows={4}
-
+                  readOnly={isReadOnly}
+                  className={isReadOnly ? 'bg-gray-100 cursor-not-allowed' : ''}
+                  onClick={isReadOnly ? showCompletedWarning : undefined}
                 />
               </CardContent>
             </Card>
@@ -2814,10 +2847,12 @@ export default function QualityInspectionPage() {
               </CardHeader>
               <CardContent>
                 <div
-                  className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:border-blue-500 transition cursor-pointer bg-gray-50 relative p-4"
-                  onClick={() => !processingFile && fileInputRef.current?.click()}
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
+                  className={`w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 transition bg-gray-50 relative p-4 ${
+                    isReadOnly ? 'opacity-50 cursor-not-allowed' : 'hover:border-blue-500 cursor-pointer'
+                  }`}
+                  onClick={() => !processingFile && !isReadOnly && fileInputRef.current?.click()}
+                  onDrop={isReadOnly ? undefined : handleDrop}
+                  onDragOver={isReadOnly ? undefined : handleDragOver}
                 >
                   {processingFile ? (
                     <div className="flex flex-col items-center gap-2">
@@ -2829,25 +2864,31 @@ export default function QualityInspectionPage() {
                   ) : (
                     <div className="flex flex-col items-center gap-2 text-center">
                       <Upload className="h-12 w-12 text-gray-400" />
-                      <p className="text-sm font-medium">Drag & drop a file here</p>
-                      <p className="text-xs text-gray-400">or click to browse</p>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <ImageIcon size={12} />
-                          <span>Images</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Table size={12} />
-                          <span>CSV</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <FileText size={12} />
-                          <span>Excel</span>
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        PNG, JPG, GIF, CSV, XLS, XLSX up to 10MB
+                      <p className="text-sm font-medium">
+                        {isReadOnly ? 'File upload disabled (Read-only mode)' : 'Drag & drop a file here'}
                       </p>
+                      {!isReadOnly && (
+                        <>
+                          <p className="text-xs text-gray-400">or click to browse</p>
+                          <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                            <div className="flex items-center gap-1">
+                              <ImageIcon size={12} />
+                              <span>Images</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Table size={12} />
+                              <span>CSV</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <FileText size={12} />
+                              <span>Excel</span>
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            PNG, JPG, GIF, CSV, XLS, XLSX up to 10MB
+                          </p>
+                        </>
+                      )}
                     </div>
                   )}
                   <input
@@ -2861,7 +2902,7 @@ export default function QualityInspectionPage() {
                       }
                     }}
                     className="hidden"
-                    disabled={processingFile}
+                    disabled={processingFile || isReadOnly}
                   />
                 </div>
                 {testResults.uploadedFile && (
@@ -3070,7 +3111,7 @@ export default function QualityInspectionPage() {
           <div className="flex items-center justify-end gap-2 left-1 bottom-0 w-full p-4 bg-white border-t">
             {/* ปุ่ม Cancel */}
             <Button
-              onClick={() => router.push('/inspection-details')}
+              onClick={() => router.push(fromHistory ? '/inspection-history' : '/inspection-details')}
               disabled={saving || isReadOnly}
               variant="outline"
               className="flex items-center gap-2 bg-red-600 text-white hover:bg-red-500 hover:text-white"

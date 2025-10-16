@@ -1424,11 +1424,6 @@ export default function ProcessingDetailsPage() {
     <!-- 4. Output Records (หลายรายการ) -->
     <div class="section">
         <h2>4. Output Records</h2>
-        <div class="summary-box">
-            <strong>📦 Total Output Records: ${outputRecords.length}</strong><br>
-            <strong>📊 Total Output Quantity: ${totalOutput.toFixed(2)} units</strong><br>
-            <strong>🗑️ Total Waste Quantity: ${totalWaste.toFixed(2)} kg</strong>
-        </div>
         ${outputRecordsHtml}
     </div>
 
@@ -2506,12 +2501,6 @@ export default function ProcessingDetailsPage() {
                                     <p className="text-sm text-gray-600">Total Weight Used</p>
                                     <p className="text-2xl font-bold text-blue-800">
                                         {processingWeightHistory.reduce((sum, entry) => sum + entry.weight, 0).toFixed(2)} kg
-                                    </p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-sm text-gray-600">Average per Session</p>
-                                    <p className="text-2xl font-bold text-indigo-700">
-                                        {(processingWeightHistory.reduce((sum, entry) => sum + entry.weight, 0) / processingWeightHistory.length).toFixed(2)} kg
                                     </p>
                                 </div>
                             </div>

@@ -2976,19 +2976,24 @@ export default function PlantingBatchDetail() {
                                                                     <div
                                                                         className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                                                                         onClick={() => {
+                                                                            console.log('📝 Editing fertilizer record:', rec);
                                                                             setIsEditing(true);
                                                                             setfertilizerFormData({
-                                                                                date: rec.date,
-                                                                                amount: rec.amount.toString(),
-                                                                                size: rec.size.toString(),
-                                                                                fertilizer_type: rec.fertilizer_type,
-                                                                                method: rec.method,
+                                                                                date: rec.date || "",
+                                                                                amount: rec.amount ? rec.amount.toString() : "",
+                                                                                size: rec.size ? rec.size.toString() : "",
+                                                                                fertilizer_type: rec.fertilizer_type || "",
+                                                                                method: rec.method || "",
                                                                                 note: rec.note || "",
-                                                                                unit: rec.unit,
-                                                                                fertilizer_cost: rec.fertilizer_cost?.toString() || "",
-                                                                                application_labor_cost: rec.application_labor_cost?.toString() || "",
+                                                                                unit: rec.unit || "kg",
+                                                                                fertilizer_cost: (rec.fertilizer_cost !== null && rec.fertilizer_cost !== undefined) ? rec.fertilizer_cost.toString() : "0",
+                                                                                application_labor_cost: (rec.application_labor_cost !== null && rec.application_labor_cost !== undefined) ? rec.application_labor_cost.toString() : "0",
                                                                             });
                                                                             setEditingRecord(rec);
+                                                                            console.log('✅ Form data set:', {
+                                                                                fertilizer_cost: (rec.fertilizer_cost !== null && rec.fertilizer_cost !== undefined) ? rec.fertilizer_cost.toString() : "0",
+                                                                                application_labor_cost: (rec.application_labor_cost !== null && rec.application_labor_cost !== undefined) ? rec.application_labor_cost.toString() : "0"
+                                                                            });
                                                                         }}
                                                                     >
                                                                         Edit
@@ -4576,12 +4581,6 @@ export default function PlantingBatchDetail() {
                                             <label className="text-sm font-medium text-gray-600">Cultivation Method</label>
                                             <div className="bg-gray-100 p-3 rounded border">
                                                 <p className="font-medium">{PlantingBatches?.cultivation_method || "Organic"}</p>
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-sm font-medium text-gray-600">Plant Variety</label>
-                                            <div className="bg-gray-100 p-3 rounded border">
-                                                <p className="font-medium">{PlantingBatches?.plant_variety || "curcumalonga"}</p>
                                             </div>
                                         </div>
                                         <div className="space-y-2">

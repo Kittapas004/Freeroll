@@ -339,7 +339,7 @@ export default function InspectionHistory() {
 
     // Handle view inspection details
     const handleViewInspection = (inspectionId: string) => {
-        router.push(`/inspection-details/${inspectionId}`);
+        router.push(`/inspection-details/${inspectionId}?from=history`);
     };
 
     // Event handlers

@@ -45,9 +45,9 @@ export default function PlantingBatchesPage() {
     const [soilPH, setSoilPH] = useState("");
     const [soilQuality, setSoilQuality] = useState("");
     const [waterSource, setWaterSource] = useState<string | undefined>();
-    const [laborCost, setLaborCost] = useState(0);
-    const [materialCost, setMaterialCost] = useState(0);
-    const [otherCosts, setOtherCosts] = useState(0);
+    const [laborCost, setLaborCost] = useState<number | "">(0);
+    const [materialCost, setMaterialCost] = useState<number | "">(0);
+    const [otherCosts, setOtherCosts] = useState<number | "">(0);
 
     // Function to check and update expired batches
     const checkAndUpdateExpiredBatches = async () => {
@@ -398,9 +398,9 @@ export default function PlantingBatchesPage() {
         setSoilPH("");
         setSoilQuality("");
         setWaterSource(undefined);
-        setLaborCost(0);
-        setMaterialCost(0);
-        setOtherCosts(0);
+        setLaborCost("");
+        setMaterialCost("");
+        setOtherCosts("");
         if (imageInputRef.current) {
             imageInputRef.current.value = '';
         }
@@ -455,7 +455,9 @@ export default function PlantingBatchesPage() {
             }
 
             const newBatchId = await generateNewBatchId();
-            const totalPlantingCost = laborCost + materialCost + otherCosts;
+            const totalPlantingCost = (typeof laborCost === 'number' ? laborCost : 0) + 
+                                     (typeof materialCost === 'number' ? materialCost : 0) + 
+                                     (typeof otherCosts === 'number' ? otherCosts : 0);
 
             const batchPayload = {
                 data: {
@@ -470,9 +472,9 @@ export default function PlantingBatchesPage() {
                     Soil_pH: parseFloat(soilPH),
                     Soil_Quality: soilQuality,
                     Water_Source: waterSource,
-                    Labor_Cost: laborCost,
-                    Material_Cost: materialCost,
-                    Other_Costs: otherCosts,
+                    Labor_Cost: typeof laborCost === 'number' ? laborCost : 0,
+                    Material_Cost: typeof materialCost === 'number' ? materialCost : 0,
+                    Other_Costs: typeof otherCosts === 'number' ? otherCosts : 0,
                     Total_Planting_Cost: totalPlantingCost,
                 },
             };
@@ -529,9 +531,9 @@ export default function PlantingBatchesPage() {
             setSoilPH("");
             setSoilQuality("");
             setWaterSource(undefined);
-            setLaborCost(0);
-            setMaterialCost(0);
-            setOtherCosts(0);
+            setLaborCost("");
+            setMaterialCost("");
+            setOtherCosts("");
 
             if (imageInputRef.current) {
                 imageInputRef.current.value = '';
@@ -786,8 +788,9 @@ export default function PlantingBatchesPage() {
                                                             type="number"
                                                             min="0"
                                                             value={laborCost}
-                                                            onChange={(e) => setLaborCost(parseFloat(e.target.value) || 0)}
+                                                            onChange={(e) => setLaborCost(e.target.value === '' ? '' : parseFloat(e.target.value))}
                                                             className="pr-8"
+                                                            placeholder="0"
                                                         />
                                                     </div>
                                                 </div>
@@ -801,8 +804,9 @@ export default function PlantingBatchesPage() {
                                                             type="number"
                                                             min="0"
                                                             value={materialCost}
-                                                            onChange={(e) => setMaterialCost(parseFloat(e.target.value) || 0)}
+                                                            onChange={(e) => setMaterialCost(e.target.value === '' ? '' : parseFloat(e.target.value))}
                                                             className="pr-8"
+                                                            placeholder="0"
                                                         />
                                                     </div>
                                                 </div>
@@ -818,8 +822,9 @@ export default function PlantingBatchesPage() {
                                                         type="number"
                                                         min="0"
                                                         value={otherCosts}
-                                                        onChange={(e) => setOtherCosts(parseFloat(e.target.value) || 0)}
+                                                        onChange={(e) => setOtherCosts(e.target.value === '' ? '' : parseFloat(e.target.value))}
                                                         className="pr-8"
+                                                        placeholder="0"
                                                     />
                                                 </div>
                                             </div>
@@ -827,7 +832,11 @@ export default function PlantingBatchesPage() {
                                             <div className="border-t border-gray-200 pt-3">
                                                 <div className="flex justify-between items-center">
                                                     <span className="font-medium">Total Planting Cost:</span>
-                                                    <span className="font-bold text-lg">฿{(laborCost + materialCost + otherCosts).toFixed(2)}</span>
+                                                    <span className="font-bold text-lg">
+                                                        ฿{((typeof laborCost === 'number' ? laborCost : 0) + 
+                                                           (typeof materialCost === 'number' ? materialCost : 0) + 
+                                                           (typeof otherCosts === 'number' ? otherCosts : 0)).toFixed(2)}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
