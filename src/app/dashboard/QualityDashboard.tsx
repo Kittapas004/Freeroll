@@ -133,6 +133,7 @@ export default function QualityDashboard() {
 
   // ✅ Updated notifications state
   const [labNotifications, setLabNotifications] = useState<LabNotification[]>([]);
+  const [adminNotifications, setAdminNotifications] = useState<any[]>([]); // ✅ เพิ่ม state สำหรับ Admin Notifications
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -152,9 +153,29 @@ export default function QualityDashboard() {
     latestResultsPage * ITEMS_PER_PAGE + ITEMS_PER_PAGE
   );
 
+  // ✅ รวม Lab Notifications และ Admin Notifications
+  const allNotifications = [...adminNotifications, ...labNotifications].sort(
+    (a: any, b: any) => {
+      const dateA = new Date(a.submissionDate || a.createdAt || 0);
+      const dateB = new Date(b.submissionDate || b.createdAt || 0);
+      return dateB.getTime() - dateA.getTime();
+    }
+  );
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('🔍 Quality Dashboard Notifications:', {
+      adminNotifications: adminNotifications.length,
+      labNotifications: labNotifications.length,
+      allNotifications: allNotifications.length,
+      adminData: adminNotifications,
+      labData: labNotifications
+    });
+  }, [adminNotifications, labNotifications]);
+
   // Notifications pagination  
-  const notificationsPageCount = Math.ceil(labNotifications.length / ITEMS_PER_PAGE);
-  const visibleNotifications = labNotifications.slice(
+  const notificationsPageCount = Math.ceil(allNotifications.length / ITEMS_PER_PAGE);
+  const visibleNotifications = allNotifications.slice(
     notificationsPage * ITEMS_PER_PAGE,
     notificationsPage * ITEMS_PER_PAGE + ITEMS_PER_PAGE
   );
@@ -440,6 +461,81 @@ export default function QualityDashboard() {
       console.error('❌ Error in fetchLabNotifications:', err);
       setLabNotifications([]);
     }
+  };
+
+  // ✅ NEW: Fetch Admin Notifications
+  const fetchAdminNotifications = async () => {
+    try {
+      console.log('🔔 Fetching Admin notifications...');
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api-freeroll-production.up.railway.app';
+      const response = await fetch(
+        `${apiUrl}/api/admin-notifications?filters[$and][0][Status][$eq]=Active&filters[$and][1][$or][0][Target_Role][$eq]=All&filters[$and][1][$or][1][Target_Role][$eq]=Quality Inspection&sort=Priority:desc,createdAt:desc`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        console.error('❌ Failed to fetch admin notifications');
+        return;
+      }
+
+      const result = await response.json();
+      console.log('✅ Admin notifications:', result);
+
+      // ✅ Get dismissed notifications from localStorage (แยก key ตาม role)
+      const dismissedNotifications = JSON.parse(localStorage.getItem('dismissedAdminNotifications_Quality') || '[]');
+
+      // Filter out expired and dismissed notifications
+      const activeNotifications = result.data
+        .filter((item: any) => {
+          // Filter expired
+          if (item.Expire_Date && new Date(item.Expire_Date) <= new Date()) return false;
+          // Filter dismissed
+          if (dismissedNotifications.includes(`admin-${item.id}`)) return false;
+          return true;
+        })
+        .map((notification: any) => {
+          console.log('📅 Quality Admin notification date:', {
+            createdAt: notification.createdAt,
+            title: notification.Title
+          });
+          return {
+            id: `admin-${notification.id}`,
+            documentId: notification.documentId,
+            type: 'admin',
+            title: notification.Title,
+            message: notification.Message,
+            batchId: 'Admin',
+            farmName: 'System',
+            submissionDate: notification.createdAt,
+            submissionStatus: 'Completed',
+            qualityGrade: '-',
+            read: false,
+            priority: notification.Priority,
+            category: notification.Category,
+            linkUrl: notification.Link_Url,
+            isAdmin: true
+          };
+        });
+
+      console.log('✅ Mapped admin notifications:', activeNotifications);
+      setAdminNotifications(activeNotifications);
+    } catch (error) {
+      console.error('❌ Error fetching admin notifications:', error);
+    }
+  };
+
+  // ✅ Dismiss Admin Notification (store in localStorage แยกตาม role)
+  const dismissAdminNotification = (notificationId: string) => {
+    const dismissedNotifications = JSON.parse(localStorage.getItem('dismissedAdminNotifications_Quality') || '[]');
+    dismissedNotifications.push(notificationId);
+    localStorage.setItem('dismissedAdminNotifications_Quality', JSON.stringify(dismissedNotifications));
+    
+    // Remove from state
+    setAdminNotifications(prev => prev.filter(n => n.id !== notificationId));
   };
 
   // Fetch dashboard data with enhanced debugging
@@ -782,12 +878,20 @@ export default function QualityDashboard() {
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffHours / 24);
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-    return date.toLocaleDateString();
+    if (diffMinutes < 1) return 'Just now';
+    if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
+    }
+    const months = Math.floor(diffDays / 30);
+    return `${months} month${months > 1 ? 's' : ''} ago`;
   };
 
   // Status Badge Component
@@ -956,6 +1060,7 @@ export default function QualityDashboard() {
     }
     fetchDashboardData();
     fetchLabNotifications(); // ✅ Add this call
+    fetchAdminNotifications(); // ✅ เพิ่มการดึง Admin Notifications
   }, [role]);
 
   // ✅ UPDATED: Auto-refresh data every 3 minutes
@@ -965,6 +1070,7 @@ export default function QualityDashboard() {
         console.log('🔄 Auto-refreshing dashboard data...');
         fetchDashboardData();
         fetchLabNotifications();
+        fetchAdminNotifications(); // ✅ Refresh Admin Notifications ด้วย
       }, 180000); // 3 minutes
 
       return () => clearInterval(interval);
@@ -972,7 +1078,7 @@ export default function QualityDashboard() {
   }, [role]);
 
   // ✅ NEW: Calculate unread notifications count
-  const unreadCount = labNotifications.filter(n => !n.read).length;
+  const unreadCount = allNotifications.filter((n: any) => !n.read).length;
 
   if (role === 'loading' || loading) {
     return (
@@ -1390,7 +1496,7 @@ export default function QualityDashboard() {
           <div className="h-85 flex flex-col justify-between">
             {/* Notifications container */}
             <div className="space-y-3 flex-1 overflow-y-auto">
-              {labNotifications.length === 0 ? (
+              {allNotifications.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
                     <CheckCircle size={24} className="text-green-500 mx-auto mb-2" />
@@ -1400,56 +1506,120 @@ export default function QualityDashboard() {
                   </div>
                 </div>
               ) : (
-                visibleNotifications.map((notification) => (
-                  <div key={`${notification.id}-${notification.farmName}`} className="p-3 rounded-md border border-gray-200 relative group hover:bg-gray-50">
-                    {/* Delete button */}
-                    <button
-                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-opacity"
-                      onClick={() => removeNotification(notification.id)}
-                      title="Remove notification"
-                    >
-                      <XCircle size={16} />
-                    </button>
+                visibleNotifications.map((notification: any) => {
+                  const isAdmin = notification.isAdmin || notification.type === 'admin';
+                  
+                  // Admin notification styling
+                  const getBorderClass = () => {
+                    if (!isAdmin) return 'border-gray-200';
+                    switch (notification.priority) {
+                      case 'Urgent': return 'border-l-4 border-l-red-600';
+                      case 'High': return 'border-l-4 border-l-orange-600';
+                      case 'Normal': return 'border-l-4 border-l-blue-600';
+                      case 'Low': return 'border-l-4 border-l-green-600';
+                      default: return 'border-gray-200';
+                    }
+                  };
 
-                    <div
-                      className={`flex items-start cursor-pointer ${!notification.read ? 'opacity-100' : 'opacity-60'}`}
-                      onClick={() => markNotificationAsRead(notification.id)}
-                    >
-                      {getNotificationIcon(notification.type)}
-                      <div className="flex-1 min-w-0 ml-2">
-                        <div className={`text-sm font-medium flex items-center ${!notification.read ? 'font-bold' : ''}`}>
-                          {notification.title}
-                          {!notification.read && <span className="ml-2 w-2 h-2 bg-red-500 rounded-full flex-shrink-0"></span>}
-                        </div>
-                        <div className="text-xs text-gray-600 mt-1">
-                          Batch: <span className="font-medium text-blue-600">{notification.batchId}</span>
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          Farm: <span className="font-medium text-green-600">{notification.farmName}</span>
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          Status: <span className={`font-medium ${notification.submissionStatus === 'Completed' ? 'text-green-600' :
-                            notification.submissionStatus === 'Pending' ? 'text-orange-600' : 'text-gray-600'
-                            }`}>{notification.submissionStatus}</span>
-                        </div>
-                        <div className="flex items-center justify-between mt-2">
-                          <span className="text-xs text-gray-400">
-                            {formatNotificationTime(notification.submissionDate)}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push('/inspection-details');
-                            }}
-                            className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded hover:bg-blue-200"
-                          >
-                            Inspect
-                          </button>
+                  const getIcon = () => {
+                    if (isAdmin) {
+                      switch (notification.priority) {
+                        case 'Urgent': return <AlertCircle size={18} className="text-red-600" />;
+                        case 'High': return <AlertCircle size={18} className="text-orange-600" />;
+                        case 'Normal': return <Bell size={18} className="text-blue-600" />;
+                        case 'Low': return <CheckCircle size={18} className="text-green-600" />;
+                        default: return <Bell size={18} className="text-gray-500" />;
+                      }
+                    } else {
+                      return getNotificationIcon(notification.type);
+                    }
+                  };
+
+                  return (
+                    <div key={`${notification.id}-${notification.farmName || 'admin'}`} className={`p-3 rounded-md border relative group hover:bg-gray-50 ${getBorderClass()}`}>
+                      {/* Delete/Dismiss button มุมขวาบน (ทั้ง Admin และ Regular) */}
+                      <button
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          isAdmin ? dismissAdminNotification(notification.id) : removeNotification(notification.id);
+                        }}
+                        title={isAdmin ? "Dismiss notification" : "Remove notification"}
+                      >
+                        <XCircle size={16} />
+                      </button>
+
+                      <div
+                        className={`flex items-start cursor-pointer ${!notification.read ? 'opacity-100' : 'opacity-60'}`}
+                        onClick={() => !isAdmin && markNotificationAsRead(notification.id)}
+                      >
+                        {getIcon()}
+                        <div className="flex-1 min-w-0 ml-2">
+                          {/* Title with Admin badge */}
+                          <div className={`text-sm font-medium flex items-center gap-2 ${!notification.read ? 'font-bold' : ''}`}>
+                            {isAdmin && <span className="text-green-600 font-medium">[Admin]</span>}
+                            {notification.title}
+                            {!notification.read && <span className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0"></span>}
+                          </div>
+
+                          {/* Category badge for admin */}
+                          {isAdmin && notification.category && (
+                            <span className="inline-block px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs mt-1">
+                              {notification.category}
+                            </span>
+                          )}
+
+                          {/* Message for admin, details for regular */}
+                          {isAdmin ? (
+                            <div className="text-xs text-gray-700 mt-1">{notification.message}</div>
+                          ) : (
+                            <>
+                              <div className="text-xs text-gray-600 mt-1">
+                                Batch: <span className="font-medium text-blue-600">{notification.batchId}</span>
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                Farm: <span className="font-medium text-green-600">{notification.farmName}</span>
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                Status: <span className={`font-medium ${notification.submissionStatus === 'Completed' ? 'text-green-600' :
+                                  notification.submissionStatus === 'Pending' ? 'text-orange-600' : 'text-gray-600'
+                                  }`}>{notification.submissionStatus}</span>
+                              </div>
+                            </>
+                          )}
+
+                          {/* Footer */}
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="text-xs text-gray-400">
+                              {formatNotificationTime(notification.submissionDate)}
+                            </span>
+                            {isAdmin && notification.linkUrl ? (
+                              <a
+                                href={notification.linkUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                View More →
+                              </a>
+                            ) : !isAdmin ? (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push('/inspection-details');
+                                }}
+                                className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded hover:bg-blue-200"
+                              >
+                                Inspect
+                              </button>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
@@ -1457,10 +1627,13 @@ export default function QualityDashboard() {
             <div className="pt-3 mt-3 border-t">
               <div className="flex justify-between items-center text-xs text-gray-500 mb-2">
                 <span>
-                  {labNotifications.length > 0 ? `${labNotifications.length} notification(s)` : 'No notifications'}
+                  {allNotifications.length > 0 ? `${allNotifications.length} notification(s)` : 'No notifications'}
                 </span>
                 <button
-                  onClick={fetchLabNotifications}
+                  onClick={() => {
+                    fetchLabNotifications();
+                    fetchAdminNotifications();
+                  }}
                   className="text-blue-600 hover:text-blue-800"
                   title="Refresh notifications"
                 >
