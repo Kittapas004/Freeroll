@@ -14,6 +14,7 @@ import {
   Cog,
   Database,
   BarChart3,
+  Bell,
 } from "lucide-react";
 
 import { NavMain } from "@/components/nav-main"
@@ -120,7 +121,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     Admin: [
       { title: "Dashboard", url: "/dashboard", icon: SquareTerminal },
       { title: "User Management", url: "/users", icon: FileText },
-      { title: "System Settings", url: "/admin/settings", icon: Settings2 },
+      { title: "Notifications", url: "/admin-notifications", icon: Bell },
+      { title: "System Settings", url: "/system-settings", icon: Settings2 },
     ],
     "Quality Inspection": [
       { title: "Dashboard", url: "/dashboard", icon: LayoutGrid },
