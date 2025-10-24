@@ -148,7 +148,7 @@ export default function PlantingBatchDetail() {
         try {
             const userId = localStorage.getItem("userId");
             const jwt = localStorage.getItem("jwt");
-            
+
             if (!userId) {
                 console.log("No userId found in localStorage");
                 return;
@@ -160,7 +160,7 @@ export default function PlantingBatchDetail() {
             }
 
             console.log("Fetching user data for userId:", userId);
-            
+
             // ลอง endpoint ที่ง่ายกว่าก่อน
             const response = await fetch(`https://api-freeroll-production.up.railway.app/api/users/me`, {
                 headers: {
@@ -168,17 +168,17 @@ export default function PlantingBatchDetail() {
                     'Content-Type': 'application/json',
                 },
             });
-            
+
             console.log("Response status:", response.status);
             console.log("Response headers:", response.headers);
-            
+
             if (!response.ok) {
                 console.error("API request failed with status:", response.status);
                 const errorText = await response.text();
                 console.error("Error response:", errorText);
                 return;
             }
-            
+
             const data = await response.json();
             setCurrentUser(data);
             console.log("User data fetched successfully:", data);
@@ -387,7 +387,7 @@ export default function PlantingBatchDetail() {
                     testing_method: record.testing_method
                 })),
             });
-            
+
             // Fetch farm data for this batch
             if (batch.Farm?.documentId) {
                 try {
@@ -404,7 +404,7 @@ export default function PlantingBatchDetail() {
                     console.error("Error fetching farm data:", error);
                 }
             }
-            
+
             return data
         }
         catch (error) {
@@ -1089,7 +1089,7 @@ export default function PlantingBatchDetail() {
     React.useEffect(() => {
         // Check immediately when component mounts
         checkAndUpdateExpiredBatches();
-        
+
         // Set up interval to check every minute
         const intervalId = setInterval(() => {
             checkAndUpdateExpiredBatches();
@@ -1540,13 +1540,13 @@ export default function PlantingBatchDetail() {
         if (frameDoc) {
             frameDoc.write(gapContent);
             frameDoc.close();
-            
+
             // รอให้ content โหลดเสร็จแล้วค่อย print
             setTimeout(() => {
                 if (printFrame.contentWindow) {
                     printFrame.contentWindow.focus();
                     printFrame.contentWindow.print();
-                    
+
                     // ลบ iframe หลังจาก print เสร็จ
                     setTimeout(() => {
                         document.body.removeChild(printFrame);
@@ -1675,11 +1675,11 @@ export default function PlantingBatchDetail() {
 
             // Check if current batch is "Completed Successfully"
             if (PlantingBatches.status === "Completed Successfully") {
-                
+
                 // If no completion_timestamp exists, it's old data - update immediately to "Completed Past Data"
                 if (!PlantingBatches.completion_timestamp) {
                     console.log("Old completed batch without timestamp detected, updating to 'Completed Past Data'");
-                    
+
                     const updateRes = await fetch(`https://api-freeroll-production.up.railway.app/api/batches/${documentId}`, {
                         method: "PUT",
                         headers: {
@@ -1707,7 +1707,7 @@ export default function PlantingBatchDetail() {
 
                 if (currentTime - completionTime >= tenMinutesInMs) {
                     console.log("Batch has expired (10+ minutes), updating to 'Completed Past Data'");
-                    
+
                     const updateRes = await fetch(`https://api-freeroll-production.up.railway.app/api/batches/${documentId}`, {
                         method: "PUT",
                         headers: {
@@ -1751,7 +1751,7 @@ export default function PlantingBatchDetail() {
 
             // Update Batch_Status to "Completed Successfully"
             console.log("Updating batch status...");
-            
+
             const res = await fetch(`https://api-freeroll-production.up.railway.app/api/batches/${documentId}`, {
                 method: "PUT",
                 headers: {
@@ -1779,7 +1779,7 @@ export default function PlantingBatchDetail() {
                     console.warn("Harvest record missing quality_grade:", record);
                     return acc;
                 }
-                
+
                 if (!acc[record.quality_grade]) {
                     acc[record.quality_grade] = { quality_grade: record.quality_grade, total_yield: 0, records: [] };
                 }
@@ -1793,7 +1793,7 @@ export default function PlantingBatchDetail() {
             // Create factory submission records for each Quality_Grade (NOT ready-for-factory)
             for (const grade in groupedHarvestRecords) {
                 const { quality_grade, total_yield, records } = groupedHarvestRecords[grade];
-                
+
                 const factorySubmissionData = {
                     Batch_id: PlantingBatches.batches_id || `batch-${documentId}`,
                     Farm_Name: PlantingBatches.location || "Unknown Farm",
@@ -2677,12 +2677,49 @@ export default function PlantingBatchDetail() {
                                                         <SelectValue placeholder="Select Fertilizer Type" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="Organic">
-                                                            Organic
-                                                        </SelectItem>
-                                                        <SelectItem value="Conventional">
-                                                            Conventional
-                                                        </SelectItem>
+                                                        {(() => {
+                                                            const FertilizerTypeOptions: React.FC = () => {
+                                                                const [items, setItems] = React.useState<string[] | null>(null);
+
+                                                                React.useEffect(() => {
+                                                                    let mounted = true;
+                                                                    (async () => {
+                                                                        try {
+                                                                            const res = await fetch('https://api-freeroll-production.up.railway.app/api/fertilizer-types', {
+                                                                                headers: {
+                                                                                    Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                                                                },
+                                                                            });
+                                                                            if (!res.ok) throw new Error('Failed to fetch fertilizer types');
+                                                                            const json = await res.json();
+                                                                            const types = (json.data || []).map((c: any) => c.type || c.attributes?.type || '');
+                                                                            if (mounted) setItems(types.filter(Boolean));
+                                                                        } catch (err) {
+                                                                            console.error(err);
+                                                                            if (mounted) setItems([]);
+                                                                        }
+                                                                    })();
+                                                                    return () => {
+                                                                        mounted = false;
+                                                                    };
+                                                                }, []);
+
+                                                                if (items === null) return <SelectItem value="loading">Loading...</SelectItem>;
+                                                                if (items.length === 0) return <SelectItem value="none">No fertilizer types found</SelectItem>;
+
+                                                                return (
+                                                                    <>
+                                                                        {items.map((type) => (
+                                                                            <SelectItem key={type} value={type}>
+                                                                                {type}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </>
+                                                                );
+                                                            };
+
+                                                            return <FertilizerTypeOptions />;
+                                                        })()}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -2730,7 +2767,7 @@ export default function PlantingBatchDetail() {
                                                 <Textarea name="note" placeholder="Enter Notes here ... (Optional)" value={fertilizer_formData.note} onChange={fertilizer_handleChange} />
                                             </div>
                                         </div>
-                                        
+
                                         {/* Fertilizer Cost Tracking Section */}
                                         <div className="border-t pt-4">
                                             <div className="flex items-center gap-3 mb-4">
@@ -2740,40 +2777,40 @@ export default function PlantingBatchDetail() {
                                                 <h3 className="text-lg font-semibold text-green-600">Fertilizer Cost Tracking</h3>
                                             </div>
                                             <p className="text-sm text-muted-foreground mb-4">Fill in Fertilizer Cost Tracking Information</p>
-                                            
+
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="flex flex-col gap-1">
                                                     <Label>Fertilizer Cost ( THB )</Label>
-                                                    <Input 
-                                                        type="number" 
-                                                        name="fertilizer_cost" 
-                                                        placeholder="0" 
-                                                        min={0} 
+                                                    <Input
+                                                        type="number"
+                                                        name="fertilizer_cost"
+                                                        placeholder="0"
+                                                        min={0}
                                                         step="0.01"
-                                                        value={fertilizer_formData.fertilizer_cost} 
-                                                        onChange={fertilizer_handleChange} 
+                                                        value={fertilizer_formData.fertilizer_cost}
+                                                        onChange={fertilizer_handleChange}
                                                     />
                                                 </div>
                                                 <div className="flex flex-col gap-1">
                                                     <Label>Application Labor Cost ( THB )</Label>
-                                                    <Input 
-                                                        type="number" 
-                                                        name="application_labor_cost" 
-                                                        placeholder="0" 
-                                                        min={0} 
+                                                    <Input
+                                                        type="number"
+                                                        name="application_labor_cost"
+                                                        placeholder="0"
+                                                        min={0}
                                                         step="0.01"
-                                                        value={fertilizer_formData.application_labor_cost} 
-                                                        onChange={fertilizer_handleChange} 
+                                                        value={fertilizer_formData.application_labor_cost}
+                                                        onChange={fertilizer_handleChange}
                                                     />
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
                                                 <div className="flex justify-between items-center">
                                                     <span className="font-semibold">Total Fertilizer Cost :</span>
                                                     <span className="text-lg font-bold text-green-600">
-                                                        {((parseFloat(fertilizer_formData.fertilizer_cost) || 0) + 
-                                                          (parseFloat(fertilizer_formData.application_labor_cost) || 0)).toFixed(2)}
+                                                        {((parseFloat(fertilizer_formData.fertilizer_cost) || 0) +
+                                                            (parseFloat(fertilizer_formData.application_labor_cost) || 0)).toFixed(2)}
                                                     </span>
                                                 </div>
                                             </div>
@@ -2814,8 +2851,49 @@ export default function PlantingBatchDetail() {
                                                         <SelectValue placeholder="Select Fertilizer Type" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="Organic">Organic</SelectItem>
-                                                        <SelectItem value="Conventional">Conventional</SelectItem>
+                                                        {(() => {
+                                                            const FertilizerTypeOptions: React.FC = () => {
+                                                                const [items, setItems] = React.useState<string[] | null>(null);
+
+                                                                React.useEffect(() => {
+                                                                    let mounted = true;
+                                                                    (async () => {
+                                                                        try {
+                                                                            const res = await fetch('https://api-freeroll-production.up.railway.app/api/fertilizer-types', {
+                                                                                headers: {
+                                                                                    Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                                                                },
+                                                                            });
+                                                                            if (!res.ok) throw new Error('Failed to fetch fertilizer types');
+                                                                            const json = await res.json();
+                                                                            const types = (json.data || []).map((c: any) => c.type || c.attributes?.type || '');
+                                                                            if (mounted) setItems(types.filter(Boolean));
+                                                                        } catch (err) {
+                                                                            console.error(err);
+                                                                            if (mounted) setItems([]);
+                                                                        }
+                                                                    })();
+                                                                    return () => {
+                                                                        mounted = false;
+                                                                    };
+                                                                }, []);
+
+                                                                if (items === null) return <SelectItem value="loading">Loading...</SelectItem>;
+                                                                if (items.length === 0) return <SelectItem value="none">No fertilizer types found</SelectItem>;
+
+                                                                return (
+                                                                    <>
+                                                                        {items.map((type) => (
+                                                                            <SelectItem key={type} value={type}>
+                                                                                {type}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </>
+                                                                );
+                                                            };
+
+                                                            return <FertilizerTypeOptions />;
+                                                        })()}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -2885,7 +2963,7 @@ export default function PlantingBatchDetail() {
                                                 />
                                             </div>
                                         </div>
-                                        
+
                                         {/* Fertilizer Cost Tracking Section */}
                                         <div className="border-t pt-4">
                                             <div className="flex items-center gap-3 mb-4">
@@ -2895,40 +2973,40 @@ export default function PlantingBatchDetail() {
                                                 <h3 className="text-lg font-semibold text-green-600">Fertilizer Cost Tracking</h3>
                                             </div>
                                             <p className="text-sm text-muted-foreground mb-4">Fill in Fertilizer Cost Tracking Information</p>
-                                            
+
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="flex flex-col gap-1">
                                                     <Label>Fertilizer Cost ( THB )</Label>
-                                                    <Input 
-                                                        type="number" 
-                                                        name="fertilizer_cost" 
-                                                        placeholder="0" 
-                                                        min={0} 
+                                                    <Input
+                                                        type="number"
+                                                        name="fertilizer_cost"
+                                                        placeholder="0"
+                                                        min={0}
                                                         step="0.01"
-                                                        value={fertilizer_formData.fertilizer_cost} 
-                                                        onChange={fertilizer_handleChange} 
+                                                        value={fertilizer_formData.fertilizer_cost}
+                                                        onChange={fertilizer_handleChange}
                                                     />
                                                 </div>
                                                 <div className="flex flex-col gap-1">
                                                     <Label>Application Labor Cost ( THB )</Label>
-                                                    <Input 
-                                                        type="number" 
-                                                        name="application_labor_cost" 
-                                                        placeholder="0" 
-                                                        min={0} 
+                                                    <Input
+                                                        type="number"
+                                                        name="application_labor_cost"
+                                                        placeholder="0"
+                                                        min={0}
                                                         step="0.01"
-                                                        value={fertilizer_formData.application_labor_cost} 
-                                                        onChange={fertilizer_handleChange} 
+                                                        value={fertilizer_formData.application_labor_cost}
+                                                        onChange={fertilizer_handleChange}
                                                     />
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
                                                 <div className="flex justify-between items-center">
                                                     <span className="font-semibold">Total Fertilizer Cost :</span>
                                                     <span className="text-lg font-bold text-green-600">
-                                                        {((parseFloat(fertilizer_formData.fertilizer_cost) || 0) + 
-                                                          (parseFloat(fertilizer_formData.application_labor_cost) || 0)).toFixed(2)}
+                                                        {((parseFloat(fertilizer_formData.fertilizer_cost) || 0) +
+                                                            (parseFloat(fertilizer_formData.application_labor_cost) || 0)).toFixed(2)}
                                                     </span>
                                                 </div>
                                             </div>
@@ -3376,12 +3454,49 @@ export default function PlantingBatchDetail() {
                                                         <SelectValue placeholder="Select Harvest Method" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="Machine Harvesting">
-                                                            Machine Harvesting
-                                                        </SelectItem>
-                                                        <SelectItem value="Manual Harvesting">
-                                                            Manual Harvesting
-                                                        </SelectItem>
+                                                        {(() => {
+                                                            const HarvestMethodOptions: React.FC = () => {
+                                                                const [items, setItems] = React.useState<string[] | null>(null);
+
+                                                                React.useEffect(() => {
+                                                                    let mounted = true;
+                                                                    (async () => {
+                                                                        try {
+                                                                            const res = await fetch('https://api-freeroll-production.up.railway.app/api/harvest-methods', {
+                                                                                headers: {
+                                                                                    Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                                                                },
+                                                                            });
+                                                                            if (!res.ok) throw new Error('Failed to fetch harvest methods');
+                                                                            const json = await res.json();
+                                                                            const methods = (json.data || []).map((c: any) => c.method || c.attributes?.method || '');
+                                                                            if (mounted) setItems(methods.filter(Boolean));
+                                                                        } catch (err) {
+                                                                            console.error(err);
+                                                                            if (mounted) setItems([]);
+                                                                        }
+                                                                    })();
+                                                                    return () => {
+                                                                        mounted = false;
+                                                                    };
+                                                                }, []);
+
+                                                                if (items === null) return <SelectItem value="loading">Loading...</SelectItem>;
+                                                                if (items.length === 0) return <SelectItem value="none">No harvest methods found</SelectItem>;
+
+                                                                return (
+                                                                    <>
+                                                                        {items.map((method) => (
+                                                                            <SelectItem key={method} value={method}>
+                                                                                {method}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </>
+                                                                );
+                                                            };
+
+                                                            return <HarvestMethodOptions />;
+                                                        })()}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -3432,8 +3547,49 @@ export default function PlantingBatchDetail() {
                                                         <SelectValue placeholder="Select Result Type" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="UV-Vis">UV-Vis</SelectItem>
-                                                        <SelectItem value="LED">LED</SelectItem>
+                                                        {(() => {
+                                                            const ResultTypeOptions: React.FC = () => {
+                                                                const [items, setItems] = React.useState<string[] | null>(null);
+
+                                                                React.useEffect(() => {
+                                                                    let mounted = true;
+                                                                    (async () => {
+                                                                        try {
+                                                                            const res = await fetch('https://api-freeroll-production.up.railway.app/api/result-types', {
+                                                                                headers: {
+                                                                                    Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                                                                },
+                                                                            });
+                                                                            if (!res.ok) throw new Error('Failed to fetch result types');
+                                                                            const json = await res.json();
+                                                                            const types = (json.data || []).map((c: any) => c.type || c.attributes?.type || '');
+                                                                            if (mounted) setItems(types.filter(Boolean));
+                                                                        } catch (err) {
+                                                                            console.error(err);
+                                                                            if (mounted) setItems([]);
+                                                                        }
+                                                                    })();
+                                                                    return () => {
+                                                                        mounted = false;
+                                                                    };
+                                                                }, []);
+
+                                                                if (items === null) return <SelectItem value="loading">Loading...</SelectItem>;
+                                                                if (items.length === 0) return <SelectItem value="none">No result type found</SelectItem>;
+
+                                                                return (
+                                                                    <>
+                                                                        {items.map((type) => (
+                                                                            <SelectItem key={type} value={type}>
+                                                                                {type}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </>
+                                                                );
+                                                            };
+
+                                                            return <ResultTypeOptions />;
+                                                        })()}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -3449,40 +3605,40 @@ export default function PlantingBatchDetail() {
                                             <h3 className="text-lg font-semibold text-green-600">Harvest Cost Tracking</h3>
                                         </div>
                                         <p className="text-sm text-muted-foreground mb-4">Fill in Harvest Cost Tracking Information</p>
-                                        
+
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="flex flex-col gap-1">
                                                 <Label>Labor Cost ( THB )</Label>
-                                                <Input 
-                                                    type="number" 
-                                                    name="labor_cost" 
-                                                    placeholder="0" 
-                                                    min={0} 
+                                                <Input
+                                                    type="number"
+                                                    name="labor_cost"
+                                                    placeholder="0"
+                                                    min={0}
                                                     step="0.01"
-                                                    value={harvest_formData.labor_cost} 
-                                                    onChange={harvest_handleChange} 
+                                                    value={harvest_formData.labor_cost}
+                                                    onChange={harvest_handleChange}
                                                 />
                                             </div>
                                             <div className="flex flex-col gap-1">
                                                 <Label>Equipment Cost ( THB )</Label>
-                                                <Input 
-                                                    type="number" 
-                                                    name="equipment_cost" 
-                                                    placeholder="0" 
-                                                    min={0} 
+                                                <Input
+                                                    type="number"
+                                                    name="equipment_cost"
+                                                    placeholder="0"
+                                                    min={0}
                                                     step="0.01"
-                                                    value={harvest_formData.equipment_cost} 
-                                                    onChange={harvest_handleChange} 
+                                                    value={harvest_formData.equipment_cost}
+                                                    onChange={harvest_handleChange}
                                                 />
                                             </div>
                                         </div>
-                                        
+
                                         <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
                                             <div className="flex justify-between items-center">
                                                 <span className="font-semibold">Total Harvest Cost :</span>
                                                 <span className="text-lg font-bold text-green-600">
-                                                    {((parseFloat(harvest_formData.labor_cost) || 0) + 
-                                                      (parseFloat(harvest_formData.equipment_cost) || 0)).toFixed(2)}
+                                                    {((parseFloat(harvest_formData.labor_cost) || 0) +
+                                                        (parseFloat(harvest_formData.equipment_cost) || 0)).toFixed(2)}
                                                 </span>
                                             </div>
                                         </div>
@@ -3755,12 +3911,49 @@ export default function PlantingBatchDetail() {
                                                         <SelectValue placeholder="Select Harvest Method" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="Machine Harvesting">
-                                                            Machine Harvesting
-                                                        </SelectItem>
-                                                        <SelectItem value="Manual Harvesting">
-                                                            Manual Harvesting
-                                                        </SelectItem>
+                                                        {(() => {
+                                                            const HarvestMethodOptions: React.FC = () => {
+                                                                const [items, setItems] = React.useState<string[] | null>(null);
+
+                                                                React.useEffect(() => {
+                                                                    let mounted = true;
+                                                                    (async () => {
+                                                                        try {
+                                                                            const res = await fetch('https://api-freeroll-production.up.railway.app/api/harvest-methods', {
+                                                                                headers: {
+                                                                                    Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                                                                },
+                                                                            });
+                                                                            if (!res.ok) throw new Error('Failed to fetch harvest methods');
+                                                                            const json = await res.json();
+                                                                            const methods = (json.data || []).map((c: any) => c.method || c.attributes?.method || '');
+                                                                            if (mounted) setItems(methods.filter(Boolean));
+                                                                        } catch (err) {
+                                                                            console.error(err);
+                                                                            if (mounted) setItems([]);
+                                                                        }
+                                                                    })();
+                                                                    return () => {
+                                                                        mounted = false;
+                                                                    };
+                                                                }, []);
+
+                                                                if (items === null) return <SelectItem value="loading">Loading...</SelectItem>;
+                                                                if (items.length === 0) return <SelectItem value="none">No harvest methods found</SelectItem>;
+
+                                                                return (
+                                                                    <>
+                                                                        {items.map((method) => (
+                                                                            <SelectItem key={method} value={method}>
+                                                                                {method}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </>
+                                                                );
+                                                            };
+
+                                                            return <HarvestMethodOptions />;
+                                                        })()}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -3811,8 +4004,49 @@ export default function PlantingBatchDetail() {
                                                         <SelectValue placeholder="Select Result Type" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        <SelectItem value="UV-Vis">UV-Vis</SelectItem>
-                                                        <SelectItem value="LED">LED</SelectItem>
+                                                        {(() => {
+                                                            const ResultTypeOptions: React.FC = () => {
+                                                                const [items, setItems] = React.useState<string[] | null>(null);
+
+                                                                React.useEffect(() => {
+                                                                    let mounted = true;
+                                                                    (async () => {
+                                                                        try {
+                                                                            const res = await fetch('https://api-freeroll-production.up.railway.app/api/result-types', {
+                                                                                headers: {
+                                                                                    Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                                                                },
+                                                                            });
+                                                                            if (!res.ok) throw new Error('Failed to fetch result types');
+                                                                            const json = await res.json();
+                                                                            const types = (json.data || []).map((c: any) => c.type || c.attributes?.type || '');
+                                                                            if (mounted) setItems(types.filter(Boolean));
+                                                                        } catch (err) {
+                                                                            console.error(err);
+                                                                            if (mounted) setItems([]);
+                                                                        }
+                                                                    })();
+                                                                    return () => {
+                                                                        mounted = false;
+                                                                    };
+                                                                }, []);
+
+                                                                if (items === null) return <SelectItem value="loading">Loading...</SelectItem>;
+                                                                if (items.length === 0) return <SelectItem value="none">No result type found</SelectItem>;
+
+                                                                return (
+                                                                    <>
+                                                                        {items.map((type) => (
+                                                                            <SelectItem key={type} value={type}>
+                                                                                {type}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </>
+                                                                );
+                                                            };
+
+                                                            return <ResultTypeOptions />;
+                                                        })()}
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -3828,40 +4062,40 @@ export default function PlantingBatchDetail() {
                                             <h3 className="text-lg font-semibold text-green-600">Harvest Cost Tracking</h3>
                                         </div>
                                         <p className="text-sm text-muted-foreground mb-4">Fill in Harvest Cost Tracking Information</p>
-                                        
+
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="flex flex-col gap-1">
                                                 <Label>Labor Cost ( THB )</Label>
-                                                <Input 
-                                                    type="number" 
-                                                    name="labor_cost" 
-                                                    placeholder="0" 
-                                                    min={0} 
+                                                <Input
+                                                    type="number"
+                                                    name="labor_cost"
+                                                    placeholder="0"
+                                                    min={0}
                                                     step="0.01"
-                                                    value={harvest_formData.labor_cost} 
-                                                    onChange={harvest_handleChange} 
+                                                    value={harvest_formData.labor_cost}
+                                                    onChange={harvest_handleChange}
                                                 />
                                             </div>
                                             <div className="flex flex-col gap-1">
                                                 <Label>Equipment Cost ( THB )</Label>
-                                                <Input 
-                                                    type="number" 
-                                                    name="equipment_cost" 
-                                                    placeholder="0" 
-                                                    min={0} 
+                                                <Input
+                                                    type="number"
+                                                    name="equipment_cost"
+                                                    placeholder="0"
+                                                    min={0}
                                                     step="0.01"
-                                                    value={harvest_formData.equipment_cost} 
-                                                    onChange={harvest_handleChange} 
+                                                    value={harvest_formData.equipment_cost}
+                                                    onChange={harvest_handleChange}
                                                 />
                                             </div>
                                         </div>
-                                        
+
                                         <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
                                             <div className="flex justify-between items-center">
                                                 <span className="font-semibold">Total Harvest Cost :</span>
                                                 <span className="text-lg font-bold text-green-600">
-                                                    {((parseFloat(harvest_formData.labor_cost) || 0) + 
-                                                      (parseFloat(harvest_formData.equipment_cost) || 0)).toFixed(2)}
+                                                    {((parseFloat(harvest_formData.labor_cost) || 0) +
+                                                        (parseFloat(harvest_formData.equipment_cost) || 0)).toFixed(2)}
                                                 </span>
                                             </div>
                                         </div>
@@ -4109,7 +4343,7 @@ export default function PlantingBatchDetail() {
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                                
+
                                                                 {/* Cost Tracking Section */}
                                                                 <div className="p-4 border-t">
                                                                     <h1 className="text-green-600 text-xl font-semibold flex items-center gap-2">
@@ -4119,7 +4353,7 @@ export default function PlantingBatchDetail() {
                                                                         <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                                                                             <p className="text-gray-600 text-sm font-medium mb-1">Labor Cost</p>
                                                                             <h1 className="text-2xl font-bold text-blue-700">
-                                                                                {harvest_record.labor_cost 
+                                                                                {harvest_record.labor_cost
                                                                                     ? `฿${Number(harvest_record.labor_cost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                                                                     : "฿0.00"
                                                                                 }
@@ -4128,7 +4362,7 @@ export default function PlantingBatchDetail() {
                                                                         <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
                                                                             <p className="text-gray-600 text-sm font-medium mb-1">Equipment Cost</p>
                                                                             <h1 className="text-2xl font-bold text-orange-700">
-                                                                                {harvest_record.equipment_cost 
+                                                                                {harvest_record.equipment_cost
                                                                                     ? `฿${Number(harvest_record.equipment_cost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                                                                     : "฿0.00"
                                                                                 }
@@ -4137,7 +4371,7 @@ export default function PlantingBatchDetail() {
                                                                         <div className="bg-green-50 p-3 rounded-lg border border-green-300">
                                                                             <p className="text-gray-600 text-sm font-medium mb-1">Total Harvest Cost</p>
                                                                             <h1 className="text-2xl font-bold text-green-700">
-                                                                                {harvest_record.total_harvest_cost 
+                                                                                {harvest_record.total_harvest_cost
                                                                                     ? `฿${Number(harvest_record.total_harvest_cost).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                                                                     : `฿${((Number(harvest_record.labor_cost) || 0) + (Number(harvest_record.equipment_cost) || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                                                                 }
@@ -4307,7 +4541,7 @@ export default function PlantingBatchDetail() {
                                                             const isCompleted = lab_rec.status === 'Completed';
                                                             const isExported = lab_rec.exported === true;
                                                             const exportStatus = lab_rec.export_status || 'Unknown';
-                                                            const testingMethod = lab_rec.testing_method ;
+                                                            const testingMethod = lab_rec.testing_method;
 
                                                             if (isCompleted && isExported) {
                                                                 // ✅ แสดง View Report เมื่อ Completed และ Exported แล้ว
@@ -4463,7 +4697,7 @@ export default function PlantingBatchDetail() {
                                     <h1 className="text-2xl font-bold">Good Agricultural Practices (GAP) Certification Report</h1>
                                     <p className="text-green-100 mt-2">Comprehensive documentation of farming practices for GAP certification</p>
                                 </div>
-                                <Button 
+                                <Button
                                     onClick={handlePrintGAP}
                                     className="bg-white text-green-600 hover:bg-gray-100 border-2 border-white hover:border-gray-200 font-semibold px-6 py-2"
                                     size="lg"
@@ -4472,7 +4706,7 @@ export default function PlantingBatchDetail() {
                                     Print Report
                                 </Button>
                             </div>
-                            
+
                             {/* Report Content */}
                             <div className="bg-white p-8 rounded-b-lg shadow-lg space-y-8">
                                 {/* Farmer Information */}
@@ -4514,7 +4748,7 @@ export default function PlantingBatchDetail() {
                                 <div>
                                     <div className="bg-green-100 p-3 rounded-lg mb-4">
                                         <h3 className="text-lg font-semibold text-green-700 flex items-center gap-2">
-                                            <span><Tractor className="text-green-600"  /></span> Farm Information
+                                            <span><Tractor className="text-green-600" /></span> Farm Information
                                         </h3>
                                     </div>
                                     <div className="grid grid-cols-2 gap-6">
@@ -4602,7 +4836,7 @@ export default function PlantingBatchDetail() {
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     {/* Planting Cost */}
                                     <div className="mt-6">
                                         <div className="border-l-4 border-green-500 pl-4">
@@ -4610,21 +4844,21 @@ export default function PlantingBatchDetail() {
                                             <div className="grid grid-cols-3 gap-4">
                                                 <div className="bg-gray-50 p-3 rounded">
                                                     <p className="text-sm text-gray-600">Labor Cost ( THB )</p>
-                                                    <p className="font-bold">฿{PlantingBatches?.labor_cost }</p>
+                                                    <p className="font-bold">฿{PlantingBatches?.labor_cost}</p>
                                                 </div>
                                                 <div className="bg-gray-50 p-3 rounded">
                                                     <p className="text-sm text-gray-600">Material Cost ( THB )</p>
-                                                    <p className="font-bold">฿{PlantingBatches?.material_cost }</p>
+                                                    <p className="font-bold">฿{PlantingBatches?.material_cost}</p>
                                                 </div>
                                                 <div className="bg-gray-50 p-3 rounded">
                                                     <p className="text-sm text-gray-600">Other Cost ( THB )</p>
-                                                    <p className="font-bold">฿{PlantingBatches?.other_costs }</p>
+                                                    <p className="font-bold">฿{PlantingBatches?.other_costs}</p>
                                                 </div>
                                             </div>
                                             <div className="bg-green-50 border border-green-200 p-3 rounded mt-3">
                                                 <div className="flex justify-between items-center">
                                                     <span className="font-semibold">Total Planting Cost</span>
-                                                    <span className="font-bold text-lg">฿{PlantingBatches?.total_planting_cost }</span>
+                                                    <span className="font-bold text-lg">฿{PlantingBatches?.total_planting_cost}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -4673,36 +4907,36 @@ export default function PlantingBatchDetail() {
                                                     {PlantingBatches.recent_fertilizer_record
                                                         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                                                         .map((record, index) => (
-                                                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                                                            <div className="grid grid-cols-4 gap-4">
-                                                                <div>
-                                                                    <p className="text-xs text-gray-500">Date</p>
-                                                                    <p className="font-medium">{new Date(record.date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</p>
+                                                            <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                                                <div className="grid grid-cols-4 gap-4">
+                                                                    <div>
+                                                                        <p className="text-xs text-gray-500">Date</p>
+                                                                        <p className="font-medium">{new Date(record.date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-xs text-gray-500">Type</p>
+                                                                        <p className="font-medium">{record.fertilizer_type}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-xs text-gray-500">Quantity</p>
+                                                                        <p className="font-medium">{record.amount} {record.unit}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-xs text-gray-500">Method</p>
+                                                                        <p className="font-medium">{record.method}</p>
+                                                                    </div>
                                                                 </div>
-                                                                <div>
-                                                                    <p className="text-xs text-gray-500">Type</p>
-                                                                    <p className="font-medium">{record.fertilizer_type}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-xs text-gray-500">Quantity</p>
-                                                                    <p className="font-medium">{record.amount} {record.unit}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-xs text-gray-500">Method</p>
-                                                                    <p className="font-medium">{record.method}</p>
-                                                                </div>
+                                                                {record.note && (
+                                                                    <div className="mt-2">
+                                                                        <p className="text-xs text-gray-500">Notes</p>
+                                                                        <p className="text-sm">{record.note}</p>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                            {record.note && (
-                                                                <div className="mt-2">
-                                                                    <p className="text-xs text-gray-500">Notes</p>
-                                                                    <p className="text-sm">{record.note}</p>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    ))}
+                                                        ))}
                                                 </div>
                                             </div>
-                                            
+
                                             {/* Fertilizer Cost */}
                                             <div className="mt-6">
                                                 <div className="border-l-4 border-green-500 pl-4">
@@ -4781,46 +5015,46 @@ export default function PlantingBatchDetail() {
                                                     {PlantingBatches.recent_harvest_record
                                                         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                                                         .map((record, index) => (
-                                                        <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                                                            <div className="grid grid-cols-4 gap-4">
-                                                                <div>
-                                                                    <p className="text-xs text-gray-500">Date</p>
-                                                                    <p className="font-medium">{new Date(record.date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</p>
+                                                            <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                                                                <div className="grid grid-cols-4 gap-4">
+                                                                    <div>
+                                                                        <p className="text-xs text-gray-500">Date</p>
+                                                                        <p className="font-medium">{new Date(record.date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-xs text-gray-500">Yield</p>
+                                                                        <p className="font-medium">{record.yleld} {record.yleld_unit}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-xs text-gray-500">Quality Grade</p>
+                                                                        <p className="font-medium">{record.quality_grade}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-xs text-gray-500">Method</p>
+                                                                        <p className="font-medium">{record.method}</p>
+                                                                    </div>
                                                                 </div>
-                                                                <div>
-                                                                    <p className="text-xs text-gray-500">Yield</p>
-                                                                    <p className="font-medium">{record.yleld} {record.yleld_unit}</p>
+                                                                <div className="grid grid-cols-2 gap-4 mt-3">
+                                                                    <div>
+                                                                        <p className="text-xs text-gray-500">Curcumin Quality</p>
+                                                                        <p className="font-medium">{record.curcumin_quality}%</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-xs text-gray-500">Result Type</p>
+                                                                        <p className="font-medium">{record.result_type || "UV Spectroscopy"}</p>
+                                                                    </div>
                                                                 </div>
-                                                                <div>
-                                                                    <p className="text-xs text-gray-500">Quality Grade</p>
-                                                                    <p className="font-medium">{record.quality_grade}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-xs text-gray-500">Method</p>
-                                                                    <p className="font-medium">{record.method}</p>
-                                                                </div>
+                                                                {record.note && (
+                                                                    <div className="mt-2">
+                                                                        <p className="text-xs text-gray-500">Notes</p>
+                                                                        <p className="text-sm">{record.note}</p>
+                                                                    </div>
+                                                                )}
                                                             </div>
-                                                            <div className="grid grid-cols-2 gap-4 mt-3">
-                                                                <div>
-                                                                    <p className="text-xs text-gray-500">Curcumin Quality</p>
-                                                                    <p className="font-medium">{record.curcumin_quality}%</p>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-xs text-gray-500">Result Type</p>
-                                                                    <p className="font-medium">{record.result_type || "UV Spectroscopy"}</p>
-                                                                </div>
-                                                            </div>
-                                                            {record.note && (
-                                                                <div className="mt-2">
-                                                                    <p className="text-xs text-gray-500">Notes</p>
-                                                                    <p className="text-sm">{record.note}</p>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    ))}
+                                                        ))}
                                                 </div>
                                             </div>
-                                            
+
                                             {/* Harvest Cost */}
                                             <div className="mt-6">
                                                 <div className="border-l-4 border-green-500 pl-4">

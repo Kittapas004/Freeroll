@@ -133,12 +133,49 @@ export default function FarmInformationPage() {
                                             <SelectValue placeholder="Select Crop Type" />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="Turmeric">
-                                                Turmeric
-                                            </SelectItem>
-                                            <SelectItem value="Special Turmeric">
-                                                Special Turmeric
-                                            </SelectItem>
+                                            {(() => {
+                                                const CropTypeOptions: React.FC = () => {
+                                                    const [items, setItems] = React.useState<string[] | null>(null);
+
+                                                    React.useEffect(() => {
+                                                        let mounted = true;
+                                                        (async () => {
+                                                            try {
+                                                                const res = await fetch('https://api-freeroll-production.up.railway.app/api/crop-types', {
+                                                                    headers: {
+                                                                        Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                                                    },
+                                                                });
+                                                                if (!res.ok) throw new Error('Failed to fetch crop types');
+                                                                const json = await res.json();
+                                                                const types = (json.data || []).map((c: any) => c.type || c.attributes?.type || '');
+                                                                if (mounted) setItems(types.filter(Boolean));
+                                                            } catch (err) {
+                                                                console.error(err);
+                                                                if (mounted) setItems([]);
+                                                            }
+                                                        })();
+                                                        return () => {
+                                                            mounted = false;
+                                                        };
+                                                    }, []);
+
+                                                    if (items === null) return <SelectItem value="loading">Loading...</SelectItem>;
+                                                    if (items.length === 0) return <SelectItem value="none">No crop types found</SelectItem>;
+
+                                                    return (
+                                                        <>
+                                                            {items.map((type) => (
+                                                                <SelectItem key={type} value={type}>
+                                                                    {type}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </>
+                                                    );
+                                                };
+
+                                                return <CropTypeOptions />;
+                                            })()}
                                         </SelectContent>
                                     </Select>
                                 </div>
@@ -306,8 +343,49 @@ export default function FarmInformationPage() {
                                                                     <SelectValue />
                                                                 </SelectTrigger>
                                                                 <SelectContent>
-                                                                    <SelectItem value="Turmeric">Turmeric</SelectItem>
-                                                                    <SelectItem value="Special Turmeric">Special Turmeric</SelectItem>
+                                                                    {(() => {
+                                                                        const CropTypeOptions: React.FC = () => {
+                                                                            const [items, setItems] = React.useState<string[] | null>(null);
+
+                                                                            React.useEffect(() => {
+                                                                                let mounted = true;
+                                                                                (async () => {
+                                                                                    try {
+                                                                                        const res = await fetch('https://api-freeroll-production.up.railway.app/api/crop-types', {
+                                                                                            headers: {
+                                                                                                Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                                                                            },
+                                                                                        });
+                                                                                        if (!res.ok) throw new Error('Failed to fetch crop types');
+                                                                                        const json = await res.json();
+                                                                                        const types = (json.data || []).map((c: any) => c.type || c.attributes?.type || '');
+                                                                                        if (mounted) setItems(types.filter(Boolean));
+                                                                                    } catch (err) {
+                                                                                        console.error(err);
+                                                                                        if (mounted) setItems([]);
+                                                                                    }
+                                                                                })();
+                                                                                return () => {
+                                                                                    mounted = false;
+                                                                                };
+                                                                            }, []);
+
+                                                                            if (items === null) return <SelectItem value="loading">Loading...</SelectItem>;
+                                                                            if (items.length === 0) return <SelectItem value="none">No crop types found</SelectItem>;
+
+                                                                            return (
+                                                                                <>
+                                                                                    {items.map((type) => (
+                                                                                        <SelectItem key={type} value={type}>
+                                                                                            {type}
+                                                                                        </SelectItem>
+                                                                                    ))}
+                                                                                </>
+                                                                            );
+                                                                        };
+
+                                                                        return <CropTypeOptions />;
+                                                                    })()}
                                                                 </SelectContent>
                                                             </Select>
                                                         </div>

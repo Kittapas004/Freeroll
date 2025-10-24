@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, JSXElementConstructor, Key, ReactElement, ReactNode, ReactPortal } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
+import { useRouter } from 'next/navigation';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -17,60 +17,386 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-import { Save, Settings } from 'lucide-react'
+import { GiFarmer } from 'react-icons/gi'
+import { TbTestPipe } from 'react-icons/tb'
+import { BiSolidFactory } from 'react-icons/bi'
+import { PiFarm } from 'react-icons/pi';
+import { GiFertilizerBag } from 'react-icons/gi';
+import { PiPlant } from 'react-icons/pi';
+import { X } from 'lucide-react'
+
+// Reusable component for settings sections
+type SettingFieldType = {
+  label: string
+  items: string[]
+  setItems: React.Dispatch<React.SetStateAction<string[]>>
+  // API endpoint (e.g. 'crop-types')
+  apiEndpoint?: string
+  // field name inside the Strapi content type attributes (e.g. 'type', 'method', 'variety')
+  apiField?: string
+}
+
+interface SettingSectionProps {
+  title: string
+  icon: ReactNode
+  fields: SettingFieldType[]
+}
+
+interface SettingFieldProps {
+  label: string
+  items: string[]
+  setItems: React.Dispatch<React.SetStateAction<string[]>>
+  apiEndpoint?: string
+  apiField?: string
+}
+
+function SettingSection({ title, icon, fields }: SettingSectionProps) {
+  return (
+    <Card className="mb-6">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          {icon}
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {fields.map((field, index) => (
+            <SettingField key={index} {...field} />
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Reusable component for individual setting fields
+function SettingField({ label, items, setItems, apiEndpoint, apiField }: SettingFieldProps) {
+  const [inputValue, setInputValue] = useState('')
+
+  const handleAdd = () => {
+    const value = inputValue.trim()
+    if (!value) return
+
+    ;(async () => {
+      // If no apiEndpoint/apiField provided, just update local state
+      if (!apiEndpoint || !apiField) {
+        setItems([...items, value])
+        setInputValue('')
+        return
+      }
+
+      try {
+        const token = typeof window !== 'undefined'
+          ? localStorage.getItem('token') ?? localStorage.getItem('jwt') ?? ''
+          : ''
+
+        const res = await fetch(`https://api-freeroll-production.up.railway.app/api/${apiEndpoint}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: token ? `Bearer ${token}` : '',
+          },
+          body: JSON.stringify({ data: { [apiField]: value } }),
+        })
+
+        if (!res.ok) {
+          console.error('Failed to create item', await res.text())
+          return
+        }
+
+        const json = await res.json()
+        // Strapi returns created object under data.attributes
+        const created = json?.data?.attributes?.[apiField] ?? value
+        setItems([...items, created])
+        setInputValue('')
+        window.alert('Added successfully')
+      } catch (err) {
+        console.error('Error adding item to API', err)
+      }
+    })()
+  }
+
+  const handleRemove = (index: number) => {
+    const valueToRemove = items[index]
+    ;(async () => {
+      // If no apiEndpoint/apiField provided, just update local state
+      if (!apiEndpoint || !apiField) {
+        setItems(items.filter((_, i) => i !== index))
+        return
+      }
+      // make conditon to ensure user want to delete
+      const confirmDelete = window.confirm(`Are you sure you want to remove "${valueToRemove}"?`)
+      if (!confirmDelete) return
+      try {
+        const token = typeof window !== 'undefined'
+          ? localStorage.getItem('token') ?? localStorage.getItem('jwt') ?? ''
+          : ''
+        // Find the item by value to get ID
+        const filterQS = `filters[${apiField}][$eq]=${encodeURIComponent(valueToRemove)}`
+        const findRes = await fetch(`https://api-freeroll-production.up.railway.app/api/${apiEndpoint}?${filterQS}&pagination[pageSize]=1`, {
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: token ? `Bearer ${token}` : '',
+          },
+        })
+        if (!findRes.ok) {
+          console.error('Failed to find item to delete', await findRes.text())
+          return
+        }
+
+        const findJson = await findRes.json()
+        const found = findJson?.data && findJson.data.length > 0 ? findJson.data[0] : null
+
+        if (!found) {
+          // Not found on server; still remove locally
+          setItems(items.filter((_, i) => i !== index))
+          return
+        }
+        const id = found.documentId
+        const delRes = await fetch(`https://api-freeroll-production.up.railway.app/api/${apiEndpoint}/${id}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: token ? `Bearer ${token}` : '',
+          },
+        })
+        if (!delRes.ok) {
+          console.error('Failed to delete item', await delRes.text())
+          return
+        }
+
+        setItems(items.filter((_, i) => i !== index))
+        window.alert('Removed successfully')
+      } catch (err) {
+        console.error('Error removing item from API', err)
+      }
+    })()
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if ((e as React.KeyboardEvent<HTMLInputElement>).key === 'Enter') {
+      handleAdd()
+    }
+  }
+
+  return (
+    <div className="border rounded-lg p-4 bg-white">
+      <h3 className="font-medium text-sm mb-3">{label}</h3>
+
+      {/* Scrollable container for items */}
+      <div className="max-h-32 overflow-y-auto mb-3 border rounded-md p-2 bg-gray-50">
+        {items.length === 0 ? (
+          <p className="text-gray-400 text-xs text-center py-2">No items added yet</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {items.map((item, index) => (
+              <span
+                key={index}
+                className="inline-flex items-center gap-1 px-2 py-1 bg-gray-200 rounded text-xs"
+              >
+                {item}
+                <button
+                  onClick={() => handleRemove(index)}
+                  className="text-gray-600 hover:text-gray-900 ml-1"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <Input
+          placeholder="Add new item"
+          value={inputValue}
+          onChange={(e) => setInputValue((e.target as HTMLInputElement).value)}
+          onKeyPress={handleKeyPress}
+          className="text-sm"
+        />
+        <Button
+          onClick={handleAdd}
+          className="bg-green-600 hover:bg-green-700 text-white whitespace-nowrap"
+        >
+          Add
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 export default function AdminSettingsPage() {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [currentUserRole, setCurrentUserRole] = useState<string>('')
-  
-  const [settings, setSettings] = useState({
-    // Platform Settings
-    platformName: 'TurmeRic',
-    dateFormat: 'dd/mm/yyyy',
-    defaultCurrency: 'THB (Thai Baht)',
-    
-    // Units of Measurement
-    weightUnit: 'Kilogram',
-    areaUnit: 'Acres',
-    
-    // Quality Standards
-    qualityPassThreshold: 'Pass',
-    qualityFailThreshold: 'Fail',
-    
-    // System Configuration
-    maxFileSize: '10MB',
-    allowedFileTypes: 'PNG, JPG, GIF, PDF',
-  })
+  const [currentUserRole, setCurrentUserRole] = useState('')
+  const router = useRouter();
 
-  // Check if user is admin
+  // Farmer Settings State
+  const [cropTypes, setCropTypes] = useState<string[]>([])
+  const [plantVarieties, setPlantVarieties] = useState<string[]>([])
+  const [fertilizerTypes, setFertilizerTypes] = useState<string[]>([])
+  const [harvestMethods, setHarvestMethods] = useState<string[]>([])
+  const [resultTypes, setResultTypes] = useState<string[]>([])
+
+  // Quality Inspector Settings State
+  const [testingMethods, setTestingMethods] = useState<string[]>([])
+  const [sampletypes, setSampleTypes] = useState<string[]>([])
+
+  // Factory Settings State
+  const [processingMethods, setProcessingMethods] = useState<string[]>([])
+  const [finalProductTypes, setFinalProductTypes] = useState<string[]>([])
+  const [standardCriteria, setStandardCriteria] = useState<string[]>([])
+  const [targetMarkets, setTargetMarkets] = useState<string[]>([])
+
   useEffect(() => {
     const userRole = localStorage.getItem('userRole')
     setCurrentUserRole(userRole || '')
-    
+
     if (userRole !== 'Admin') {
+      // Uncomment in production
       router.push('/unauthorized')
       return
     }
-  }, [router])
 
-  const handleSave = async () => {
-    setLoading(true)
-    try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      alert('Settings saved successfully!')
-    } catch (error) {
-      console.error('Error saving settings:', error)
-      alert('Failed to save settings')
-    } finally {
-      setLoading(false)
+    const fetchData = async () => {
+      setLoading(true)
+      try {
+        // Fetch Crop Types
+        const token =
+          typeof window !== 'undefined'
+            ? localStorage.getItem('token') ?? localStorage.getItem('jwt') ?? ''
+            : ''
+
+        const cropTypesRes = await fetch('https://api-freeroll-production.up.railway.app/api/crop-types', {
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        const cropTypesData = await cropTypesRes.json()
+        setCropTypes(cropTypesData.data.map((item: any) => item.type))
+
+        // Fetch Plant Varieties
+        const plantVarietiesRes = await fetch('https://api-freeroll-production.up.railway.app/api/plant-varieties', {
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        const plantVarietiesData = await plantVarietiesRes.json()
+        setPlantVarieties(plantVarietiesData.data.map((item: any) => item.variety))
+
+        // Fetch Fertilizer Types
+        const fertilizerTypesRes = await fetch('https://api-freeroll-production.up.railway.app/api/fertilizer-types', {
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        const fertilizerTypesData = await fertilizerTypesRes.json()
+        setFertilizerTypes(fertilizerTypesData.data.map((item: any) => item.type))
+
+        // Fetch Harvest Methods
+        const harvestMethodsRes = await fetch('https://api-freeroll-production.up.railway.app/api/harvest-methods', {
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        const harvestMethodsData = await harvestMethodsRes.json()
+        setHarvestMethods(harvestMethodsData.data.map((item: any) => item.method))
+
+        // Fetch Result Types
+        const resultTypesRes = await fetch('https://api-freeroll-production.up.railway.app/api/result-types', {
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        const resultTypesData = await resultTypesRes.json()
+        setResultTypes(resultTypesData.data.map((item: any) => item.type))
+
+        // Fetch Test Method
+        const testMethodRes = await fetch('https://api-freeroll-production.up.railway.app/api/lab-testing-methods', {
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        const testMethodData = await testMethodRes.json()
+        setTestingMethods(testMethodData.data.map((item: any) => item.method))
+
+        // Fetch Sample Type
+        const sampleTypeRes = await fetch('https://api-freeroll-production.up.railway.app/api/hplc-sample-conditions', {
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        const sampleTypeData = await sampleTypeRes.json()
+        setSampleTypes(sampleTypeData.data.map((item: any) => item.condition))
+        
+        // Fetch Standard Criteria
+        const standardCriteriaRes = await fetch('https://api-freeroll-production.up.railway.app/api/standard-criterias', {
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        const standardCriteriaData = await standardCriteriaRes.json()
+        setStandardCriteria(standardCriteriaData.data.map((item: any) => item.criteria))
+
+        // Fetch Processing Methods
+        const processingMethodsRes = await fetch('https://api-freeroll-production.up.railway.app/api/factory-processing-methods', {
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        const processingMethodsData = await processingMethodsRes.json()
+        setProcessingMethods(processingMethodsData.data.map((item: any) => item.method))
+
+        // Fetch Final Product Types
+        const finalProductTypesRes = await fetch('https://api-freeroll-production.up.railway.app/api/final-product-types', {
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        const finalProductTypesData = await finalProductTypesRes.json()
+        setFinalProductTypes(finalProductTypesData.data.map((item: any) => item.type))
+
+        // Fetch Target Markets
+        const targetMarketsRes = await fetch('https://api-freeroll-production.up.railway.app/api/target-markets', {
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        const targetMarketsData = await targetMarketsRes.json()
+        setTargetMarkets(targetMarketsData.data.map((item: any) => item.target))
+      } catch (error) {
+        console.error('Error fetching data:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-  }
 
-  if (currentUserRole !== 'Admin') {
-    return null
-  }
+    fetchData()
+  }, [])
 
   return (
     <SidebarProvider>
@@ -99,306 +425,93 @@ export default function AdminSettingsPage() {
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
           <div className="min-h-screen w-full">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="text-3xl font-bold">General Setting</h1>
-                <p className="text-gray-500 mt-1">Manage configurations and platform settings</p>
-              </div>
-              
-              <Button 
-                onClick={handleSave} 
-                disabled={loading}
-                className="bg-green-500 hover:bg-green-600"
+            <div className="mb-6">
+              <h1 className="text-3xl font-bold">System Settings</h1>
+              <p className="text-gray-500 mt-1">Configure your system settings</p>
+            </div>
+
+            <Tabs defaultValue="farmer" className="w-full">
+              <TabsList
+                className="mb-4 bg-transparent border-b border-gray-200 space-x-4 w-full flex justify-start rounded-none h-auto p-0"
               >
-                <Save className="mr-2 h-4 w-4" />
-                {loading ? 'Saving...' : 'Save All Changes'}
-              </Button>
-            </div>
+                <TabsTrigger
+                  value="farmer"
+                  className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-green-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-green-600 pb-3"
+                >
+                  <GiFarmer className="mr-2 h-5 w-5" />
+                  Farmer
+                </TabsTrigger>
+                <TabsTrigger
+                  value="quality-inspector"
+                  className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-green-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-green-600 pb-3"
+                >
+                  <TbTestPipe className="mr-2 h-5 w-5" />
+                  Quality Inspector
+                </TabsTrigger>
+                <TabsTrigger
+                  value="factory-processing"
+                  className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-green-600 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-green-600 pb-3"
+                >
+                  <BiSolidFactory className="mr-2 h-5 w-5" />
+                  Factory & Processing
+                </TabsTrigger>
+              </TabsList>
 
-            <div className="grid gap-6">
-              {/* Units of Measurement */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="h-5 w-5" />
-                    Units of Measurement
-                  </CardTitle>
-                  <CardDescription>Configure measurement units used across the platform</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Units Name</Label>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <span>Kilogram</span>
-                        <div className="flex gap-2">
-                          <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm">Kg</span>
-                          <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded text-sm">Weight</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Symbol</Label>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <span>Acres</span>
-                        <div className="flex gap-2">
-                          <span className="px-3 py-1 bg-green-100 text-green-800 rounded text-sm">ac</span>
-                          <span className="px-3 py-1 bg-green-100 text-green-800 rounded text-sm">Area</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <Button variant="outline" className="w-fit">
-                    + Add Unit
-                  </Button>
-                </CardContent>
-              </Card>
+              {/* Farmer Tab */}
+              <TabsContent value="farmer" className="mt-6">
+                <SettingSection
+                  title="Farm"
+                  icon={<PiFarm className="h-5 w-5" />}
+                  fields={[
+                    { label: 'Crop Type', items: cropTypes, setItems: setCropTypes, apiEndpoint: 'crop-types', apiField: 'type' },
+                    // { label: 'Plant Variety', items: plantVarieties, setItems: setPlantVarieties, apiEndpoint: 'plant-varieties', apiField: 'variety' },
+                  ]}
+                />
 
-              {/* Platform Settings */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Platform Settings</CardTitle>
-                  <CardDescription>General platform configuration</CardDescription>
-                </CardHeader>
-                <CardContent className="grid gap-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="date-format">Date Format</Label>
-                      <Input
-                        id="date-format"
-                        value={settings.dateFormat}
-                        onChange={(e) => setSettings({ ...settings, dateFormat: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="currency">Default Currency</Label>
-                      <Input
-                        id="currency"
-                        value={settings.defaultCurrency}
-                        onChange={(e) => setSettings({ ...settings, defaultCurrency: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                <SettingSection
+                  title="Fertilizer Record"
+                  icon={<GiFertilizerBag className="h-5 w-5" />}
+                  fields={[
+                    { label: 'Fertilizer Type', items: fertilizerTypes, setItems: setFertilizerTypes, apiEndpoint: 'fertilizer-types', apiField: 'type' },
+                  ]}
+                />
 
-              {/* Farmer Settings */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Farmer</CardTitle>
-                  <CardDescription>Configure farmer-specific settings</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">Crop Type</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">Turmeric ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
+                <SettingSection
+                  title="Harvest Record"
+                  icon={<PiPlant className="h-5 w-5" />}
+                  fields={[
+                    { label: 'Harvest Method', items: harvestMethods, setItems: setHarvestMethods, apiEndpoint: 'harvest-methods', apiField: 'method' },
+                    { label: 'Result Type', items: resultTypes, setItems: setResultTypes, apiEndpoint: 'result-types', apiField: 'type' },
+                  ]}
+                />
+              </TabsContent>
 
-                  <div>
-                    <h4 className="font-semibold mb-2">Cultivation Method</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">Organic ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
+              {/* Quality Inspector Tab */}
+              <TabsContent value="quality-inspector" className="mt-6">
+                <SettingSection
+                  title="Quality Inspector"
+                  icon={<TbTestPipe className="h-5 w-5" />}
+                  fields={[
+                    // { label: 'Testing Method', items: testingMethods, setItems: setTestingMethods, apiEndpoint: 'lab-testing-methods', apiField: 'method' },
+                    { label: 'HPLC Sample Type', items: sampletypes, setItems: setSampleTypes, apiEndpoint: 'hplc-sample-conditions', apiField: 'condition' },
+                  ]}
+                />
+              </TabsContent>
 
-                  <div>
-                    <h4 className="font-semibold mb-2">Plant Variety</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">Curcuma longa ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">Soil Quality</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">Good ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">Water Source</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">River/Stream ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Fertilizer Record */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Fertilizer Record</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">Fertilizer Type</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">Organic ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">How to Apply</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">Broadcast ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Harvest Record */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Harvest Record</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">Harvest Method</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">Machine ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">Quality Grade</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">A ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">Result Type</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">HPLC ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Quality Inspector */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Quality inspector</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">Testing Method</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">HPLC ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">Quality Assessment</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">Pass ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Factory */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Factory</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">Test Type</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">Curcuminoid ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">Raw Material Type</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">Fresh Rhizome ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">E. coli (CFU/g)</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">Detected ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">Salmonella</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">Detected ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">Processing Method</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">Drying ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">Final Product Type</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">Capsules ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">Standard Criteria</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">GMP ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">Certification Status</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">Passed ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">Product Grade</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">Premium ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">Target Market / Usage</h4>
-                    <div className="flex flex-wrap gap-2">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">Export ×</span>
-                      <Button variant="outline" size="sm">Add</Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+              {/* Factory & Processing Tab */}
+              <TabsContent value="factory-processing" className="mt-6">
+                <SettingSection
+                  title="Factory"
+                  icon={<BiSolidFactory className="h-5 w-5" />}
+                  fields={[
+                    { label: 'Standard Criteria', items: standardCriteria, setItems: setStandardCriteria, apiEndpoint: 'standard-criterias', apiField: 'criteria' },
+                    { label: 'Processing Method', items: processingMethods, setItems: setProcessingMethods, apiEndpoint: 'factory-processing-methods', apiField: 'method' },
+                    { label: 'Final Product Type', items: finalProductTypes, setItems: setFinalProductTypes, apiEndpoint: 'final-product-types', apiField: 'type' },
+                    { label: 'Target Market / Usage', items: targetMarkets, setItems: setTargetMarkets, apiEndpoint: 'target-markets', apiField: 'target' },
+                  ]}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </SidebarInset>

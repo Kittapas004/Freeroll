@@ -2360,9 +2360,49 @@ export default function QualityInspectionPage() {
                             <SelectValue placeholder="Select sample type" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Powder">Powder</SelectItem>
-                            <SelectItem value="Dry">Dry</SelectItem>
-                            <SelectItem value="Powder/Dry">Powder/Dry</SelectItem>
+                            {(() => {
+                              const SampleTypeOptions: React.FC = () => {
+                                const [items, setItems] = useState<string[] | null>(null);
+
+                                useEffect(() => {
+                                  let mounted = true;
+                                  (async () => {
+                                    try {
+                                      const res = await fetch('https://api-freeroll-production.up.railway.app/api/hplc-sample-conditions', {
+                                        headers: {
+                                          Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                        },
+                                      });
+                                      if (!res.ok) throw new Error('Failed to fetch sample types');
+                                      const json = await res.json();
+                                      const conditions = (json.data || []).map((c: any) => c.condition || c.attributes?.condition || '');
+                                      if (mounted) setItems(conditions.filter(Boolean));
+                                    } catch (err) {
+                                      console.error(err);
+                                      if (mounted) setItems([]);
+                                    }
+                                  })();
+                                  return () => {
+                                    mounted = false;
+                                  };
+                                }, []);
+
+                                if (items === null) return <SelectItem value="loading">Loading...</SelectItem>;
+                                if (items.length === 0) return <SelectItem value="none">No sample type found</SelectItem>;
+
+                                return (
+                                  <>
+                                    {items.map((condition) => (
+                                      <SelectItem key={condition} value={condition}>
+                                        {condition}
+                                      </SelectItem>
+                                    ))}
+                                  </>
+                                );
+                              };
+
+                              return <SampleTypeOptions />;
+                            })()}
                           </SelectContent>
                         </Select>
                       )}
@@ -2726,9 +2766,8 @@ export default function QualityInspectionPage() {
                     <div>
                       <Label className="text-sm font-medium mb-2"><span className="text-green-600"><Label><Upload className="h-4 w-4" /></Label></span>Upload Results File</Label>
                       <div
-                        className={`w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 transition bg-gray-50 relative p-4 ${
-                          isReadOnly ? 'opacity-50 cursor-not-allowed' : 'hover:border-blue-500 cursor-pointer'
-                        }`}
+                        className={`w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 transition bg-gray-50 relative p-4 ${isReadOnly ? 'opacity-50 cursor-not-allowed' : 'hover:border-blue-500 cursor-pointer'
+                          }`}
                         onClick={() => !processingFile && !isReadOnly && fileInputRef.current?.click()}
                         onDrop={isReadOnly ? undefined : handleDrop}
                         onDragOver={isReadOnly ? undefined : handleDragOver}
@@ -2847,9 +2886,8 @@ export default function QualityInspectionPage() {
               </CardHeader>
               <CardContent>
                 <div
-                  className={`w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 transition bg-gray-50 relative p-4 ${
-                    isReadOnly ? 'opacity-50 cursor-not-allowed' : 'hover:border-blue-500 cursor-pointer'
-                  }`}
+                  className={`w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 transition bg-gray-50 relative p-4 ${isReadOnly ? 'opacity-50 cursor-not-allowed' : 'hover:border-blue-500 cursor-pointer'
+                    }`}
                   onClick={() => !processingFile && !isReadOnly && fileInputRef.current?.click()}
                   onDrop={isReadOnly ? undefined : handleDrop}
                   onDragOver={isReadOnly ? undefined : handleDragOver}
@@ -3119,7 +3157,7 @@ export default function QualityInspectionPage() {
               <X size={16} />
               Cancel
             </Button>
-            
+
             <Button
               onClick={handleSave}
               disabled={saving || isReadOnly}

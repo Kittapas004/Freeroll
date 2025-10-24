@@ -2587,13 +2587,49 @@ export default function ProcessingDetailsPage() {
                                                 <SelectValue />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="Washing">Washing</SelectItem>
-                                                <SelectItem value="Peeling">Peeling</SelectItem>
-                                                <SelectItem value="Slicing">Slicing</SelectItem>
-                                                <SelectItem value="Drying">Drying</SelectItem>
-                                                <SelectItem value="Grinding">Grinding</SelectItem>
-                                                <SelectItem value="Sieving">Sieving</SelectItem>
-                                                <SelectItem value="Packaging">Packaging</SelectItem>
+                                                {(() => {
+                                                    const ProcessingMethodOptions: React.FC = () => {
+                                                        const [items, setItems] = useState<string[] | null>(null);
+
+                                                        useEffect(() => {
+                                                            let mounted = true;
+                                                            (async () => {
+                                                                try {
+                                                                    const res = await fetch('https://api-freeroll-production.up.railway.app/api/factory-processing-methods', {
+                                                                        headers: {
+                                                                            Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                                                        },
+                                                                    });
+                                                                    if (!res.ok) throw new Error('Failed to fetch processing methods');
+                                                                    const json = await res.json();
+                                                                    const methods = (json.data || []).map((c: any) => c.method || c.attributes?.method || '');
+                                                                    if (mounted) setItems(methods.filter(Boolean));
+                                                                } catch (err) {
+                                                                    console.error(err);
+                                                                    if (mounted) setItems([]);
+                                                                }
+                                                            })();
+                                                            return () => {
+                                                                mounted = false;
+                                                            };
+                                                        }, []);
+
+                                                        if (items === null) return <SelectItem value="loading">Loading...</SelectItem>;
+                                                        if (items.length === 0) return <SelectItem value="none">No processing method found</SelectItem>;
+
+                                                        return (
+                                                            <>
+                                                                {items.map((method) => (
+                                                                    <SelectItem key={method} value={method}>
+                                                                        {method}
+                                                                    </SelectItem>
+                                                                ))}
+                                                            </>
+                                                        );
+                                                    };
+
+                                                    return <ProcessingMethodOptions />;
+                                                })()}
                                             </SelectContent>
                                         </Select>
                                     </div>
@@ -2766,11 +2802,49 @@ export default function ProcessingDetailsPage() {
                                     <SelectValue placeholder="Select product type..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Powder">Powder</SelectItem>
-                                    {/* <SelectItem value="Dried Slice">Dried Slice</SelectItem> */}
-                                    <SelectItem value="Extract">Extract</SelectItem>
-                                    <SelectItem value="Capsule">Capsule</SelectItem>
-                                    <SelectItem value="Tea Bag">Tea Bag</SelectItem>
+                                    {(() => {
+                                        const FinalProductTypeOptions: React.FC = () => {
+                                            const [items, setItems] = useState<string[] | null>(null);
+
+                                            useEffect(() => {
+                                                let mounted = true;
+                                                (async () => {
+                                                    try {
+                                                        const res = await fetch('https://api-freeroll-production.up.railway.app/api/final-product-types', {
+                                                            headers: {
+                                                                Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                                            },
+                                                        });
+                                                        if (!res.ok) throw new Error('Failed to fetch final product types');
+                                                        const json = await res.json();
+                                                        const types = (json.data || []).map((c: any) => c.type || c.attributes?.type || '');
+                                                        if (mounted) setItems(types.filter(Boolean));
+                                                    } catch (err) {
+                                                        console.error(err);
+                                                        if (mounted) setItems([]);
+                                                    }
+                                                })();
+                                                return () => {
+                                                    mounted = false;
+                                                };
+                                            }, []);
+
+                                            if (items === null) return <SelectItem value="loading">Loading...</SelectItem>;
+                                            if (items.length === 0) return <SelectItem value="none">No final product type found</SelectItem>;
+
+                                            return (
+                                                <>
+                                                    {items.map((type) => (
+                                                        <SelectItem key={type} value={type}>
+                                                            {type}
+                                                        </SelectItem>
+                                                    ))}
+                                                </>
+                                            );
+                                        };
+
+                                        return <FinalProductTypeOptions />;
+                                    })()}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -2857,10 +2931,49 @@ export default function ProcessingDetailsPage() {
                                         <SelectValue placeholder="Select market..." />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="Food">Food</SelectItem>
-                                        <SelectItem value="Supplement">Supplement</SelectItem>
-                                        <SelectItem value="Cosmetic">Cosmetic</SelectItem>
-                                        <SelectItem value="Export">Export</SelectItem>
+                                        {(() => {
+                                            const TargetMarketOptions: React.FC = () => {
+                                                const [items, setItems] = useState<string[] | null>(null);
+
+                                                useEffect(() => {
+                                                    let mounted = true;
+                                                    (async () => {
+                                                        try {
+                                                            const res = await fetch('https://api-freeroll-production.up.railway.app/api/target-markets', {
+                                                                headers: {
+                                                                    Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                                                },
+                                                            });
+                                                            if (!res.ok) throw new Error('Failed to fetch target markets');
+                                                            const json = await res.json();
+                                                            const targets = (json.data || []).map((c: any) => c.target || c.attributes?.target || '');
+                                                            if (mounted) setItems(targets.filter(Boolean));
+                                                        } catch (err) {
+                                                            console.error(err);
+                                                            if (mounted) setItems([]);
+                                                        }
+                                                    })();
+                                                    return () => {
+                                                        mounted = false;
+                                                    };
+                                                }, []);
+
+                                                if (items === null) return <SelectItem value="loading">Loading...</SelectItem>;
+                                                if (items.length === 0) return <SelectItem value="none">No target market found</SelectItem>;
+
+                                                return (
+                                                    <>
+                                                        {items.map((target) => (
+                                                            <SelectItem key={target} value={target}>
+                                                                {target}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </>
+                                                );
+                                            };
+
+                                            return <TargetMarketOptions />;
+                                        })()}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -2932,11 +3045,49 @@ export default function ProcessingDetailsPage() {
                                     <SelectValue placeholder="Select standard..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="GAP">GAP (Good Agricultural Practice)</SelectItem>
-                                    <SelectItem value="GMP">GMP (Good Manufacturing Practice)</SelectItem>
-                                    <SelectItem value="HACCP">HACCP</SelectItem>
-                                    <SelectItem value="Organic">Organic Certification</SelectItem>
-                                    <SelectItem value="ISO 22000">ISO 22000</SelectItem>
+                                    {(() => {
+                                        const StandardCriteriaOptions: React.FC = () => {
+                                            const [items, setItems] = useState<string[] | null>(null);
+
+                                            useEffect(() => {
+                                                let mounted = true;
+                                                (async () => {
+                                                    try {
+                                                        const res = await fetch('https://api-freeroll-production.up.railway.app/api/standard-criterias', {
+                                                            headers: {
+                                                                Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                                            },
+                                                        });
+                                                        if (!res.ok) throw new Error('Failed to fetch standard criteria');
+                                                        const json = await res.json();
+                                                        const criterias = (json.data || []).map((c: any) => c.criteria || c.attributes?.criteria || '');
+                                                        if (mounted) setItems(criterias.filter(Boolean));
+                                                    } catch (err) {
+                                                        console.error(err);
+                                                        if (mounted) setItems([]);
+                                                    }
+                                                })();
+                                                return () => {
+                                                    mounted = false;
+                                                };
+                                            }, []);
+
+                                            if (items === null) return <SelectItem value="loading">Loading...</SelectItem>;
+                                            if (items.length === 0) return <SelectItem value="none">No standard criteria found</SelectItem>;
+
+                                            return (
+                                                <>
+                                                    {items.map((criteria) => (
+                                                        <SelectItem key={criteria} value={criteria}>
+                                                            {criteria}
+                                                        </SelectItem>
+                                                    ))}
+                                                </>
+                                            );
+                                        };
+
+                                        return <StandardCriteriaOptions />;
+                                    })()}
                                 </SelectContent>
                             </Select>
                         </div>
