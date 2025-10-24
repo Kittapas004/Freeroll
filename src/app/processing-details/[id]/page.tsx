@@ -2567,7 +2567,7 @@ export default function ProcessingDetailsPage() {
                                 const sessionWeight = processingWeightHistory.find(h => h.sessionNumber === sessionNum);
                                 const isLatestSession = sessionNum === latestSession;
                                 const isExpanded = expandedSessions.has(sessionNum) || isLatestSession;
-                                
+
                                 // คำนวณ overall status ของ session
                                 const sessionStatus = (() => {
                                     const statuses = sessionSteps.map(s => s.status);
@@ -2577,16 +2577,16 @@ export default function ProcessingDetailsPage() {
                                 })();
 
                                 // สีตาม status
-                                const statusColor = sessionStatus === 'Completed' 
+                                const statusColor = sessionStatus === 'Completed'
                                     ? 'bg-green-100 text-green-800 border-green-300'
                                     : sessionStatus === 'In Progress'
-                                    ? 'bg-blue-100 text-blue-800 border-blue-300'
-                                    : 'bg-yellow-100 text-yellow-800 border-yellow-300';
+                                        ? 'bg-blue-100 text-blue-800 border-blue-300'
+                                        : 'bg-yellow-100 text-yellow-800 border-yellow-300';
 
                                 return (
                                     <div key={sessionNum} className="border rounded-lg overflow-hidden">
                                         {/* Session Header */}
-                                        <div 
+                                        <div
                                             className="p-4 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
                                             onClick={() => {
                                                 const newExpanded = new Set(expandedSessions);
@@ -2635,11 +2635,11 @@ export default function ProcessingDetailsPage() {
                                             <div className="p-4 space-y-4 bg-white">
                                                 {sessionSteps.map((step, index) => {
                                                     // สีตาม status สำหรับ Processing Method badge
-                                                    const methodStatusColor = step.status === 'Completed' 
+                                                    const methodStatusColor = step.status === 'Completed'
                                                         ? 'bg-green-100 text-green-800 border-green-300'
                                                         : step.status === 'In Progress'
-                                                        ? 'bg-blue-100 text-blue-800 border-blue-300'
-                                                        : 'bg-yellow-100 text-yellow-800 border-yellow-300';
+                                                            ? 'bg-blue-100 text-blue-800 border-blue-300'
+                                                            : 'bg-yellow-100 text-yellow-800 border-yellow-300';
 
                                                     return (
                                                         <div key={step.id} className="p-4 border rounded-lg bg-gray-50">
@@ -2664,154 +2664,161 @@ export default function ProcessingDetailsPage() {
                                                                 )}
                                                             </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <Label>Processing Method</Label>
-                                        <Select
-                                            value={step.method}
-                                            onValueChange={(value) => updateProcessingStep(step.id, 'method', value)}
-                                            disabled={isReadOnly}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {(() => {
-                                                    const ProcessingMethodOptions: React.FC = () => {
-                                                        const [items, setItems] = useState<string[] | null>(null);
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <div>
+                                                                    <Label>Processing Method</Label>
+                                                                    <Select
+                                                                        value={step.method}
+                                                                        onValueChange={(value) => updateProcessingStep(step.id, 'method', value)}
+                                                                        disabled={isReadOnly}
+                                                                    >
+                                                                        <SelectTrigger>
+                                                                            <SelectValue />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            {(() => {
+                                                                                const ProcessingMethodOptions: React.FC = () => {
+                                                                                    const [items, setItems] = useState<string[] | null>(null);
 
-                                                        useEffect(() => {
-                                                            let mounted = true;
-                                                            (async () => {
-                                                                try {
-                                                                    const res = await fetch('https://api-freeroll-production.up.railway.app/api/factory-processing-methods', {
-                                                                        headers: {
-                                                                            Authorization: `Bearer ${localStorage.getItem('jwt')}`,
-                                                                        },
-                                                                    });
-                                                                    if (!res.ok) throw new Error('Failed to fetch processing methods');
-                                                                    const json = await res.json();
-                                                                    const methods = (json.data || []).map((c: any) => c.method || c.attributes?.method || '');
-                                                                    if (mounted) setItems(methods.filter(Boolean));
-                                                                } catch (err) {
-                                                                    console.error(err);
-                                                                    if (mounted) setItems([]);
-                                                                }
-                                                            })();
-                                                            return () => {
-                                                                mounted = false;
-                                                            };
-                                                        }, []);
+                                                                                    useEffect(() => {
+                                                                                        let mounted = true;
+                                                                                        (async () => {
+                                                                                            try {
+                                                                                                const res = await fetch('https://api-freeroll-production.up.railway.app/api/factory-processing-methods', {
+                                                                                                    headers: {
+                                                                                                        Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+                                                                                                    },
+                                                                                                });
+                                                                                                if (!res.ok) throw new Error('Failed to fetch processing methods');
+                                                                                                const json = await res.json();
+                                                                                                const methods = (json.data || []).map((c: any) => c.method || c.attributes?.method || '');
+                                                                                                if (mounted) setItems(methods.filter(Boolean));
+                                                                                            } catch (err) {
+                                                                                                console.error(err);
+                                                                                                if (mounted) setItems([]);
+                                                                                            }
+                                                                                        })();
+                                                                                        return () => {
+                                                                                            mounted = false;
+                                                                                        };
+                                                                                    }, []);
 
-                                                        if (items === null) return <SelectItem value="loading">Loading...</SelectItem>;
-                                                        if (items.length === 0) return <SelectItem value="none">No processing method found</SelectItem>;
+                                                                                    if (items === null) return <SelectItem value="loading">Loading...</SelectItem>;
+                                                                                    if (items.length === 0) return <SelectItem value="none">No processing method found</SelectItem>;
 
-                                                        return (
-                                                            <>
-                                                                {items.map((method) => (
-                                                                    <SelectItem key={method} value={method}>
-                                                                        {method}
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </>
-                                                        );
-                                                    };
+                                                                                    return (
+                                                                                        <>
+                                                                                            {items.map((method) => (
+                                                                                                <SelectItem key={method} value={method}>
+                                                                                                    {method}
+                                                                                                </SelectItem>
+                                                                                            ))}
+                                                                                        </>
+                                                                                    );
+                                                                                };
 
-                                                    return <ProcessingMethodOptions />;
-                                                })()}
-                                            </SelectContent>
-                                        </Select>
+                                                                                return <ProcessingMethodOptions />;
+                                                                            })()}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </div>
+                                                                <div>
+                                                                    <Label className="flex items-center gap-1">
+                                                                        <Calendar className="w-4 h-4" />
+                                                                        Processing Date
+                                                                    </Label>
+                                                                    <Input
+                                                                        type="date"
+                                                                        value={step.date}
+                                                                        onChange={(e) => updateProcessingStep(step.id, 'date', e.target.value)}
+                                                                        disabled={isReadOnly}
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <Label className="flex items-center gap-1">
+                                                                        <Clock className="w-4 h-4" />
+                                                                        Duration (hours)
+                                                                    </Label>
+                                                                    <Input
+                                                                        type="number"
+                                                                        step="0.5"
+                                                                        value={step.duration}
+                                                                        onChange={(e) => updateProcessingStep(step.id, 'duration', e.target.value)}
+                                                                        placeholder="e.g., 2.5"
+                                                                        disabled={isReadOnly}
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <Label className="flex items-center gap-1">
+                                                                        <Thermometer className="w-4 h-4" />
+                                                                        Temperature (°C)
+                                                                    </Label>
+                                                                    <Input
+                                                                        type="number"
+                                                                        value={step.temperature}
+                                                                        onChange={(e) => updateProcessingStep(step.id, 'temperature', e.target.value)}
+                                                                        placeholder="e.g., 60"
+                                                                        disabled={isReadOnly}
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <Label>Equipment Used</Label>
+                                                                    <Input
+                                                                        value={step.equipment}
+                                                                        onChange={(e) => updateProcessingStep(step.id, 'equipment', e.target.value)}
+                                                                        placeholder="e.g., Dryer #1"
+                                                                        disabled={isReadOnly}
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <Label className="flex items-center gap-1">
+                                                                        <User className="w-4 h-4" />
+                                                                        Operator
+                                                                    </Label>
+                                                                    <Input
+                                                                        value={step.operator}
+                                                                        onChange={(e) => updateProcessingStep(step.id, 'operator', e.target.value)}
+                                                                        placeholder="Operator name"
+                                                                        disabled={isReadOnly}
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <Label>Status</Label>
+                                                                    <Select
+                                                                        value={step.status}
+                                                                        onValueChange={(value) => updateProcessingStep(step.id, 'status', value)}
+                                                                        disabled={isReadOnly}
+                                                                    >
+                                                                        <SelectTrigger>
+                                                                            <SelectValue />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            <SelectItem value="Pending">Pending</SelectItem>
+                                                                            <SelectItem value="In Progress">In Progress</SelectItem>
+                                                                            <SelectItem value="Completed">Completed</SelectItem>
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </div>
+                                                                <div className="col-span-2">
+                                                                    <Label>Notes</Label>
+                                                                    <Textarea
+                                                                        value={step.notes}
+                                                                        onChange={(e) => updateProcessingStep(step.id, 'notes', e.target.value)}
+                                                                        placeholder="Additional notes..."
+                                                                        rows={2}
+                                                                        disabled={isReadOnly}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
-                                    <div>
-                                        <Label className="flex items-center gap-1">
-                                            <Calendar className="w-4 h-4" />
-                                            Processing Date
-                                        </Label>
-                                        <Input
-                                            type="date"
-                                            value={step.date}
-                                            onChange={(e) => updateProcessingStep(step.id, 'date', e.target.value)}
-                                            disabled={isReadOnly}
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label className="flex items-center gap-1">
-                                            <Clock className="w-4 h-4" />
-                                            Duration (hours)
-                                        </Label>
-                                        <Input
-                                            type="number"
-                                            step="0.5"
-                                            value={step.duration}
-                                            onChange={(e) => updateProcessingStep(step.id, 'duration', e.target.value)}
-                                            placeholder="e.g., 2.5"
-                                            disabled={isReadOnly}
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label className="flex items-center gap-1">
-                                            <Thermometer className="w-4 h-4" />
-                                            Temperature (°C)
-                                        </Label>
-                                        <Input
-                                            type="number"
-                                            value={step.temperature}
-                                            onChange={(e) => updateProcessingStep(step.id, 'temperature', e.target.value)}
-                                            placeholder="e.g., 60"
-                                            disabled={isReadOnly}
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label>Equipment Used</Label>
-                                        <Input
-                                            value={step.equipment}
-                                            onChange={(e) => updateProcessingStep(step.id, 'equipment', e.target.value)}
-                                            placeholder="e.g., Dryer #1"
-                                            disabled={isReadOnly}
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label className="flex items-center gap-1">
-                                            <User className="w-4 h-4" />
-                                            Operator
-                                        </Label>
-                                        <Input
-                                            value={step.operator}
-                                            onChange={(e) => updateProcessingStep(step.id, 'operator', e.target.value)}
-                                            placeholder="Operator name"
-                                            disabled={isReadOnly}
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label>Status</Label>
-                                        <Select
-                                            value={step.status}
-                                            onValueChange={(value) => updateProcessingStep(step.id, 'status', value)}
-                                            disabled={isReadOnly}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Pending">Pending</SelectItem>
-                                                <SelectItem value="In Progress">In Progress</SelectItem>
-                                                <SelectItem value="Completed">Completed</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="col-span-2">
-                                        <Label>Notes</Label>
-                                        <Textarea
-                                            value={step.notes}
-                                            onChange={(e) => updateProcessingStep(step.id, 'notes', e.target.value)}
-                                            placeholder="Additional notes..."
-                                            rows={2}
-                                            disabled={isReadOnly}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        ))
+                                );
+                            });
+                        })()
                     )}
                 </div>
             </Card>

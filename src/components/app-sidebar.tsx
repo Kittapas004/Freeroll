@@ -122,7 +122,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       { title: "Dashboard", url: "/dashboard", icon: SquareTerminal },
       { title: "User Management", url: "/users", icon: FileText },
       { title: "Notifications", url: "/admin-notifications", icon: Bell },
-      { title: "System Settings", url: "/system-settings", icon: Settings2 },
+      { title: "System Settings", url: "/admin/settings", icon: Settings2 },
     ],
     "Quality Inspection": [
       { title: "Dashboard", url: "/dashboard", icon: LayoutGrid },
