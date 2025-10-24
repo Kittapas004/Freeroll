@@ -33,7 +33,9 @@ import {
     AlertCircle,
     Eye,
     Printer,
-    Trash
+    Trash,
+    ChevronUp,
+    ChevronDown
 } from "lucide-react";
 
 // Interfaces
@@ -141,6 +143,7 @@ export default function ProcessingDetailsPage() {
         timestamp: string;
         sessionNumber: number;
     }>>([]);
+    const [expandedSessions, setExpandedSessions] = useState<Set<number>>(new Set()); // Track which sessions are expanded
 
     // Step 3: Output & Waste (Support multiple outputs per session)
     const [outputRecords, setOutputRecords] = useState<Array<{
@@ -2547,146 +2550,239 @@ export default function ProcessingDetailsPage() {
                             <p className="text-sm">Click "Add Processing Step" to begin</p>
                         </div>
                     ) : (
-                        processingSteps.map((step, index) => (
-                            <div key={step.id} className="p-4 border rounded-lg bg-gray-50">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center gap-3">
-                                        <h3 className="font-semibold text-gray-900">Step {index + 1}</h3>
-                                        {step.sessionNumber && (
-                                            <div className="flex items-center gap-2 px-3 py-1 bg-blue-100 rounded-full">
-                                                <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
-                                                    {step.sessionNumber}
+                        // Group steps by session
+                        (() => {
+                            const sessionGroups = processingSteps.reduce((groups, step) => {
+                                const sessionNum = step.sessionNumber || 0;
+                                if (!groups[sessionNum]) groups[sessionNum] = [];
+                                groups[sessionNum].push(step);
+                                return groups;
+                            }, {} as Record<number, ProcessingStep[]>);
+
+                            const sessionNumbers = Object.keys(sessionGroups).map(Number).sort((a, b) => b - a);
+                            const latestSession = sessionNumbers[0];
+
+                            return sessionNumbers.map((sessionNum) => {
+                                const sessionSteps = sessionGroups[sessionNum];
+                                const sessionWeight = processingWeightHistory.find(h => h.sessionNumber === sessionNum);
+                                const isLatestSession = sessionNum === latestSession;
+                                const isExpanded = expandedSessions.has(sessionNum) || isLatestSession;
+                                
+                                // คำนวณ overall status ของ session
+                                const sessionStatus = (() => {
+                                    const statuses = sessionSteps.map(s => s.status);
+                                    if (statuses.every(s => s === 'Completed')) return 'Completed';
+                                    if (statuses.some(s => s === 'In Progress')) return 'In Progress';
+                                    return 'Pending';
+                                })();
+
+                                // สีตาม status
+                                const statusColor = sessionStatus === 'Completed' 
+                                    ? 'bg-green-100 text-green-800 border-green-300'
+                                    : sessionStatus === 'In Progress'
+                                    ? 'bg-blue-100 text-blue-800 border-blue-300'
+                                    : 'bg-yellow-100 text-yellow-800 border-yellow-300';
+
+                                return (
+                                    <div key={sessionNum} className="border rounded-lg overflow-hidden">
+                                        {/* Session Header */}
+                                        <div 
+                                            className="p-4 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+                                            onClick={() => {
+                                                const newExpanded = new Set(expandedSessions);
+                                                if (isExpanded) {
+                                                    newExpanded.delete(sessionNum);
+                                                } else {
+                                                    newExpanded.add(sessionNum);
+                                                }
+                                                setExpandedSessions(newExpanded);
+                                            }}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex items-center gap-2 px-3 py-1 bg-blue-100 rounded-full">
+                                                        <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                                            {sessionNum}
+                                                        </div>
+                                                        <span className="text-sm font-semibold text-blue-800">
+                                                            Session {sessionNum} • {sessionWeight?.weight.toFixed(2) || '0'} kg
+                                                        </span>
+                                                    </div>
+                                                    <div className={`px-3 py-1 rounded-full border text-xs font-semibold ${statusColor}`}>
+                                                        {sessionStatus}
+                                                    </div>
+                                                    <span className="text-sm text-gray-500">
+                                                        {sessionSteps.length} step{sessionSteps.length > 1 ? 's' : ''}
+                                                    </span>
                                                 </div>
-                                                <span className="text-sm font-semibold text-blue-800">
-                                                    Session {step.sessionNumber} • {step.processingWeight} kg
-                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    {!isLatestSession && (
+                                                        <span className="text-xs text-gray-400">
+                                                            Click to {isExpanded ? 'collapse' : 'expand'}
+                                                        </span>
+                                                    )}
+                                                    {isExpanded ? (
+                                                        <ChevronUp className="w-5 h-5 text-gray-500" />
+                                                    ) : (
+                                                        <ChevronDown className="w-5 h-5 text-gray-500" />
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Session Steps (Collapsible) */}
+                                        {isExpanded && (
+                                            <div className="p-4 space-y-4 bg-white">
+                                                {sessionSteps.map((step, index) => {
+                                                    // สีตาม status สำหรับ Processing Method badge
+                                                    const methodStatusColor = step.status === 'Completed' 
+                                                        ? 'bg-green-100 text-green-800 border-green-300'
+                                                        : step.status === 'In Progress'
+                                                        ? 'bg-blue-100 text-blue-800 border-blue-300'
+                                                        : 'bg-yellow-100 text-yellow-800 border-yellow-300';
+
+                                                    return (
+                                                        <div key={step.id} className="p-4 border rounded-lg bg-gray-50">
+                                                            <div className="flex items-center justify-between mb-3">
+                                                                <div className="flex items-center gap-2">
+                                                                    <h3 className="font-semibold text-gray-900">Step {index + 1}</h3>
+                                                                    {step.method && (
+                                                                        <div className={`px-3 py-1 rounded-full border text-xs font-semibold ${methodStatusColor}`}>
+                                                                            {step.method}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                {!isReadOnly && (
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        onClick={() => removeProcessingStep(step.id)}
+                                                                        className="text-red-600 hover:text-red-700"
+                                                                    >
+                                                                        Remove
+                                                                    </Button>
+                                                                )}
+                                                            </div>
+
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div>
+                                                                <Label>Processing Method</Label>
+                                                                <Select
+                                                                    value={step.method}
+                                                                    onValueChange={(value) => updateProcessingStep(step.id, 'method', value)}
+                                                                    disabled={isReadOnly}
+                                                                >
+                                                                    <SelectTrigger>
+                                                                        <SelectValue />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="Washing">Washing</SelectItem>
+                                                                        <SelectItem value="Peeling">Peeling</SelectItem>
+                                                                        <SelectItem value="Slicing">Slicing</SelectItem>
+                                                                        <SelectItem value="Drying">Drying</SelectItem>
+                                                                        <SelectItem value="Grinding">Grinding</SelectItem>
+                                                                        <SelectItem value="Sieving">Sieving</SelectItem>
+                                                                        <SelectItem value="Packaging">Packaging</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                            <div>
+                                                                <Label className="flex items-center gap-1">
+                                                                    <Calendar className="w-4 h-4" />
+                                                                    Processing Date
+                                                                </Label>
+                                                                <Input
+                                                                    type="date"
+                                                                    value={step.date}
+                                                                    onChange={(e) => updateProcessingStep(step.id, 'date', e.target.value)}
+                                                                    disabled={isReadOnly}
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <Label className="flex items-center gap-1">
+                                                                    <Clock className="w-4 h-4" />
+                                                                    Duration (hours)
+                                                                </Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    step="0.5"
+                                                                    value={step.duration}
+                                                                    onChange={(e) => updateProcessingStep(step.id, 'duration', e.target.value)}
+                                                                    placeholder="e.g., 2.5"
+                                                                    disabled={isReadOnly}
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <Label className="flex items-center gap-1">
+                                                                    <Thermometer className="w-4 h-4" />
+                                                                    Temperature (°C)
+                                                                </Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    value={step.temperature}
+                                                                    onChange={(e) => updateProcessingStep(step.id, 'temperature', e.target.value)}
+                                                                    placeholder="e.g., 60"
+                                                                    disabled={isReadOnly}
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <Label>Equipment Used</Label>
+                                                                <Input
+                                                                    value={step.equipment}
+                                                                    onChange={(e) => updateProcessingStep(step.id, 'equipment', e.target.value)}
+                                                                    placeholder="e.g., Dryer #1"
+                                                                    disabled={isReadOnly}
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <Label className="flex items-center gap-1">
+                                                                    <User className="w-4 h-4" />
+                                                                    Operator
+                                                                </Label>
+                                                                <Input
+                                                                    value={step.operator}
+                                                                    onChange={(e) => updateProcessingStep(step.id, 'operator', e.target.value)}
+                                                                    placeholder="Operator name"
+                                                                    disabled={isReadOnly}
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <Label>Status</Label>
+                                                                <Select
+                                                                    value={step.status}
+                                                                    onValueChange={(value) => updateProcessingStep(step.id, 'status', value)}
+                                                                    disabled={isReadOnly}
+                                                                >
+                                                                    <SelectTrigger>
+                                                                        <SelectValue />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="Pending">Pending</SelectItem>
+                                                                        <SelectItem value="In Progress">In Progress</SelectItem>
+                                                                        <SelectItem value="Completed">Completed</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </div>
+                                                            <div className="col-span-2">
+                                                                <Label>Notes</Label>
+                                                                <Textarea
+                                                                    value={step.notes}
+                                                                    onChange={(e) => updateProcessingStep(step.id, 'notes', e.target.value)}
+                                                                    placeholder="Additional notes..."
+                                                                    rows={2}
+                                                                    disabled={isReadOnly}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    );
+                                                })}
                                             </div>
                                         )}
                                     </div>
-                                    {!isReadOnly && (
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => removeProcessingStep(step.id)}
-                                            className="text-red-600 hover:text-red-700"
-                                        >
-                                            Remove
-                                        </Button>
-                                    )}
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <Label>Processing Method</Label>
-                                        <Select
-                                            value={step.method}
-                                            onValueChange={(value) => updateProcessingStep(step.id, 'method', value)}
-                                            disabled={isReadOnly}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Washing">Washing</SelectItem>
-                                                <SelectItem value="Peeling">Peeling</SelectItem>
-                                                <SelectItem value="Slicing">Slicing</SelectItem>
-                                                <SelectItem value="Drying">Drying</SelectItem>
-                                                <SelectItem value="Grinding">Grinding</SelectItem>
-                                                <SelectItem value="Sieving">Sieving</SelectItem>
-                                                <SelectItem value="Packaging">Packaging</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div>
-                                        <Label className="flex items-center gap-1">
-                                            <Calendar className="w-4 h-4" />
-                                            Processing Date
-                                        </Label>
-                                        <Input
-                                            type="date"
-                                            value={step.date}
-                                            onChange={(e) => updateProcessingStep(step.id, 'date', e.target.value)}
-                                            disabled={isReadOnly}
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label className="flex items-center gap-1">
-                                            <Clock className="w-4 h-4" />
-                                            Duration (hours)
-                                        </Label>
-                                        <Input
-                                            type="number"
-                                            step="0.5"
-                                            value={step.duration}
-                                            onChange={(e) => updateProcessingStep(step.id, 'duration', e.target.value)}
-                                            placeholder="e.g., 2.5"
-                                            disabled={isReadOnly}
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label className="flex items-center gap-1">
-                                            <Thermometer className="w-4 h-4" />
-                                            Temperature (°C)
-                                        </Label>
-                                        <Input
-                                            type="number"
-                                            value={step.temperature}
-                                            onChange={(e) => updateProcessingStep(step.id, 'temperature', e.target.value)}
-                                            placeholder="e.g., 60"
-                                            disabled={isReadOnly}
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label>Equipment Used</Label>
-                                        <Input
-                                            value={step.equipment}
-                                            onChange={(e) => updateProcessingStep(step.id, 'equipment', e.target.value)}
-                                            placeholder="e.g., Dryer #1"
-                                            disabled={isReadOnly}
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label className="flex items-center gap-1">
-                                            <User className="w-4 h-4" />
-                                            Operator
-                                        </Label>
-                                        <Input
-                                            value={step.operator}
-                                            onChange={(e) => updateProcessingStep(step.id, 'operator', e.target.value)}
-                                            placeholder="Operator name"
-                                            disabled={isReadOnly}
-                                        />
-                                    </div>
-                                    <div>
-                                        <Label>Status</Label>
-                                        <Select
-                                            value={step.status}
-                                            onValueChange={(value) => updateProcessingStep(step.id, 'status', value)}
-                                            disabled={isReadOnly}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Pending">Pending</SelectItem>
-                                                <SelectItem value="In Progress">In Progress</SelectItem>
-                                                <SelectItem value="Completed">Completed</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="col-span-2">
-                                        <Label>Notes</Label>
-                                        <Textarea
-                                            value={step.notes}
-                                            onChange={(e) => updateProcessingStep(step.id, 'notes', e.target.value)}
-                                            placeholder="Additional notes..."
-                                            rows={2}
-                                            disabled={isReadOnly}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        ))
+                                );
+                            });
+                        })()
                     )}
                 </div>
             </Card>
