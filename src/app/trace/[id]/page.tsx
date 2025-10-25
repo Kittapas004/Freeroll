@@ -164,8 +164,8 @@ const TraceProductPage = () => {
             setLoading(true);
             setError(null);
 
-            // Fetch factory processing data with output_records_json
-            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-processings?populate[factory_submission][populate][batch][populate]=*`, {
+            // Fetch factory processing data with factory_submission, batch, and factory populated
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-processings?populate[factory_submission][populate][batch][populate]=*&populate[factory_submission][populate]=factory`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -218,42 +218,18 @@ const TraceProductPage = () => {
                 // Process the found product
                 const item = foundItem;
 
-                // Get factory name from factory_submission first, then try to fetch factory details
-                let factoryName = ''; // Default to known factory name
-
-                // Try getting factory name from factory_submission first
-                if (item.factory_submission?.Factory_Name) {
-                    factoryName = item.factory_submission.Factory_Name;
-                    console.log('✅ Factory name from factory_submission.Factory_Name:', factoryName);
-                } else if (item.factory?.Factory_Name) {
-                    factoryName = item.factory.Factory_Name;
-                    console.log('✅ Factory name from item.factory.Factory_Name:', factoryName);
+                // 🔥 Get factory name from factory_submission.factory (ที่ถูก populate มาแล้ว)
+                let factoryName = 'Unknown Factory';
+                
+                if (item.factory_submission?.factory?.Factory_Name) {
+                    factoryName = item.factory_submission.factory.Factory_Name;
+                    console.log('✅ Factory name from factory_submission.factory.Factory_Name:', factoryName);
+                } else if (item.factory_submission?.factory?.name) {
+                    factoryName = item.factory_submission.factory.name;
+                    console.log('✅ Factory name from factory_submission.factory.name:', factoryName);
                 } else {
-                    // Try to fetch factory details from Factory collection
-                    try {
-                        const factoryResponse = await fetch(`https://api-freeroll-production.up.railway.app/api/factories`, {
-                            method: 'GET',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                        });
-
-                        if (factoryResponse.ok) {
-                            const factoryData = await factoryResponse.json();
-
-                            // Get the first factory or find the matching one
-                            if (factoryData.data && factoryData.data.length > 0) {
-                                const factory = factoryData.data[0]; // Get first factory
-                                if (factory.Factory_Name) {
-                                    factoryName = factory.Factory_Name;
-                                    console.log('✅ Factory name from factory API:', factoryName);
-                                }
-                            }
-                        }
-                    } catch (factoryError) {
-                        console.log('❌ Failed to fetch factory list:', factoryError);
-                        console.log('✅ Using default Factory_Name:', factoryName);
-                    }
+                    console.warn('⚠️ No factory name found, using default:', factoryName);
+                    console.log('🔍 factory_submission:', item.factory_submission);
                 }
 
                 // Get farmer name from user_documentId

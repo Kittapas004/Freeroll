@@ -435,7 +435,7 @@ export default function FactorySubmissionPage() {
         try {
             console.log("Fetching feedback data...");
             
-            // Fetch factory processings with export history populated
+            // 🔥 Fetch factory processings โดยกรองตาม user_documentId ของ Farmer ที่ส่ง batch มา
             const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-processings?populate=factory_submission&populate=export_factory_history&filters[factory_submission][user_documentId][$eq]=${localStorage.getItem("userId")}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,

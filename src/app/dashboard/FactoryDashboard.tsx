@@ -452,12 +452,40 @@ export default function FactoryDashboard() {
       
       console.log('🏭 Fetching Factory data from Strapi...');
       
-      // Fetch both factory submissions and factory processing records
+      // 🔥 Step 1: ดึง Factory ของ user ที่ login อยู่
+      const userResponse = await fetch(`https://api-freeroll-production.up.railway.app/api/users/me?populate=factory`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+        },
+      });
+      
+      if (!userResponse.ok) {
+        throw new Error("Failed to fetch user factory data");
+      }
+      
+      const userData = await userResponse.json();
+      const userFactoryDocumentId = userData.factory?.documentId;
+      
+      console.log("User's factory documentId:", userFactoryDocumentId);
+      
+      if (!userFactoryDocumentId) {
+        console.warn("User does not have a factory assigned");
+        setStats({
+          totalProcessed: 0,
+          pendingSubmissions: 0,
+          completedBatches: 0,
+          totalOutput: 0
+        });
+        setLoading(false);
+        return;
+      }
+      
+      // 🔥 Step 2: Fetch factory submissions and processings ที่ตรงกับ factory ของ user เท่านั้น
       const [submissionsRes, processingRes] = await Promise.all([
-        fetch('https://api-freeroll-production.up.railway.app/api/factory-submissions?populate=*', {
+        fetch(`https://api-freeroll-production.up.railway.app/api/factory-submissions?populate=*&filters[factory][documentId][$eq]=${userFactoryDocumentId}`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('jwt')}` },
         }),
-        fetch('https://api-freeroll-production.up.railway.app/api/factory-processings?populate=*', {
+        fetch(`https://api-freeroll-production.up.railway.app/api/factory-processings?populate=factory_submission&filters[factory_submission][factory][documentId][$eq]=${userFactoryDocumentId}`, {
           headers: { Authorization: `Bearer ${localStorage.getItem('jwt')}` },
         })
       ]);

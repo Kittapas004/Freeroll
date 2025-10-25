@@ -79,8 +79,31 @@ export default function ProcessingHistoryPage() {
             setLoading(true);
             console.log('📋 Fetching processing history...');
 
-            // Fetch both Completed and Export Success statuses
-            const response = await fetch('https://api-freeroll-production.up.railway.app/api/factory-processings?populate=*&filters[$or][0][Processing_Status][$eq]=Completed&filters[$or][1][Processing_Status][$eq]=Export Success', {
+            // 🔥 Step 1: ดึง Factory ของ user ที่ login อยู่
+            const userResponse = await fetch(`https://api-freeroll-production.up.railway.app/api/users/me?populate=factory`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+            });
+            
+            if (!userResponse.ok) {
+                throw new Error("Failed to fetch user factory data");
+            }
+            
+            const userData = await userResponse.json();
+            const userFactoryDocumentId = userData.factory?.documentId;
+            
+            console.log("User's factory documentId:", userFactoryDocumentId);
+            
+            if (!userFactoryDocumentId) {
+                console.warn("User does not have a factory assigned");
+                setHistoryData([]);
+                setLoading(false);
+                return;
+            }
+
+            // 🔥 Step 2: Fetch processing history ที่ตรงกับ factory ของ user เท่านั้น
+            const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-processings?populate=*&filters[factory_submission][factory][documentId][$eq]=${userFactoryDocumentId}&filters[$or][0][Processing_Status][$eq]=Completed&filters[$or][1][Processing_Status][$eq]=Export Success`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                 },

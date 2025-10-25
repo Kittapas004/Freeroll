@@ -79,19 +79,37 @@ export default function ProcessingDetailsPage() {
             setLoading(true);
             console.log('🔍 Fetching batch data for Processing Details...');
 
-            // Fetch factory processing records, farms, and user data
-            const [processingResponse, farmsResponse, userResponse] = await Promise.all([
-                fetch('https://api-freeroll-production.up.railway.app/api/factory-processings?populate=factory_submission&filters[Processing_Status][$in][0]=Received&filters[Processing_Status][$in][1]=Processing', {
+            // 🔥 Step 1: ดึง user data พร้อม factory
+            const userResponse = await fetch('https://api-freeroll-production.up.railway.app/api/users/me?populate=factory', {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+            });
+            
+            if (!userResponse.ok) {
+                throw new Error("Failed to fetch user data");
+            }
+            
+            const userData = await userResponse.json();
+            const userFactoryDocumentId = userData.factory?.documentId;
+            
+            console.log("User's factory documentId:", userFactoryDocumentId);
+            
+            if (!userFactoryDocumentId) {
+                console.warn("User does not have a factory assigned");
+                setBatchData([]);
+                setLoading(false);
+                return;
+            }
+
+            // 🔥 Step 2: Fetch factory processing records และ farms ที่ตรงกับ factory ของ user เท่านั้น
+            const [processingResponse, farmsResponse] = await Promise.all([
+                fetch(`https://api-freeroll-production.up.railway.app/api/factory-processings?populate=factory_submission&filters[factory_submission][factory][documentId][$eq]=${userFactoryDocumentId}&filters[Processing_Status][$in][0]=Received&filters[Processing_Status][$in][1]=Processing`, {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                     },
                 }),
                 fetch('https://api-freeroll-production.up.railway.app/api/farms?populate=*', {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem("jwt")}`,
-                    },
-                }),
-                fetch('https://api-freeroll-production.up.railway.app/api/users/me?populate=factory', {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem("jwt")}`,
                     },
@@ -112,7 +130,8 @@ export default function ProcessingDetailsPage() {
 
             const processingData = await processingResponse.json();
             const farmsData = await farmsResponse.json();
-            const userData = userResponse.ok ? await userResponse.json() : null;
+            // ✅ ลบบรรทัดนี้ออก เพราะเราได้ดึง userData ไปก่อนหน้านี้แล้ว
+            // const userData = userResponse.ok ? await userResponse.json() : null;
             
             console.log('✅ Processing data fetched:', processingData);
             console.log('✅ Farms data fetched:', farmsData);

@@ -115,8 +115,32 @@ export default function ProcessingReportsPage() {
             setError(null);
             console.log('=== Fetching Processing Completed Records ===');
 
+            // 🔥 Step 1: ดึง Factory ของ user ที่ login อยู่
+            const userResponse = await fetch(`https://api-freeroll-production.up.railway.app/api/users/me?populate=factory`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+            });
+            
+            if (!userResponse.ok) {
+                throw new Error("Failed to fetch user factory data");
+            }
+            
+            const userData = await userResponse.json();
+            const userFactoryDocumentId = userData.factory?.documentId;
+            
+            console.log("User's factory documentId:", userFactoryDocumentId);
+            
+            if (!userFactoryDocumentId) {
+                console.warn("User does not have a factory assigned");
+                setCompletedData([]);
+                setLoading(false);
+                return;
+            }
+
+            // 🔥 Step 2: Fetch completed records ที่ตรงกับ factory ของ user เท่านั้น
             const response = await fetch(
-                `https://api-freeroll-production.up.railway.app/api/factory-processings?populate=*&filters[Processing_Status][$eq]=Completed`,
+                `https://api-freeroll-production.up.railway.app/api/factory-processings?populate=*&filters[factory_submission][factory][documentId][$eq]=${userFactoryDocumentId}&filters[Processing_Status][$eq]=Completed`,
                 {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -234,8 +258,33 @@ export default function ProcessingReportsPage() {
         try {
             console.log('Fetching export history...');
 
+            // 🔥 Step 1: ดึง Factory ของ user ที่ login อยู่
+            const userResponse = await fetch(`https://api-freeroll-production.up.railway.app/api/users/me?populate=factory`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+            });
+            
+            if (!userResponse.ok) {
+                console.error("Failed to fetch user factory data");
+                setExportHistory([]);
+                return;
+            }
+            
+            const userData = await userResponse.json();
+            const userFactoryDocumentId = userData.factory?.documentId;
+            
+            console.log("User's factory documentId:", userFactoryDocumentId);
+            
+            if (!userFactoryDocumentId) {
+                console.warn("User does not have a factory assigned");
+                setExportHistory([]);
+                return;
+            }
+
+            // 🔥 Step 2: Fetch export history ที่ตรงกับ factory ของ user เท่านั้น
             const response = await fetch(
-                `https://api-freeroll-production.up.railway.app/api/export-factory-histories?populate=*&sort=export_date:desc`,
+                `https://api-freeroll-production.up.railway.app/api/export-factory-histories?populate=*&filters[factory_processing][factory_submission][factory][documentId][$eq]=${userFactoryDocumentId}&sort=export_date:desc`,
                 {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -250,7 +299,7 @@ export default function ProcessingReportsPage() {
             }
 
             const data = await response.json();
-            console.log('Export History Data:', data);
+            console.log('Export History Data (filtered by factory):', data);
 
             if (!data.data) {
                 setExportHistory([]);
