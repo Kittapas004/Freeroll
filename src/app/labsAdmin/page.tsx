@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -24,8 +23,17 @@ import {
 } from "@/components/ui/table"
 import { Plus, Pencil, Trash2, Search } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
+import { Separator } from "@/components/ui/separator"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 
 interface Lab {
   id: number
@@ -241,61 +249,72 @@ export default function LabsPage() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <main className="flex-1 w-full">
-        <SidebarTrigger className="m-4" />
-        <div className="p-6 space-y-6">
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="/dashboard">
+                  Dashboard
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden md:block" />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Lab Management</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </header>
+
+        <div className="flex flex-1 flex-col gap-4 p-4">
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold">Lab Management</h1>
-              <p className="text-muted-foreground">จัดการสถานที่ห้องแล็บทดสอบ</p>
+              <p className="text-muted-foreground">Testing Lab Management</p>
             </div>
-        
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-green-600 hover:bg-green-700">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Lab
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Lab</DialogTitle>
-              <DialogDescription>
-                เพิ่มห้องแล็บทดสอบใหม่ในระบบ
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="lab-name">Lab Name</Label>
-                <Input
-                  id="lab-name"
-                  placeholder="Enter lab name"
-                  value={newLabName}
-                  onChange={(e) => setNewLabName(e.target.value)}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => {
-                setIsAddDialogOpen(false)
-                setNewLabName("")
-              }}>
-                Cancel
-              </Button>
-              <Button onClick={handleAddLab} className="bg-green-600 hover:bg-green-700">
-                Add Lab
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+            
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="bg-green-600 hover:bg-green-700">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Lab
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Lab</DialogTitle>
+                  <DialogDescription>
+                    เพิ่มห้องแล็บทดสอบใหม่ในระบบ
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="lab-name">Lab Name</Label>
+                    <Input
+                      id="lab-name"
+                      placeholder="Enter lab name"
+                      value={newLabName}
+                      onChange={(e) => setNewLabName(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => {
+                    setIsAddDialogOpen(false)
+                    setNewLabName("")
+                  }}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleAddLab} className="bg-green-600 hover:bg-green-700">
+                    Add Lab
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Labs</CardTitle>
-          <CardDescription>รายการห้องแล็บทดสอบทั้งหมด ({filteredLabs.length})</CardDescription>
-        </CardHeader>
-        <CardContent>
           <div className="mb-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -308,90 +327,90 @@ export default function LabsPage() {
             </div>
           </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Lab Name</TableHead>
-                <TableHead>Created At</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredLabs.length === 0 ? (
+          <div className="border rounded-lg bg-white overflow-hidden">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    No labs found
-                  </TableCell>
+                  <TableHead className="pl-6">ID</TableHead>
+                  <TableHead>Lab Name</TableHead>
+                  <TableHead>Created At</TableHead>
+                  <TableHead className="text-right pr-6">Actions</TableHead>
                 </TableRow>
-              ) : (
-                filteredLabs.map((lab, index) => (
-                  <TableRow key={lab.id}>
-                    <TableCell className="font-medium">{index + 1}</TableCell>
-                    <TableCell>{lab.Lab_Name || 'N/A'}</TableCell>
-                    <TableCell>
-                      {lab.createdAt ? new Date(lab.createdAt).toLocaleDateString('th-TH') : 'N/A'}
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => openEditDialog(lab)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => handleDeleteLab(lab.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+              </TableHeader>
+              <TableBody>
+                {filteredLabs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                      No labs found
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Lab</DialogTitle>
-            <DialogDescription>
-              แก้ไขข้อมูลห้องแล็บทดสอบ
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-lab-name">Lab Name</Label>
-              <Input
-                id="edit-lab-name"
-                placeholder="Enter lab name"
-                value={newLabName}
-                onChange={(e) => setNewLabName(e.target.value)}
-              />
-            </div>
+                ) : (
+                  filteredLabs.map((lab, index) => (
+                    <TableRow key={lab.id}>
+                      <TableCell className="font-medium pl-6">{index + 1}</TableCell>
+                      <TableCell>{lab.Lab_Name || 'N/A'}</TableCell>
+                      <TableCell>
+                        {lab.createdAt ? new Date(lab.createdAt).toLocaleDateString('th-TH') : 'N/A'}
+                      </TableCell>
+                      <TableCell className="text-right space-x-2 pr-6">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => openEditDialog(lab)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          onClick={() => handleDeleteLab(lab.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setIsEditDialogOpen(false)
-              setNewLabName("")
-              setSelectedLab(null)
-            }}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateLab} className="bg-blue-600 hover:bg-blue-700">
-              Update Lab
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
+          {/* Edit Dialog */}
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Lab</DialogTitle>
+                <DialogDescription>
+                  แก้ไขข้อมูลห้องแล็บทดสอบ
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-lab-name">Lab Name</Label>
+                  <Input
+                    id="edit-lab-name"
+                    placeholder="Enter lab name"
+                    value={newLabName}
+                    onChange={(e) => setNewLabName(e.target.value)}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => {
+                  setIsEditDialogOpen(false)
+                  setNewLabName("")
+                  setSelectedLab(null)
+                }}>
+                  Cancel
+                </Button>
+                <Button onClick={handleUpdateLab} className="bg-blue-600 hover:bg-blue-700">
+                  Update Lab
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
-      </main>
+      </SidebarInset>
     </SidebarProvider>
   )
 }

@@ -123,8 +123,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     Admin: [
       { title: "Dashboard", url: "/dashboard", icon: SquareTerminal },
       { title: "User Management", url: "/users", icon: FileText },
-      { title: "Lab Management", url: "/labs", icon: FlaskConical },
-      { title: "Factory Management", url: "/factories", icon: Building2 },
+      { title: "Lab Management", url: "/labsAdmin", icon: FlaskConical },
+      { title: "Factory Management", url: "/factoriesAdmin", icon: Building2 },
       { title: "Notifications", url: "/admin-notifications", icon: Bell },
       { title: "System Settings", url: "/admin/settings", icon: Settings2 },
     ],

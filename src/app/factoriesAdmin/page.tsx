@@ -4,7 +4,6 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -29,11 +28,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import { Separator } from "@/components/ui/separator"
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { AppSidebar } from "@/components/app-sidebar"
 import { Plus, Pencil, Trash2, Search } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Textarea } from "@/components/ui/textarea"
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
-import { AppSidebar } from "@/components/app-sidebar"
 
 interface Factory {
   id: number
@@ -323,13 +331,30 @@ export default function FactoriesPage() {
   return (
     <SidebarProvider>
       <AppSidebar />
-      <main className="flex-1 w-full">
-        <SidebarTrigger className="m-4" />
-        <div className="p-6 space-y-6">
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="/dashboard">
+                  Dashboard
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden md:block" />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Factory Management</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </header>
+
+        <div className="flex flex-1 flex-col gap-4 p-4">
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold">Factory Management</h1>
-              <p className="text-muted-foreground">จัดการสถานที่โรงงานแปรรูป</p>
+              <p className="text-muted-foreground">Processing Plant Management</p>
             </div>
         
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -482,12 +507,6 @@ export default function FactoriesPage() {
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Factories</CardTitle>
-          <CardDescription>รายการโรงงานแปรรูปทั้งหมด ({filteredFactories.length})</CardDescription>
-        </CardHeader>
-        <CardContent>
           <div className="mb-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -500,46 +519,47 @@ export default function FactoriesPage() {
             </div>
           </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Factory Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Specialization</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredFactories.length === 0 ? (
+          <div className="border rounded-lg bg-white overflow-hidden">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
-                    No factories found
-                  </TableCell>
+                  <TableHead className="pl-6">ID</TableHead>
+                  <TableHead>Factory Name</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Specialization</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead className="text-right pr-6">Actions</TableHead>
                 </TableRow>
-              ) : (
-                filteredFactories.map((factory, index) => (
-                  <TableRow key={factory.id}>
-                    <TableCell className="font-medium">{index + 1}</TableCell>
-                    <TableCell>{factory.Factory_Name || 'N/A'}</TableCell>
-                    <TableCell>
-                      <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-xs">
-                        {factory.Factory_type?.replace('_', ' ') || 'N/A'}
-                      </span>
+              </TableHeader>
+              <TableBody>
+                {filteredFactories.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                      No factories found
                     </TableCell>
-                    <TableCell>
-                      <span className="px-2 py-1 rounded-full bg-purple-100 text-purple-800 text-xs">
-                        {factory.Specialization?.replace('_', ' ') || 'N/A'}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        factory.Status === 'Active' ? 'bg-green-100 text-green-800' :
-                        factory.Status === 'Inactive' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
+                  </TableRow>
+                ) : (
+                  filteredFactories.map((factory, index) => (
+                    <TableRow key={factory.id}>
+                      <TableCell className="font-medium pl-6">{index + 1}</TableCell>
+                      <TableCell>{factory.Factory_Name || 'N/A'}</TableCell>
+                      <TableCell>
+                        <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-xs">
+                          {factory.Factory_type?.replace('_', ' ') || 'N/A'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="px-2 py-1 rounded-full bg-purple-100 text-purple-800 text-xs">
+                          {factory.Specialization?.replace('_', ' ') || 'N/A'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          factory.Status === 'Active' ? 'bg-green-100 text-green-800' :
+                          factory.Status === 'Inactive' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
                         {factory.Status}
                       </span>
                     </TableCell>
@@ -547,7 +567,7 @@ export default function FactoriesPage() {
                       {factory.Phone && <div className="text-sm">{factory.Phone}</div>}
                       {factory.Email && <div className="text-xs text-muted-foreground">{factory.Email}</div>}
                     </TableCell>
-                    <TableCell className="text-right space-x-2">
+                    <TableCell className="text-right space-x-2 pr-6">
                       <Button
                         variant="outline"
                         size="icon"
@@ -568,16 +588,15 @@ export default function FactoriesPage() {
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+          </div>
 
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Factory</DialogTitle>
-            <DialogDescription>
-              แก้ไขข้อมูลโรงงานแปรรูป
+          {/* Edit Dialog */}
+          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Edit Factory</DialogTitle>
+                <DialogDescription>
+                  แก้ไขข้อมูลโรงงานแปรรูป
             </DialogDescription>
           </DialogHeader>
           
@@ -712,11 +731,11 @@ export default function FactoriesPage() {
             <Button onClick={handleUpdateFactory} className="bg-blue-600 hover:bg-blue-700">
               Update Factory
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
-      </main>
+      </SidebarInset>
     </SidebarProvider>
   )
 }

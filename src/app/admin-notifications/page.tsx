@@ -2,6 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
+import { Separator } from '@/components/ui/separator';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from '@/components/ui/breadcrumb';
 import { AppSidebar } from '@/components/app-sidebar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -359,17 +368,29 @@ export default function AdminNotificationPage() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <div className="flex-1 p-6">
-          <div className="flex justify-between items-center mb-6">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="/dashboard">
+                  Dashboard
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden md:block" />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Admin Notifications</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </header>
+
+        <div className="flex flex-1 flex-col gap-4 p-4">
+          <div className="flex justify-between items-center">
             <div>
-              <div className="flex items-center gap-2">
-                <SidebarTrigger />
-                <Bell className="w-6 h-6 text-green-600" />
-                <h1 className="text-2xl font-bold">Admin Notifications</h1>
-              </div>
-              <p className="text-gray-500 text-sm mt-1">
-                Manage and send notifications to users
-              </p>
+              <h1 className="text-3xl font-bold">Admin Notifications</h1>
+              <p className="text-muted-foreground">Manage and send notifications to users</p>
             </div>
 
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
