@@ -263,11 +263,16 @@ export default function AdminSettingsPage() {
     const fetchData = async () => {
       setLoading(true)
       try {
-        // Fetch Crop Types
-        const token =
-          typeof window !== 'undefined'
-            ? localStorage.getItem('token') ?? localStorage.getItem('jwt') ?? ''
-            : ''
+        // Get JWT token - prioritize 'jwt' from localStorage
+        const token = typeof window !== 'undefined' 
+          ? localStorage.getItem('jwt') || localStorage.getItem('token') || ''
+          : ''
+
+        if (!token) {
+          console.error('❌ No authentication token found!')
+          alert('กรุณาเข้าสู่ระบบใหม่อีกครั้ง')
+          return
+        }
 
         const cropTypesRes = await fetch('https://api-freeroll-production.up.railway.app/api/crop-types', {
           headers: {
@@ -276,8 +281,17 @@ export default function AdminSettingsPage() {
             Authorization: `Bearer ${token}`,
           },
         })
+
+        if (!cropTypesRes.ok) {
+          console.error('Failed to fetch crop types:', cropTypesRes.status)
+          if (cropTypesRes.status === 401) {
+            alert('Session หมดอายุ กรุณาเข้าสู่ระบบใหม่')
+            return
+          }
+        }
+
         const cropTypesData = await cropTypesRes.json()
-        setCropTypes(cropTypesData.data.map((item: any) => item.type))
+        setCropTypes(cropTypesData?.data?.map((item: any) => item.attributes?.type || item.type) || [])
 
         // Fetch Plant Varieties
         const plantVarietiesRes = await fetch('https://api-freeroll-production.up.railway.app/api/plant-varieties', {
@@ -288,7 +302,7 @@ export default function AdminSettingsPage() {
           },
         })
         const plantVarietiesData = await plantVarietiesRes.json()
-        setPlantVarieties(plantVarietiesData.data.map((item: any) => item.variety))
+        setPlantVarieties(plantVarietiesData?.data?.map((item: any) => item.attributes?.variety || item.variety) || [])
 
         // Fetch Fertilizer Types
         const fertilizerTypesRes = await fetch('https://api-freeroll-production.up.railway.app/api/fertilizer-types', {
@@ -299,7 +313,7 @@ export default function AdminSettingsPage() {
           },
         })
         const fertilizerTypesData = await fertilizerTypesRes.json()
-        setFertilizerTypes(fertilizerTypesData.data.map((item: any) => item.type))
+        setFertilizerTypes(fertilizerTypesData?.data?.map((item: any) => item.attributes?.type || item.type) || [])
 
         // Fetch Harvest Methods
         const harvestMethodsRes = await fetch('https://api-freeroll-production.up.railway.app/api/harvest-methods', {
@@ -310,7 +324,7 @@ export default function AdminSettingsPage() {
           },
         })
         const harvestMethodsData = await harvestMethodsRes.json()
-        setHarvestMethods(harvestMethodsData.data.map((item: any) => item.method))
+        setHarvestMethods(harvestMethodsData?.data?.map((item: any) => item.attributes?.method || item.method) || [])
 
         // Fetch Result Types
         const resultTypesRes = await fetch('https://api-freeroll-production.up.railway.app/api/result-types', {
@@ -321,7 +335,7 @@ export default function AdminSettingsPage() {
           },
         })
         const resultTypesData = await resultTypesRes.json()
-        setResultTypes(resultTypesData.data.map((item: any) => item.type))
+        setResultTypes(resultTypesData?.data?.map((item: any) => item.attributes?.type || item.type) || [])
 
         // Fetch Test Method
         const testMethodRes = await fetch('https://api-freeroll-production.up.railway.app/api/lab-testing-methods', {
@@ -332,7 +346,7 @@ export default function AdminSettingsPage() {
           },
         })
         const testMethodData = await testMethodRes.json()
-        setTestingMethods(testMethodData.data.map((item: any) => item.method))
+        setTestingMethods(testMethodData?.data?.map((item: any) => item.attributes?.method || item.method) || [])
 
         // Fetch Sample Type
         const sampleTypeRes = await fetch('https://api-freeroll-production.up.railway.app/api/hplc-sample-conditions', {
@@ -343,7 +357,7 @@ export default function AdminSettingsPage() {
           },
         })
         const sampleTypeData = await sampleTypeRes.json()
-        setSampleTypes(sampleTypeData.data.map((item: any) => item.condition))
+        setSampleTypes(sampleTypeData?.data?.map((item: any) => item.attributes?.condition || item.condition) || [])
         
         // Fetch Standard Criteria
         const standardCriteriaRes = await fetch('https://api-freeroll-production.up.railway.app/api/standard-criterias', {
@@ -354,7 +368,7 @@ export default function AdminSettingsPage() {
           },
         })
         const standardCriteriaData = await standardCriteriaRes.json()
-        setStandardCriteria(standardCriteriaData.data.map((item: any) => item.criteria))
+        setStandardCriteria(standardCriteriaData?.data?.map((item: any) => item.attributes?.criteria || item.criteria) || [])
 
         // Fetch Processing Methods
         const processingMethodsRes = await fetch('https://api-freeroll-production.up.railway.app/api/factory-processing-methods', {
@@ -365,7 +379,7 @@ export default function AdminSettingsPage() {
           },
         })
         const processingMethodsData = await processingMethodsRes.json()
-        setProcessingMethods(processingMethodsData.data.map((item: any) => item.method))
+        setProcessingMethods(processingMethodsData?.data?.map((item: any) => item.attributes?.method || item.method) || [])
 
         // Fetch Final Product Types
         const finalProductTypesRes = await fetch('https://api-freeroll-production.up.railway.app/api/final-product-types', {
@@ -376,7 +390,7 @@ export default function AdminSettingsPage() {
           },
         })
         const finalProductTypesData = await finalProductTypesRes.json()
-        setFinalProductTypes(finalProductTypesData.data.map((item: any) => item.type))
+        setFinalProductTypes(finalProductTypesData?.data?.map((item: any) => item.attributes?.type || item.type) || [])
 
         // Fetch Target Markets
         const targetMarketsRes = await fetch('https://api-freeroll-production.up.railway.app/api/target-markets', {
@@ -387,7 +401,7 @@ export default function AdminSettingsPage() {
           },
         })
         const targetMarketsData = await targetMarketsRes.json()
-        setTargetMarkets(targetMarketsData.data.map((item: any) => item.target))
+        setTargetMarkets(targetMarketsData?.data?.map((item: any) => item.attributes?.target || item.target) || [])
       } catch (error) {
         console.error('Error fetching data:', error)
       } finally {

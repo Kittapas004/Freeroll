@@ -62,6 +62,8 @@ interface User {
   phone?: string
   blocked: boolean
   avatar?: string | any // Can be string URL or Strapi media object
+  lab?: { id: number; Lab_Name: string } | null
+  factory?: { id: number; Factory_Name: string } | null
   createdAt: string
   updatedAt: string
 }
@@ -74,6 +76,8 @@ interface NewUser {
   phone?: string
   blocked: boolean
   avatar?: File | null
+  lab?: string | number | null  // Support both string (documentId) and number (id)
+  factory?: string | number | null  // Support both string (documentId) and number (id)
 }
 
 // Role mapping for Strapi
@@ -109,11 +113,17 @@ export default function UserManagementPage() {
     user_role: '',
     phone: '',
     blocked: false,
-    avatar: null
+    avatar: null,
+    lab: null,
+    factory: null
   })
 
   const [avatarPreview, setAvatarPreview] = useState<string>('')
   const [currentUserRole, setCurrentUserRole] = useState<string>('')
+  
+  // Labs and Factories data
+  const [labs, setLabs] = useState<{ id: number; Lab_Name: string }[]>([])
+  const [factories, setFactories] = useState<{ id: number; Factory_Name: string }[]>([])
 
   // Check if user is admin
   useEffect(() => {
@@ -129,7 +139,50 @@ export default function UserManagementPage() {
   // Fetch users
   useEffect(() => {
     fetchUsers()
+    fetchLabsAndFactories()
   }, [])
+
+  const fetchLabsAndFactories = async () => {
+    try {
+      const jwt = localStorage.getItem('jwt')
+      
+      // Fetch Labs
+      const labsRes = await fetch('https://api-freeroll-production.up.railway.app/api/labs', {
+        headers: { Authorization: `Bearer ${jwt}` }
+      })
+      const labsData = await labsRes.json()
+      console.log('✅ Labs data:', labsData)
+      
+      const mappedLabs = labsData?.data?.map((item: any) => {
+        const lab = {
+          id: item.documentId || item.id,  // Use documentId for Strapi v5
+          Lab_Name: item.attributes?.Lab_Name || item.Lab_Name
+        }
+        console.log('Mapped lab:', lab)
+        return lab
+      }) || []
+      setLabs(mappedLabs)
+
+      // Fetch Factories
+      const factoriesRes = await fetch('https://api-freeroll-production.up.railway.app/api/factories', {
+        headers: { Authorization: `Bearer ${jwt}` }
+      })
+      const factoriesData = await factoriesRes.json()
+      console.log('✅ Factories data:', factoriesData)
+      
+      const mappedFactories = factoriesData?.data?.map((item: any) => {
+        const factory = {
+          id: item.documentId || item.id,  // Use documentId for Strapi v5
+          Factory_Name: item.attributes?.Factory_Name || item.Factory_Name
+        }
+        console.log('Mapped factory:', factory)
+        return factory
+      }) || []
+      setFactories(mappedFactories)
+    } catch (error) {
+      console.error('Error fetching labs/factories:', error)
+    }
+  }
 
   // Filter users
   useEffect(() => {
@@ -162,8 +215,8 @@ export default function UserManagementPage() {
   const fetchUsers = async () => {
     try {
       setLoading(true)
-      // ต้อง populate avatar field
-      const response = await fetch('https://api-freeroll-production.up.railway.app/api/users?populate=avatar', {
+      // populate avatar, lab, and factory fields
+      const response = await fetch('https://api-freeroll-production.up.railway.app/api/users?populate[avatar]=*&populate[lab]=*&populate[factory]=*', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('jwt')}`,
         },
@@ -174,11 +227,17 @@ export default function UserManagementPage() {
       }
 
       const data = await response.json()
-      console.log('Users data:', data)
-      // Log first user's avatar to debug
+      console.log('✅ Users data:', data)
+      // Log each user's lab and factory
       if (data.length > 0) {
-        console.log('First user:', data[0])
-        console.log('First user avatar:', data[0].avatar)
+        data.forEach((user: User, index: number) => {
+          console.log(`User ${index + 1}:`, {
+            username: user.username,
+            role: user.user_role,
+            lab: user.lab,
+            factory: user.factory
+          })
+        })
       }
       setUsers(data)
       setFilteredUsers(data)
@@ -186,6 +245,120 @@ export default function UserManagementPage() {
       console.error('Error fetching users:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Helper function to update Lab's users_permissions_users relation
+  const updateLabUsers = async (labDocumentId: string, userId: number, action: 'add' | 'remove', jwt: string) => {
+    try {
+      // First, get current lab data with populated users
+      const labRes = await fetch(`https://api-freeroll-production.up.railway.app/api/labs/${labDocumentId}?populate=users_permissions_users`, {
+        headers: { Authorization: `Bearer ${jwt}` }
+      })
+      
+      if (!labRes.ok) {
+        console.error('Failed to fetch lab data')
+        return
+      }
+
+      const labData = await labRes.json()
+      const currentUsers = labData.data?.users_permissions_users || []
+      console.log('📋 Current lab users:', currentUsers)
+
+      // Calculate new users array
+      let newUserIds: number[]
+      if (action === 'add') {
+        // Add user if not already in the list
+        const existingUserIds = currentUsers.map((u: any) => u.id)
+        newUserIds = existingUserIds.includes(userId) 
+          ? existingUserIds 
+          : [...existingUserIds, userId]
+      } else {
+        // Remove user from the list
+        newUserIds = currentUsers.filter((u: any) => u.id !== userId).map((u: any) => u.id)
+      }
+
+      console.log(`${action === 'add' ? '➕' : '🗑️'} Updating lab users to:`, newUserIds)
+
+      // Update lab with new users array
+      const updateRes = await fetch(`https://api-freeroll-production.up.railway.app/api/labs/${labDocumentId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${jwt}`
+        },
+        body: JSON.stringify({
+          data: {
+            users_permissions_users: newUserIds
+          }
+        })
+      })
+
+      if (!updateRes.ok) {
+        const errorData = await updateRes.json()
+        console.error('Failed to update lab users:', errorData)
+      } else {
+        console.log('✅ Lab users updated successfully')
+      }
+    } catch (error) {
+      console.error('Error updating lab users:', error)
+    }
+  }
+
+  // Helper function to update Factory's users_permissions_users relation
+  const updateFactoryUsers = async (factoryDocumentId: string, userId: number, action: 'add' | 'remove', jwt: string) => {
+    try {
+      // First, get current factory data with populated users
+      const factoryRes = await fetch(`https://api-freeroll-production.up.railway.app/api/factories/${factoryDocumentId}?populate=users_permissions_users`, {
+        headers: { Authorization: `Bearer ${jwt}` }
+      })
+      
+      if (!factoryRes.ok) {
+        console.error('Failed to fetch factory data')
+        return
+      }
+
+      const factoryData = await factoryRes.json()
+      const currentUsers = factoryData.data?.users_permissions_users || []
+      console.log('📋 Current factory users:', currentUsers)
+
+      // Calculate new users array
+      let newUserIds: number[]
+      if (action === 'add') {
+        // Add user if not already in the list
+        const existingUserIds = currentUsers.map((u: any) => u.id)
+        newUserIds = existingUserIds.includes(userId) 
+          ? existingUserIds 
+          : [...existingUserIds, userId]
+      } else {
+        // Remove user from the list
+        newUserIds = currentUsers.filter((u: any) => u.id !== userId).map((u: any) => u.id)
+      }
+
+      console.log(`${action === 'add' ? '➕' : '🗑️'} Updating factory users to:`, newUserIds)
+
+      // Update factory with new users array
+      const updateRes = await fetch(`https://api-freeroll-production.up.railway.app/api/factories/${factoryDocumentId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${jwt}`
+        },
+        body: JSON.stringify({
+          data: {
+            users_permissions_users: newUserIds
+          }
+        })
+      })
+
+      if (!updateRes.ok) {
+        const errorData = await updateRes.json()
+        console.error('Failed to update factory users:', errorData)
+      } else {
+        console.log('✅ Factory users updated successfully')
+      }
+    } catch (error) {
+      console.error('Error updating factory users:', error)
     }
   }
 
@@ -230,6 +403,7 @@ export default function UserManagementPage() {
         email: formData.email,
         password: formData.password,
         role: roleId,  // Strapi expects role ID (number)
+        user_role: formData.user_role,
         phone: formData.phone || '',
         blocked: formData.blocked,
       }
@@ -237,6 +411,16 @@ export default function UserManagementPage() {
       // Include avatar ID if uploaded
       if (avatarId) {
         userData.avatar = avatarId
+      }
+
+      // Include lab ID if role is Quality Inspection
+      if (formData.user_role === 'Quality Inspection' && formData.lab) {
+        userData.lab = formData.lab
+      }
+
+      // Include factory ID if role is Factory
+      if (formData.user_role === 'Factory' && formData.factory) {
+        userData.factory = formData.factory
       }
 
       console.log('Sending user data:', userData)
@@ -270,15 +454,16 @@ export default function UserManagementPage() {
     if (!selectedUser) return
 
     try {
+      const jwt = localStorage.getItem('jwt')
+      
+      // Step 1: Update basic user info (without lab/factory relations)
       const updateData: any = {
         username: formData.username,
         email: formData.email,
+        user_role: formData.user_role,
         phone: formData.phone || '',
         blocked: formData.blocked,
       }
-
-      // ไม่ส่ง role เพราะใช้ user_role enumeration แทน
-      // role field จะใช้ default "Authenticated" role (ID: 1)
 
       // Only include password if it's provided
       if (formData.password) {
@@ -293,7 +478,7 @@ export default function UserManagementPage() {
         const uploadResponse = await fetch('https://api-freeroll-production.up.railway.app/api/upload', {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+            Authorization: `Bearer ${jwt}`,
           },
           body: formDataUpload,
         })
@@ -307,27 +492,92 @@ export default function UserManagementPage() {
         }
       }
 
-      console.log('Update data (simplified):', updateData)
+      console.log('📝 Updating user basic info:', updateData)
 
-      // Update user WITHOUT role field
-      const response = await fetch(`https://api-freeroll-production.up.railway.app/api/users/${selectedUser.id}`, {
+      // Update user basic info
+      const userResponse = await fetch(`https://api-freeroll-production.up.railway.app/api/users/${selectedUser.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+          Authorization: `Bearer ${jwt}`,
         },
         body: JSON.stringify(updateData),
       })
 
-      const responseData = await response.json()
-      console.log('Response:', responseData)
-
-      if (!response.ok) {
-        console.error('Update error details:', responseData)
-        throw new Error(responseData.error?.message || responseData.message || 'Failed to update user')
+      if (!userResponse.ok) {
+        const errorData = await userResponse.json()
+        throw new Error(errorData.error?.message || 'Failed to update user')
       }
 
-      console.log('✅ User updated successfully')
+      console.log('✅ User basic info updated')
+
+      // Step 2: Handle Lab/Factory relations from Lab/Factory side
+      const oldLabId = selectedUser.lab && typeof selectedUser.lab === 'object' 
+        ? (selectedUser.lab as any).documentId || (selectedUser.lab as any).id 
+        : null
+      const oldFactoryId = selectedUser.factory && typeof selectedUser.factory === 'object'
+        ? (selectedUser.factory as any).documentId || (selectedUser.factory as any).id
+        : null
+      const newLabId = formData.lab
+      const newFactoryId = formData.factory
+
+      console.log('🔍 Lab/Factory relation changes:', {
+        oldLabId,
+        newLabId,
+        oldFactoryId,
+        newFactoryId
+      })
+
+      // Handle Lab relation change
+      if (formData.user_role === 'Quality Inspection') {
+        // Remove user from old lab if changed
+        if (oldLabId && oldLabId !== newLabId) {
+          console.log(`🗑️ Removing user from old lab: ${oldLabId}`)
+          await updateLabUsers(String(oldLabId), selectedUser.id, 'remove', jwt!)
+        }
+
+        // Add user to new lab
+        if (newLabId) {
+          console.log(`➕ Adding user to new lab: ${newLabId}`)
+          await updateLabUsers(String(newLabId), selectedUser.id, 'add', jwt!)
+        }
+
+        // Remove from factory if exists
+        if (oldFactoryId) {
+          console.log(`🗑️ Removing user from factory: ${oldFactoryId}`)
+          await updateFactoryUsers(String(oldFactoryId), selectedUser.id, 'remove', jwt!)
+        }
+      } else if (formData.user_role === 'Factory') {
+        // Remove user from old factory if changed
+        if (oldFactoryId && oldFactoryId !== newFactoryId) {
+          console.log(`🗑️ Removing user from old factory: ${oldFactoryId}`)
+          await updateFactoryUsers(String(oldFactoryId), selectedUser.id, 'remove', jwt!)
+        }
+
+        // Add user to new factory
+        if (newFactoryId) {
+          console.log(`➕ Adding user to new factory: ${newFactoryId}`)
+          await updateFactoryUsers(String(newFactoryId), selectedUser.id, 'add', jwt!)
+        }
+
+        // Remove from lab if exists
+        if (oldLabId) {
+          console.log(`🗑️ Removing user from lab: ${oldLabId}`)
+          await updateLabUsers(String(oldLabId), selectedUser.id, 'remove', jwt!)
+        }
+      } else {
+        // Other roles: remove from both lab and factory
+        if (oldLabId) {
+          console.log(`🗑️ Removing user from lab: ${oldLabId}`)
+          await updateLabUsers(String(oldLabId), selectedUser.id, 'remove', jwt!)
+        }
+        if (oldFactoryId) {
+          console.log(`🗑️ Removing user from factory: ${oldFactoryId}`)
+          await updateFactoryUsers(String(oldFactoryId), selectedUser.id, 'remove', jwt!)
+        }
+      }
+
+      console.log('✅ All relations updated successfully')
 
       setIsEditDialogOpen(false)
       setSelectedUser(null)
@@ -365,7 +615,27 @@ export default function UserManagementPage() {
   }
 
   const openEditDialog = (user: User) => {
+    console.log('🔍 Opening edit dialog for user:', user)
+    console.log('🔍 User lab:', user.lab)
+    console.log('🔍 User factory:', user.factory)
+    
     setSelectedUser(user)
+    
+    // Get lab ID - check if it's an object with id or documentId
+    let labId = null
+    if (user.lab && typeof user.lab === 'object') {
+      labId = (user.lab as any).documentId || (user.lab as any).id || null
+    }
+    
+    // Get factory ID - check if it's an object with id or documentId  
+    let factoryId = null
+    if (user.factory && typeof user.factory === 'object') {
+      factoryId = (user.factory as any).documentId || (user.factory as any).id || null
+    }
+    
+    console.log('✅ Selected Lab ID:', labId)
+    console.log('✅ Selected Factory ID:', factoryId)
+    
     setFormData({
       username: user.username,
       email: user.email,
@@ -374,6 +644,8 @@ export default function UserManagementPage() {
       phone: user.phone || '',
       blocked: user.blocked,
       avatar: null,
+      lab: labId,
+      factory: factoryId,
     })
     // Use getAvatarUrl to handle both string and object formats
     setAvatarPreview(getAvatarUrl(user.avatar))
@@ -394,6 +666,8 @@ export default function UserManagementPage() {
       phone: '',
       blocked: false,
       avatar: null,
+      lab: null,
+      factory: null,
     })
     setAvatarPreview('')
   }
@@ -609,6 +883,51 @@ export default function UserManagementPage() {
                         </SelectContent>
                       </Select>
                     </div>
+
+                    {/* Lab selection - show only for Quality Inspection */}
+                    {formData.user_role === 'Quality Inspection' && (
+                      <div className="grid gap-2">
+                        <Label htmlFor="lab">Lab <span className="text-red-500">*</span></Label>
+                        <Select
+                          value={formData.lab?.toString() || ''}
+                          onValueChange={(value) => setFormData({ ...formData, lab: value ? parseInt(value) : null })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Lab" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {labs.map((lab) => (
+                              <SelectItem key={lab.id} value={lab.id.toString()}>
+                                {lab.Lab_Name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {/* Factory selection - show only for Factory */}
+                    {formData.user_role === 'Factory' && (
+                      <div className="grid gap-2">
+                        <Label htmlFor="factory">Factory <span className="text-red-500">*</span></Label>
+                        <Select
+                          value={formData.factory?.toString() || ''}
+                          onValueChange={(value) => setFormData({ ...formData, factory: value ? parseInt(value) : null })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select Factory" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {factories.map((factory) => (
+                              <SelectItem key={factory.id} value={factory.id.toString()}>
+                                {factory.Factory_Name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
                     <div className="grid gap-2">
                       <Label htmlFor="password">
                         Password <span className="text-red-500">*</span>
@@ -698,6 +1017,7 @@ export default function UserManagementPage() {
                       <TableHead>Name</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Role</TableHead>
+                      <TableHead>Lab/Factory</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Last Login</TableHead>
@@ -707,7 +1027,7 @@ export default function UserManagementPage() {
                   <TableBody>
                     {filteredUsers.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                        <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                           No users found
                         </TableCell>
                       </TableRow>
@@ -737,6 +1057,19 @@ export default function UserManagementPage() {
                             <Badge className={`${getRoleBadgeColor(user.user_role)} text-white`}>
                               {user.user_role || 'No Role'}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {user.user_role === 'Quality Inspection' && user.lab && typeof user.lab === 'object' && user.lab.Lab_Name ? (
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                🧪 {user.lab.Lab_Name}
+                              </Badge>
+                            ) : user.user_role === 'Factory' && user.factory && typeof user.factory === 'object' && user.factory.Factory_Name ? (
+                              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                                🏭 {user.factory.Factory_Name}
+                              </Badge>
+                            ) : (
+                              <span className="text-gray-400 text-sm">-</span>
+                            )}
                           </TableCell>
                           <TableCell>{user.phone || '-'}</TableCell>
                           <TableCell>
@@ -854,6 +1187,51 @@ export default function UserManagementPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Lab selection - show only for Quality Inspection */}
+            {formData.user_role === 'Quality Inspection' && (
+              <div className="grid gap-2">
+                <Label htmlFor="edit-lab">Lab <span className="text-red-500">*</span></Label>
+                <Select
+                  value={formData.lab?.toString() || ''}
+                  onValueChange={(value) => setFormData({ ...formData, lab: value || null })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Lab" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {labs.map((lab) => (
+                      <SelectItem key={lab.id} value={lab.id.toString()}>
+                        {lab.Lab_Name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Factory selection - show only for Factory */}
+            {formData.user_role === 'Factory' && (
+              <div className="grid gap-2">
+                <Label htmlFor="edit-factory">Factory <span className="text-red-500">*</span></Label>
+                <Select
+                  value={formData.factory?.toString() || ''}
+                  onValueChange={(value) => setFormData({ ...formData, factory: value || null })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select Factory" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {factories.map((factory) => (
+                      <SelectItem key={factory.id} value={factory.id.toString()}>
+                        {factory.Factory_Name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="grid gap-2">
               <Label htmlFor="edit-password">Password (leave blank to keep current)</Label>
               <Input
