@@ -146,41 +146,81 @@ export default function UserManagementPage() {
     try {
       const jwt = localStorage.getItem('jwt')
       
-      // Fetch Labs
-      const labsRes = await fetch('https://api-freeroll-production.up.railway.app/api/labs', {
+      // Fetch Labs - get all published entries
+      const labsUrl = 'https://api-freeroll-production.up.railway.app/api/labs?pagination[pageSize]=100'
+      console.log('🔍 Fetching labs from:', labsUrl)
+      
+      const labsRes = await fetch(labsUrl, {
         headers: { Authorization: `Bearer ${jwt}` }
       })
+      
+      if (!labsRes.ok) {
+        console.error('❌ Labs API error:', labsRes.status, labsRes.statusText)
+        const errorText = await labsRes.text()
+        console.error('Error response:', errorText)
+      }
+      
       const labsData = await labsRes.json()
-      console.log('✅ Labs data:', labsData)
+      console.log('✅ Raw Labs Response:', JSON.stringify(labsData, null, 2))
+      console.log('📊 Total labs in response:', labsData?.data?.length || 0)
       
-      const mappedLabs = labsData?.data?.map((item: any) => {
-        const lab = {
-          id: item.documentId || item.id,  // Use documentId for Strapi v5
-          Lab_Name: item.attributes?.Lab_Name || item.Lab_Name
-        }
-        console.log('Mapped lab:', lab)
-        return lab
-      }) || []
-      setLabs(mappedLabs)
+      if (labsData?.data && Array.isArray(labsData.data)) {
+        const mappedLabs = labsData.data.map((item: any) => {
+          // Handle both Strapi v4 (attributes) and direct structure  
+          const labName = item.attributes?.Lab_Name || item.Lab_Name || 'Unknown Lab'
+          const labId = item.documentId || item.id  // Use documentId first for Strapi v5
+          console.log('🏥 Mapping lab - documentId:', item.documentId, 'ID:', item.id, 'Name:', labName)
+          return {
+            id: labId,
+            Lab_Name: labName
+          }
+        })
+        console.log('✅ Final mapped labs:', mappedLabs, 'Total:', mappedLabs.length)
+        setLabs(mappedLabs)
+      } else {
+        console.warn('⚠️ No labs data found or invalid format')
+        setLabs([])
+      }
 
-      // Fetch Factories
-      const factoriesRes = await fetch('https://api-freeroll-production.up.railway.app/api/factories', {
+      // Fetch Factories - get all published entries
+      const factoriesUrl = 'https://api-freeroll-production.up.railway.app/api/factories?pagination[pageSize]=100'
+      console.log('🔍 Fetching factories from:', factoriesUrl)
+      
+      const factoriesRes = await fetch(factoriesUrl, {
         headers: { Authorization: `Bearer ${jwt}` }
       })
-      const factoriesData = await factoriesRes.json()
-      console.log('✅ Factories data:', factoriesData)
       
-      const mappedFactories = factoriesData?.data?.map((item: any) => {
-        const factory = {
-          id: item.documentId || item.id,  // Use documentId for Strapi v5
-          Factory_Name: item.attributes?.Factory_Name || item.Factory_Name
-        }
-        console.log('Mapped factory:', factory)
-        return factory
-      }) || []
-      setFactories(mappedFactories)
+      if (!factoriesRes.ok) {
+        console.error('❌ Factories API error:', factoriesRes.status, factoriesRes.statusText)
+        const errorText = await factoriesRes.text()
+        console.error('Error response:', errorText)
+      }
+      
+      const factoriesData = await factoriesRes.json()
+      console.log('✅ Raw Factories Response:', JSON.stringify(factoriesData, null, 2))
+      console.log('📊 Total factories in response:', factoriesData?.data?.length || 0)
+      
+      if (factoriesData?.data && Array.isArray(factoriesData.data)) {
+        const mappedFactories = factoriesData.data.map((item: any) => {
+          // Handle both Strapi v4 (attributes) and direct structure
+          const factoryName = item.attributes?.Factory_Name || item.Factory_Name || 'Unknown Factory'
+          const factoryId = item.documentId || item.id  // Use documentId first for Strapi v5
+          console.log('🏭 Mapping factory - documentId:', item.documentId, 'ID:', item.id, 'Name:', factoryName)
+          return {
+            id: factoryId,
+            Factory_Name: factoryName
+          }
+        })
+        console.log('✅ Final mapped factories:', mappedFactories, 'Total:', mappedFactories.length)
+        setFactories(mappedFactories)
+      } else {
+        console.warn('⚠️ No factories data found or invalid format')
+        setFactories([])
+      }
     } catch (error) {
-      console.error('Error fetching labs/factories:', error)
+      console.error('❌ Error fetching labs/factories:', error)
+      setLabs([])
+      setFactories([])
     }
   }
 
@@ -618,19 +658,29 @@ export default function UserManagementPage() {
     console.log('🔍 Opening edit dialog for user:', user)
     console.log('🔍 User lab:', user.lab)
     console.log('🔍 User factory:', user.factory)
+    console.log('🔍 Available labs:', labs)
+    console.log('🔍 Available factories:', factories)
     
     setSelectedUser(user)
     
     // Get lab ID - check if it's an object with id or documentId
-    let labId = null
+    let labId: string | number | null = null
     if (user.lab && typeof user.lab === 'object') {
-      labId = (user.lab as any).documentId || (user.lab as any).id || null
+      // Try documentId first, then id, and convert to string for consistency
+      const rawId = (user.lab as any).documentId || (user.lab as any).id
+      labId = rawId ? String(rawId) : null
+      console.log('🏥 Extracted lab ID:', labId, 'from:', user.lab)
+      console.log('🔍 Lab match in available labs:', labs.find(l => String(l.id) === labId))
     }
     
     // Get factory ID - check if it's an object with id or documentId  
-    let factoryId = null
+    let factoryId: string | number | null = null
     if (user.factory && typeof user.factory === 'object') {
-      factoryId = (user.factory as any).documentId || (user.factory as any).id || null
+      // Try documentId first, then id, and convert to string for consistency
+      const rawId = (user.factory as any).documentId || (user.factory as any).id
+      factoryId = rawId ? String(rawId) : null
+      console.log('🏭 Extracted factory ID:', factoryId, 'from:', user.factory)
+      console.log('🔍 Factory match in available factories:', factories.find(f => String(f.id) === factoryId))
     }
     
     console.log('✅ Selected Lab ID:', labId)
@@ -795,7 +845,7 @@ export default function UserManagementPage() {
                     Add User
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px]">
+                <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Add New User</DialogTitle>
                     <DialogDescription>
@@ -869,13 +919,16 @@ export default function UserManagementPage() {
                       </Label>
                       <Select
                         value={formData.user_role}
-                        onValueChange={(value) => setFormData({ ...formData, user_role: value })}
+                        onValueChange={(value) => {
+                          console.log('Role selected:', value)
+                          setFormData({ ...formData, user_role: value })
+                        }}
                         required
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select Role" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="z-[9999]">
                           <SelectItem value="Farmer">Farmer</SelectItem>
                           <SelectItem value="Factory">Factory</SelectItem>
                           <SelectItem value="Quality Inspection">Quality Inspection</SelectItem>
@@ -890,19 +943,35 @@ export default function UserManagementPage() {
                         <Label htmlFor="lab">Lab <span className="text-red-500">*</span></Label>
                         <Select
                           value={formData.lab?.toString() || ''}
-                          onValueChange={(value) => setFormData({ ...formData, lab: value ? parseInt(value) : null })}
+                          onValueChange={(value) => {
+                            console.log('Lab selected:', value)
+                            console.log('All labs:', labs)
+                            setFormData({ ...formData, lab: value ? parseInt(value) : null })
+                          }}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="w-full">
                             <SelectValue placeholder="Select Lab" />
                           </SelectTrigger>
-                          <SelectContent>
-                            {labs.map((lab) => (
-                              <SelectItem key={lab.id} value={lab.id.toString()}>
-                                {lab.Lab_Name}
-                              </SelectItem>
-                            ))}
+                          <SelectContent className="z-[9999] max-h-[300px]" position="popper">
+                            {labs.length === 0 ? (
+                              <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                                No labs available. Please create labs first.
+                              </div>
+                            ) : (
+                              labs.map((lab) => {
+                                console.log('Rendering lab item:', lab)
+                                return (
+                                  <SelectItem key={lab.id} value={lab.id.toString()}>
+                                    {lab.Lab_Name}
+                                  </SelectItem>
+                                )
+                              })
+                            )}
                           </SelectContent>
                         </Select>
+                        <p className="text-xs text-muted-foreground">
+                          {labs.length} lab(s) available: {labs.map(l => l.Lab_Name).join(', ')}
+                        </p>
                       </div>
                     )}
 
@@ -912,19 +981,35 @@ export default function UserManagementPage() {
                         <Label htmlFor="factory">Factory <span className="text-red-500">*</span></Label>
                         <Select
                           value={formData.factory?.toString() || ''}
-                          onValueChange={(value) => setFormData({ ...formData, factory: value ? parseInt(value) : null })}
+                          onValueChange={(value) => {
+                            console.log('Factory selected:', value)
+                            console.log('All factories:', factories)
+                            setFormData({ ...formData, factory: value ? parseInt(value) : null })
+                          }}
                         >
-                          <SelectTrigger>
+                          <SelectTrigger className="w-full">
                             <SelectValue placeholder="Select Factory" />
                           </SelectTrigger>
-                          <SelectContent>
-                            {factories.map((factory) => (
-                              <SelectItem key={factory.id} value={factory.id.toString()}>
-                                {factory.Factory_Name}
-                              </SelectItem>
-                            ))}
+                          <SelectContent className="z-[9999] max-h-[300px]" position="popper">
+                            {factories.length === 0 ? (
+                              <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                                No factories available. Please create factories first.
+                              </div>
+                            ) : (
+                              factories.map((factory) => {
+                                console.log('Rendering factory item:', factory)
+                                return (
+                                  <SelectItem key={factory.id} value={factory.id.toString()}>
+                                    {factory.Factory_Name}
+                                  </SelectItem>
+                                )
+                              })
+                            )}
                           </SelectContent>
                         </Select>
+                        <p className="text-xs text-muted-foreground">
+                          {factories.length} factory(s) available: {factories.map(f => f.Factory_Name).join(', ')}
+                        </p>
                       </div>
                     )}
 
@@ -1111,7 +1196,7 @@ export default function UserManagementPage() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
             <DialogDescription>
@@ -1174,12 +1259,15 @@ export default function UserManagementPage() {
               <Label htmlFor="edit-role">Role</Label>
               <Select
                 value={formData.user_role}
-                onValueChange={(value) => setFormData({ ...formData, user_role: value })}
+                onValueChange={(value) => {
+                  console.log('Edit - Role selected:', value)
+                  setFormData({ ...formData, user_role: value })
+                }}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[9999] max-h-[300px]" position="popper">
                   <SelectItem value="Farmer">Farmer</SelectItem>
                   <SelectItem value="Factory">Factory</SelectItem>
                   <SelectItem value="Quality Inspection">Quality Inspection</SelectItem>
@@ -1192,21 +1280,39 @@ export default function UserManagementPage() {
             {formData.user_role === 'Quality Inspection' && (
               <div className="grid gap-2">
                 <Label htmlFor="edit-lab">Lab <span className="text-red-500">*</span></Label>
-                <Select
-                  value={formData.lab?.toString() || ''}
-                  onValueChange={(value) => setFormData({ ...formData, lab: value || null })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Lab" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {labs.map((lab) => (
-                      <SelectItem key={lab.id} value={lab.id.toString()}>
-                        {lab.Lab_Name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="w-full">
+                  <Select
+                    value={formData.lab?.toString() || ''}
+                    onValueChange={(value) => {
+                      console.log('Edit - Lab selected:', value)
+                      console.log('Edit - All labs:', labs)
+                      setFormData({ ...formData, lab: value ? parseInt(value) : null })
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Lab" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[9999] max-h-[300px]" position="popper">
+                      {labs.length === 0 ? (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                          No labs available. Please create labs first.
+                        </div>
+                      ) : (
+                        labs.map((lab) => {
+                          console.log('Edit - Rendering lab item:', lab)
+                          return (
+                            <SelectItem key={lab.id} value={lab.id.toString()}>
+                              {lab.Lab_Name}
+                            </SelectItem>
+                          )
+                        })
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {labs.length} lab(s) available: {labs.map(l => l.Lab_Name).join(', ')}
+                </p>
               </div>
             )}
 
@@ -1214,21 +1320,39 @@ export default function UserManagementPage() {
             {formData.user_role === 'Factory' && (
               <div className="grid gap-2">
                 <Label htmlFor="edit-factory">Factory <span className="text-red-500">*</span></Label>
-                <Select
-                  value={formData.factory?.toString() || ''}
-                  onValueChange={(value) => setFormData({ ...formData, factory: value || null })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Factory" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {factories.map((factory) => (
-                      <SelectItem key={factory.id} value={factory.id.toString()}>
-                        {factory.Factory_Name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="w-full">
+                  <Select
+                    value={formData.factory?.toString() || ''}
+                    onValueChange={(value) => {
+                      console.log('Edit - Factory selected:', value)
+                      console.log('Edit - All factories:', factories)
+                      setFormData({ ...formData, factory: value ? parseInt(value) : null })
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select Factory" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[9999] max-h-[300px]" position="popper">
+                      {factories.length === 0 ? (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                          No factories available. Please create factories first.
+                        </div>
+                      ) : (
+                        factories.map((factory) => {
+                          console.log('Edit - Rendering factory item:', factory)
+                          return (
+                            <SelectItem key={factory.id} value={factory.id.toString()}>
+                              {factory.Factory_Name}
+                            </SelectItem>
+                          )
+                        })
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {factories.length} factory(s) available: {factories.map(f => f.Factory_Name).join(', ')}
+                </p>
               </div>
             )}
 
