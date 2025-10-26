@@ -276,18 +276,19 @@ export default function AdminDashboard({ userName = 'Admin' }: AdminDashboardPro
         return new Date(dateString).toLocaleDateString();
     };
 
-    // User Activity Trends Data (7 days)
+    // User Activity Trends Data (7 days) - Show empty data if no users
+    const hasUserData = stats.totalUsers > 0;
     const activityData = {
         labels: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'],
         datasets: [
             {
                 label: 'User Activity',
-                data: [5, 7, 9, 6, 8, 7, 7],
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                data: hasUserData ? [5, 7, 9, 6, 8, 7, 7] : [0, 0, 0, 0, 0, 0, 0],
+                borderColor: hasUserData ? '#10b981' : '#d1d5db',
+                backgroundColor: hasUserData ? 'rgba(16, 185, 129, 0.1)' : 'rgba(209, 213, 219, 0.1)',
                 fill: true,
                 tension: 0.4,
-                pointBackgroundColor: '#10b981',
+                pointBackgroundColor: hasUserData ? '#10b981' : '#d1d5db',
                 pointBorderColor: '#fff',
                 pointBorderWidth: 2,
                 pointRadius: 4,
@@ -485,9 +486,17 @@ export default function AdminDashboard({ userName = 'Admin' }: AdminDashboardPro
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div className="h-64">
-                                <Line data={activityData} options={activityOptions} />
-                            </div>
+                            {!hasUserData ? (
+                                <div className="h-64 flex flex-col items-center justify-center text-center">
+                                    <Activity className="w-12 h-12 text-gray-300 mb-3" />
+                                    <p className="text-gray-500 font-medium">No user activity data</p>
+                                    <p className="text-gray-400 text-sm mt-1">User activity will appear here once users are active in the system</p>
+                                </div>
+                            ) : (
+                                <div className="h-64">
+                                    <Line data={activityData} options={activityOptions} />
+                                </div>
+                            )}
                         </Card>
 
                         {/* Total User Distribution */}
@@ -576,8 +585,10 @@ export default function AdminDashboard({ userName = 'Admin' }: AdminDashboardPro
                                         </div>
                                     ))
                                 ) : (
-                                    <div className="text-center text-gray-500 text-sm py-8">
-                                        No recent activities to display
+                                    <div className="flex flex-col items-center justify-center text-center py-12">
+                                        <History className="w-12 h-12 text-gray-300 mb-3" />
+                                        <p className="text-gray-500 font-medium">No recent activities</p>
+                                        <p className="text-gray-400 text-sm mt-1">Activities will appear here as users interact with the system</p>
                                     </div>
                                 )}
                             </div>
