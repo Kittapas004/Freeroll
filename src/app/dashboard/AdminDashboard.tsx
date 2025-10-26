@@ -23,6 +23,7 @@ import {
     History,
     User,
     TrendingDown,
+    RefreshCw,
 } from 'lucide-react';
 import { Doughnut, Line } from 'react-chartjs-2';
 import {
@@ -102,11 +103,10 @@ export default function AdminDashboard({ userName = 'Admin' }: AdminDashboardPro
     const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
 
     // Fetch real data from API
-    useEffect(() => {
-        const fetchDashboardData = async () => {
-            try {
-                setLoading(true);
-                const token = localStorage.getItem('jwt');
+    const fetchDashboardData = async () => {
+        try {
+            setLoading(true);
+            const token = localStorage.getItem('jwt');
 
                 // Fetch all users
                 const usersRes = await fetch('https://api-freeroll-production.up.railway.app/api/users?populate[avatar]=*&populate[lab]=*&populate[factory]=*', {
@@ -166,83 +166,87 @@ export default function AdminDashboard({ userName = 'Admin' }: AdminDashboardPro
                 // Create recent activities from real data (Admin-related activities)
                 const activities: RecentActivity[] = [];
 
-                // 1. Recently created/updated users
+                // 1. Recently created/updated users - Get top 3
                 if (usersData.length > 0) {
                     const sortedUsers = [...usersData].sort((a: any, b: any) =>
                         new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
                     );
-                    const recentUser = sortedUsers[0];
-                    const isNew = new Date(recentUser.createdAt).getTime() === new Date(recentUser.updatedAt).getTime();
-
-                    activities.push({
-                        id: `user-${recentUser.id}`,
-                        type: 'info',
-                        title: isNew ? 'New user created' : 'User profile updated',
-                        description: `${recentUser.username} (${recentUser.user_role}) · ${formatTimeAgo(recentUser.updatedAt || recentUser.createdAt)}`,
-                        time: formatTimeAgo(recentUser.updatedAt || recentUser.createdAt),
+                    
+                    // Add top 3 recent users
+                    sortedUsers.slice(0, 3).forEach((user: any) => {
+                        const isNew = new Date(user.createdAt).getTime() === new Date(user.updatedAt).getTime();
+                        activities.push({
+                            id: `user-${user.id}`,
+                            type: 'info',
+                            title: isNew ? 'New user created' : 'User profile updated',
+                            description: `${user.username} (${user.user_role}) · ${formatTimeAgo(user.updatedAt || user.createdAt)}`,
+                            time: user.updatedAt || user.createdAt,
+                        });
                     });
                 }
 
-                // 2. Recently created/updated labs
+                // 2. Recently created/updated labs - Get top 3
                 try {
-                    const labsRes = await fetch('https://api-freeroll-production.up.railway.app/api/labs?sort=updatedAt:desc&pagination[limit]=1', {
+                    const labsRes = await fetch('https://api-freeroll-production.up.railway.app/api/labs?sort=updatedAt:desc&pagination[limit]=3', {
                         headers: { Authorization: `Bearer ${token}` },
                     });
                     const labsData = await labsRes.json();
 
                     if (labsData.data && labsData.data.length > 0) {
-                        const recentLab = labsData.data[0];
-                        const isNew = new Date(recentLab.createdAt).getTime() === new Date(recentLab.updatedAt).getTime();
+                        labsData.data.forEach((lab: any) => {
+                            const isNew = new Date(lab.createdAt).getTime() === new Date(lab.updatedAt).getTime();
 
-                        activities.push({
-                            id: `lab-${recentLab.id}`,
-                            type: 'success',
-                            title: isNew ? 'New lab registered' : 'Lab information updated',
-                            description: `${recentLab.Name || 'Lab'} · ${formatTimeAgo(recentLab.updatedAt)}`,
-                            time: formatTimeAgo(recentLab.updatedAt),
+                            activities.push({
+                                id: `lab-${lab.id}`,
+                                type: 'success',
+                                title: isNew ? 'New lab registered' : 'Lab information updated',
+                                description: `${lab.Name || 'Lab'} · ${formatTimeAgo(lab.updatedAt)}`,
+                                time: lab.updatedAt,
+                            });
                         });
                     }
                 } catch (err) {
                     console.log('Could not fetch labs data');
                 }
 
-                // 3. Recently created/updated factories
+                // 3. Recently created/updated factories - Get top 3
                 try {
-                    const factoriesRes = await fetch('https://api-freeroll-production.up.railway.app/api/factories?sort=updatedAt:desc&pagination[limit]=1', {
+                    const factoriesRes = await fetch('https://api-freeroll-production.up.railway.app/api/factories?sort=updatedAt:desc&pagination[limit]=3', {
                         headers: { Authorization: `Bearer ${token}` },
                     });
                     const factoriesData = await factoriesRes.json();
 
                     if (factoriesData.data && factoriesData.data.length > 0) {
-                        const recentFactory = factoriesData.data[0];
-                        const isNew = new Date(recentFactory.createdAt).getTime() === new Date(recentFactory.updatedAt).getTime();
+                        factoriesData.data.forEach((factory: any) => {
+                            const isNew = new Date(factory.createdAt).getTime() === new Date(factory.updatedAt).getTime();
 
-                        activities.push({
-                            id: `factory-${recentFactory.id}`,
-                            type: 'success',
-                            title: isNew ? 'New factory registered' : 'Factory information updated',
-                            description: `${recentFactory.Name || 'Factory'} · ${formatTimeAgo(recentFactory.updatedAt)}`,
-                            time: formatTimeAgo(recentFactory.updatedAt),
+                            activities.push({
+                                id: `factory-${factory.id}`,
+                                type: 'success',
+                                title: isNew ? 'New factory registered' : 'Factory information updated',
+                                description: `${factory.Name || 'Factory'} · ${formatTimeAgo(factory.updatedAt)}`,
+                                time: factory.updatedAt,
+                            });
                         });
                     }
                 } catch (err) {
                     console.log('Could not fetch factories data');
                 }
 
-                // 4. Recently created admin notifications
+                // 4. Recently created admin notifications - Get top 3
                 if (notifData.data && notifData.data.length > 0) {
-                    const recentNotif = notifData.data[0];
-
-                    activities.push({
-                        id: `notif-${recentNotif.id}`,
-                        type: 'info',
-                        title: 'Notification sent',
-                        description: `${recentNotif.Title || 'Notification'} · ${formatTimeAgo(recentNotif.createdAt)}`,
-                        time: formatTimeAgo(recentNotif.createdAt),
+                    notifData.data.slice(0, 3).forEach((notif: any) => {
+                        activities.push({
+                            id: `notif-${notif.id}`,
+                            type: 'info',
+                            title: 'Notification sent',
+                            description: `${notif.Title || 'Notification'} · ${formatTimeAgo(notif.createdAt)}`,
+                            time: notif.createdAt,
+                        });
                     });
                 }
 
-                // Sort all activities by time and take top 5
+                // Sort all activities by time (descending) and take top 5
                 activities.sort((a, b) => {
                     const timeA = new Date(a.time).getTime();
                     const timeB = new Date(b.time).getTime();
@@ -258,6 +262,7 @@ export default function AdminDashboard({ userName = 'Admin' }: AdminDashboardPro
             }
         };
 
+    useEffect(() => {
         fetchDashboardData();
     }, []);
 
@@ -554,9 +559,21 @@ export default function AdminDashboard({ userName = 'Admin' }: AdminDashboardPro
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Recent Activity - Takes 2 columns */}
                         <Card className="lg:col-span-2 p-6 bg-white border-0 shadow-sm">
-                            <div className="flex items-center gap-2 mb-2">
-                                <History className="text-green-600" size={16} />
-                                <h3 className="text-sm font-bold text-green-700">Recent Activity</h3>
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                    <History className="text-green-600" size={16} />
+                                    <h3 className="text-sm font-bold text-green-700">Recent Activity</h3>
+                                </div>
+                                <Button
+                                    onClick={fetchDashboardData}
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 gap-2"
+                                    disabled={loading}
+                                >
+                                    <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+                                    Refresh
+                                </Button>
                             </div>
 
                             <div className="space-y-3">
