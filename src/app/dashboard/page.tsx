@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { MapPin, Calendar, Sprout, Leaf, Factory, Wrench, FlaskConical, Notebook, Check, ChartSpline, Star, SquarePen, Trash, Circle, ChevronDown, ChevronUp, Pencil, EllipsisVertical } from "lucide-react";
 import QualityDashboard from "./QualityDashboard";
 import FactoryDashboard from "./FactoryDashboard";
+import AdminDashboard from "./AdminDashboard";
 
 export default function DashboardPage() {
   const [batchDocumentID, setBatchDocumentID] = useState<string | null>(null);
@@ -759,99 +760,16 @@ export default function DashboardPage() {
     ],
 
     "Quality Inspection": [
-      <QualityDashboard />
+      <QualityDashboard key="quality-dashboard" />
     ],
 
-        "Factory": [
-      <FactoryDashboard />
+    "Factory": [
+      <FactoryDashboard key="factory-dashboard" />
     ],
 
     //Admin Dashboard
     Admin: [
-      <main key="admin-dashboard" className="flex flex-row h-full">
-        <div className="flex-1 p-4 overflow-auto">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-            <div className="text-2xl font-semibold text-gray-800">
-              <SidebarTrigger onClick={toggleSidebar} />
-              Welcome Admin - {user.name}!
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            <Card 
-              className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => window.location.href = '/users'}
-            >
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-100 rounded-lg">
-                  <Activity className="w-8 h-8 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg">User Management</h3>
-                  <p className="text-sm text-gray-500">Manage system users</p>
-                </div>
-              </div>
-            </Card>
-
-            <Card 
-              className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => window.location.href = '/admin-notifications'}
-            >
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <Inspect className="w-8 h-8 text-green-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg">Notifications</h3>
-                  <p className="text-sm text-gray-500">Send announcements to users</p>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-purple-100 rounded-lg">
-                  <ChartSpline className="w-8 h-8 text-purple-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg">System Settings</h3>
-                  <p className="text-sm text-gray-500">Configure system parameters</p>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          <div className="mt-8">
-            <h2 className="text-xl font-semibold mb-4">System Overview</h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="p-6">
-                <h3 className="font-semibold mb-4">Quick Stats</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Total Users</span>
-                    <span className="font-semibold">-</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Active Batches</span>
-                    <span className="font-semibold">-</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Pending Actions</span>
-                    <span className="font-semibold">-</span>
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="p-6">
-                <h3 className="font-semibold mb-4">Recent Activities</h3>
-                <div className="space-y-3">
-                  <p className="text-sm text-gray-500">No recent activities</p>
-                </div>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </main>
+      <AdminDashboard key="admin-dashboard" userName={user.name} />
     ],
   }
 

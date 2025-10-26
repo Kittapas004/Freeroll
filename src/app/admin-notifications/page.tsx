@@ -28,6 +28,16 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Bell,
   Plus,
   Edit,
@@ -41,6 +51,8 @@ import {
   Search,
   Eye,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -49,7 +61,8 @@ interface AdminNotification {
   documentId: string;
   Title: string;
   Message: string;
-  Target_Role: 'All' | 'Farmer' | 'Factory' | 'Quality Inspection';
+  Target_Role: 'All' | 'Farmer' | 'Factory' | 'Quality Inspection' | 'Specific Users';
+  Target_Users?: any[]; // Array of user objects
   Priority: 'Low' | 'Normal' | 'High' | 'Urgent';
   Category: 'Announcement' | 'System Update' | 'Maintenance' | 'Alert' | 'General';
   Status: 'Active' | 'Expired' | 'Draft';
@@ -64,12 +77,20 @@ interface AdminNotification {
 interface NotificationForm {
   Title: string;
   Message: string;
-  Target_Role: 'All' | 'Farmer' | 'Factory' | 'Quality Inspection';
+  Target_Role: 'All' | 'Farmer' | 'Factory' | 'Quality Inspection' | 'Specific Users';
+  Target_Users: number[]; // Array of user IDs
   Priority: 'Low' | 'Normal' | 'High' | 'Urgent';
   Category: 'Announcement' | 'System Update' | 'Maintenance' | 'Alert' | 'General';
   Status: 'Active' | 'Expired' | 'Draft';
   Expire_Date?: string;
   Link_Url?: string;
+}
+
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  user_role?: string;
 }
 
 export default function AdminNotificationPage() {
@@ -83,13 +104,20 @@ export default function AdminNotificationPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState<AdminNotification | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string>('');
+  const [users, setUsers] = useState<User[]>([]);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 3;
 
   const [formData, setFormData] = useState<NotificationForm>({
     Title: '',
     Message: '',
     Target_Role: 'All',
+    Target_Users: [],
     Priority: 'Normal',
     Category: 'General',
     Status: 'Active',
@@ -107,12 +135,32 @@ export default function AdminNotificationPage() {
     }
   }, [router]);
 
+  // Fetch users for dropdown
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('https://api-freeroll-production.up.railway.app/api/users', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('jwt')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch users');
+      }
+
+      const data = await response.json();
+      setUsers(data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
   // Fetch notifications
   const fetchNotifications = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api-freeroll-production.up.railway.app';
       const response = await fetch(
-        `${apiUrl}/api/admin-notifications?sort=createdAt:desc`,
+        `${apiUrl}/api/admin-notifications?populate=Target_Users&sort=createdAt:desc`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -139,7 +187,9 @@ export default function AdminNotificationPage() {
       setFilteredNotifications(notificationData);
     } catch (error) {
       console.error('Error fetching notifications:', error);
-      alert('Failed to load notifications. Please check console for details.');
+      // Don't show alert, just set empty array
+      setNotifications([]);
+      setFilteredNotifications([]);
     } finally {
       setLoading(false);
     }
@@ -148,6 +198,7 @@ export default function AdminNotificationPage() {
   useEffect(() => {
     if (currentUserRole === 'Admin') {
       fetchNotifications();
+      fetchUsers();
     }
   }, [currentUserRole]);
 
@@ -172,6 +223,7 @@ export default function AdminNotificationPage() {
     }
 
     setFilteredNotifications(filtered);
+    setCurrentPage(1); // Reset to page 1 when filters change
   }, [searchTerm, filterRole, filterStatus, notifications]);
 
   // Create notification
@@ -194,6 +246,18 @@ export default function AdminNotificationPage() {
       // Remove Link_Url if empty
       if (!dataToSend.Link_Url || dataToSend.Link_Url.trim() === '') {
         delete dataToSend.Link_Url;
+      }
+      
+      // Handle Target_Users - only include if Target_Role is 'Specific Users'
+      if (dataToSend.Target_Role === 'Specific Users') {
+        if (!dataToSend.Target_Users || dataToSend.Target_Users.length === 0) {
+          alert('Please select at least one user when sending to specific users');
+          return;
+        }
+        // Keep Target_Users as array of IDs
+      } else {
+        // Remove Target_Users for role-based notifications
+        delete dataToSend.Target_Users;
       }
       
       const response = await fetch(
@@ -246,6 +310,18 @@ export default function AdminNotificationPage() {
         delete dataToSend.Link_Url;
       }
       
+      // Handle Target_Users - only include if Target_Role is 'Specific Users'
+      if (dataToSend.Target_Role === 'Specific Users') {
+        if (!dataToSend.Target_Users || dataToSend.Target_Users.length === 0) {
+          alert('Please select at least one user when sending to specific users');
+          return;
+        }
+        // Keep Target_Users as array of IDs
+      } else {
+        // Remove Target_Users for role-based notifications
+        delete dataToSend.Target_Users;
+      }
+      
       const response = await fetch(
         `${apiUrl}/api/admin-notifications/${selectedNotification.documentId}`,
         {
@@ -275,8 +351,6 @@ export default function AdminNotificationPage() {
 
   // Delete notification
   const handleDeleteNotification = async (documentId: string) => {
-    if (!confirm('Are you sure you want to delete this notification?')) return;
-
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api-freeroll-production.up.railway.app';
       const response = await fetch(
@@ -292,6 +366,8 @@ export default function AdminNotificationPage() {
       if (!response.ok) throw new Error('Failed to delete notification');
 
       alert('Notification deleted successfully!');
+      setIsDeleteDialogOpen(false);
+      setSelectedNotification(null);
       fetchNotifications();
     } catch (error) {
       console.error('Error deleting notification:', error);
@@ -304,6 +380,7 @@ export default function AdminNotificationPage() {
       Title: '',
       Message: '',
       Target_Role: 'All',
+      Target_Users: [],
       Priority: 'Normal',
       Category: 'General',
       Status: 'Active',
@@ -314,10 +391,17 @@ export default function AdminNotificationPage() {
 
   const openEditDialog = (notification: AdminNotification) => {
     setSelectedNotification(notification);
+    
+    // Extract user IDs from Target_Users
+    const targetUserIds = notification.Target_Users 
+      ? notification.Target_Users.map((u: any) => u.id || u)
+      : [];
+    
     setFormData({
       Title: notification.Title,
       Message: notification.Message,
       Target_Role: notification.Target_Role,
+      Target_Users: targetUserIds,
       Priority: notification.Priority,
       Category: notification.Category,
       Status: notification.Status,
@@ -434,9 +518,9 @@ export default function AdminNotificationPage() {
                       <Label htmlFor="target-role">Target Role *</Label>
                       <Select
                         value={formData.Target_Role}
-                        onValueChange={(value: any) =>
-                          setFormData({ ...formData, Target_Role: value })
-                        }
+                        onValueChange={(value: any) => {
+                          setFormData({ ...formData, Target_Role: value, Target_Users: [] });
+                        }}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -446,6 +530,7 @@ export default function AdminNotificationPage() {
                           <SelectItem value="Farmer">Farmer</SelectItem>
                           <SelectItem value="Factory">Factory</SelectItem>
                           <SelectItem value="Quality Inspection">Quality Inspection</SelectItem>
+                          <SelectItem value="Specific Users">Specific Users</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -470,6 +555,58 @@ export default function AdminNotificationPage() {
                       </Select>
                     </div>
                   </div>
+
+                  {/* Specific Users Selection - Show only when Target_Role is 'Specific Users' */}
+                  {formData.Target_Role === 'Specific Users' && (
+                    <div className="grid gap-2">
+                      <Label htmlFor="target-users">Select Users *</Label>
+                      <div className="border rounded-md p-3 max-h-48 overflow-y-auto">
+                        {users.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No users available</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {users.map((user) => (
+                              <label
+                                key={user.id}
+                                className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={formData.Target_Users.includes(user.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setFormData({
+                                        ...formData,
+                                        Target_Users: [...formData.Target_Users, user.id],
+                                      });
+                                    } else {
+                                      setFormData({
+                                        ...formData,
+                                        Target_Users: formData.Target_Users.filter((id) => id !== user.id),
+                                      });
+                                    }
+                                  }}
+                                  className="rounded"
+                                />
+                                <div className="flex-1">
+                                  <span className="text-sm font-medium">{user.username}</span>
+                                  <span className="text-xs text-muted-foreground ml-2">({user.email})</span>
+                                  {user.user_role && (
+                                    <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                                      {user.user_role}
+                                    </span>
+                                  )}
+                                </div>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {formData.Target_Users.length} user(s) selected
+                      </p>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
@@ -644,21 +781,45 @@ export default function AdminNotificationPage() {
               <div className="text-center py-8">
                 <p className="text-gray-500">Loading notifications...</p>
               </div>
+            ) : notifications.length === 0 && !loading ? (
+              <div className="text-center py-8">
+                <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-2" />
+                <p className="text-gray-700 font-medium mb-1">Unable to connect to server</p>
+                <p className="text-gray-500 text-sm mb-4">Please make sure Strapi backend is running on port 1337</p>
+                <Button 
+                  onClick={() => {
+                    setLoading(true);
+                    fetchNotifications();
+                  }}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  Retry Connection
+                </Button>
+              </div>
             ) : filteredNotifications.length === 0 ? (
               <div className="text-center py-8">
                 <Bell className="w-12 h-12 text-gray-400 mx-auto mb-2" />
                 <p className="text-gray-500">No notifications found</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {filteredNotifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className="border rounded-lg p-4 hover:shadow-md transition-shadow"
-                  >
+              <>
+                <div className="space-y-3">
+                  {filteredNotifications
+                    .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+                    .map((notification) => {
+                    const isExpired = notification.Expire_Date && new Date(notification.Expire_Date) <= new Date();
+                    const daysUntilExpiry = notification.Expire_Date 
+                      ? Math.ceil((new Date(notification.Expire_Date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+                      : null;
+                    
+                    return (
+                    <div
+                      key={notification.id}
+                      className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                    >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
                           <h3 className="font-semibold text-lg">{notification.Title}</h3>
                           <span
                             className={`px-2 py-1 rounded text-xs font-medium border ${getPriorityColor(
@@ -674,26 +835,96 @@ export default function AdminNotificationPage() {
                           >
                             {notification.Status}
                           </span>
+                          <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium border border-purple-300">
+                            {notification.Category}
+                          </span>
                         </div>
 
-                        <p className="text-gray-600 text-sm mb-2 line-clamp-2">
+                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
                           {notification.Message && notification.Message.trim() && !notification.Message.match(/^#{3,}$/)
                             ? notification.Message
                             : '(No message content)'}
                         </p>
 
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <Users className="w-3 h-3" />
-                            {notification.Target_Role}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {new Date(notification.createdAt).toLocaleDateString()}
-                          </span>
-                          <span className="px-2 py-1 bg-gray-100 rounded">
-                            {notification.Category}
-                          </span>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+                          {/* Target Recipients */}
+                          <div className="flex items-start gap-2 text-xs">
+                            <Users className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1">
+                              <span className="text-gray-500 font-medium">Sent to: </span>
+                              {notification.Target_Role === 'Specific Users' ? (
+                                <div className="mt-1">
+                                  <span className="text-blue-600 font-medium">Specific Users ({notification.Target_Users?.length || 0})</span>
+                                  {notification.Target_Users && notification.Target_Users.length > 0 && (
+                                    <div className="mt-1 flex flex-wrap gap-1">
+                                      {notification.Target_Users.slice(0, 3).map((user: any) => (
+                                        <span key={user.id} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded border border-blue-200 text-xs">
+                                          {user.username}
+                                        </span>
+                                      ))}
+                                      {notification.Target_Users.length > 3 && (
+                                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">
+                                          +{notification.Target_Users.length - 3} more
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-gray-700 font-medium">{notification.Target_Role}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Expiry Date */}
+                          <div className="flex items-start gap-2 text-xs">
+                            <Clock className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
+                            <div className="flex-1">
+                              <span className="text-gray-500 font-medium">Expires: </span>
+                              {notification.Expire_Date ? (
+                                <div className="mt-1">
+                                  <span className={isExpired ? 'text-red-600 font-medium' : 'text-gray-700'}>
+                                    {new Date(notification.Expire_Date).toLocaleDateString('en-US', { 
+                                      year: 'numeric', 
+                                      month: 'short', 
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                  {!isExpired && daysUntilExpiry !== null && (
+                                    <span className={`ml-2 px-2 py-0.5 rounded text-xs font-medium ${
+                                      daysUntilExpiry <= 1 ? 'bg-red-100 text-red-700' :
+                                      daysUntilExpiry <= 3 ? 'bg-orange-100 text-orange-700' :
+                                      'bg-green-100 text-green-700'
+                                    }`}>
+                                      {daysUntilExpiry === 0 ? 'Today' : 
+                                       daysUntilExpiry === 1 ? 'Tomorrow' :
+                                       `${daysUntilExpiry} days left`}
+                                    </span>
+                                  )}
+                                  {isExpired && (
+                                    <span className="ml-2 px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs font-medium">
+                                      Expired
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-gray-500 italic">No expiration</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-xs text-gray-500 pt-2 border-t">
+                          <Calendar className="w-3 h-3" />
+                          <span>Created: {new Date(notification.createdAt).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'short', 
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}</span>
                         </div>
                       </div>
 
@@ -715,15 +946,67 @@ export default function AdminNotificationPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDeleteNotification(notification.documentId)}
+                          onClick={() => {
+                            setSelectedNotification(notification);
+                            setIsDeleteDialogOpen(true);
+                          }}
                         >
                           <Trash2 className="w-4 h-4 text-red-600" />
                         </Button>
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
+
+              {/* Pagination Controls */}
+              {filteredNotifications.length > ITEMS_PER_PAGE && (
+                <div className="mt-6 flex items-center justify-between border-t pt-4">
+                  <div className="text-sm text-gray-600">
+                    Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredNotifications.length)} of {filteredNotifications.length} notifications
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="flex items-center gap-1"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Previous
+                    </Button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.ceil(filteredNotifications.length / ITEMS_PER_PAGE) }, (_, i) => i + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(page)}
+                          className={currentPage === page ? "bg-green-600 hover:bg-green-700" : ""}
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredNotifications.length / ITEMS_PER_PAGE)))}
+                      disabled={currentPage === Math.ceil(filteredNotifications.length / ITEMS_PER_PAGE)}
+                      className="flex items-center gap-1"
+                    >
+                      Next
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
             )}
           </Card>
         </div>
@@ -760,7 +1043,9 @@ export default function AdminNotificationPage() {
                   <Label>Target Role</Label>
                   <Select
                     value={formData.Target_Role}
-                    onValueChange={(value: any) => setFormData({ ...formData, Target_Role: value })}
+                    onValueChange={(value: any) => {
+                      setFormData({ ...formData, Target_Role: value, Target_Users: [] });
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -770,6 +1055,7 @@ export default function AdminNotificationPage() {
                       <SelectItem value="Farmer">Farmer</SelectItem>
                       <SelectItem value="Factory">Factory</SelectItem>
                       <SelectItem value="Quality Inspection">Quality Inspection</SelectItem>
+                      <SelectItem value="Specific Users">Specific Users</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -792,6 +1078,58 @@ export default function AdminNotificationPage() {
                   </Select>
                 </div>
               </div>
+
+              {/* Specific Users Selection for Edit - Show only when Target_Role is 'Specific Users' */}
+              {formData.Target_Role === 'Specific Users' && (
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-target-users">Select Users *</Label>
+                  <div className="border rounded-md p-3 max-h-48 overflow-y-auto">
+                    {users.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No users available</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {users.map((user) => (
+                          <label
+                            key={user.id}
+                            className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={formData.Target_Users.includes(user.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setFormData({
+                                    ...formData,
+                                    Target_Users: [...formData.Target_Users, user.id],
+                                  });
+                                } else {
+                                  setFormData({
+                                    ...formData,
+                                    Target_Users: formData.Target_Users.filter((id) => id !== user.id),
+                                  });
+                                }
+                              }}
+                              className="rounded"
+                            />
+                            <div className="flex-1">
+                              <span className="text-sm font-medium">{user.username}</span>
+                              <span className="text-xs text-muted-foreground ml-2">({user.email})</span>
+                              {user.user_role && (
+                                <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                                  {user.user_role}
+                                </span>
+                              )}
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {formData.Target_Users.length} user(s) selected
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
@@ -909,6 +1247,32 @@ export default function AdminNotificationPage() {
                   </div>
                 </div>
 
+                {/* Show selected users if Target_Role is 'Specific Users' */}
+                {selectedNotification.Target_Role === 'Specific Users' && selectedNotification.Target_Users && (
+                  <div>
+                    <Label className="text-gray-500">Target Users</Label>
+                    <div className="mt-2 p-3 bg-gray-50 rounded-md border border-gray-200 max-h-48 overflow-y-auto">
+                      {selectedNotification.Target_Users.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No users selected</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {selectedNotification.Target_Users.map((user: any, index: number) => (
+                            <div key={index} className="flex items-center gap-2 text-sm">
+                              <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-medium">
+                                {user.username ? user.username.charAt(0).toUpperCase() : 'U'}
+                              </div>
+                              <div>
+                                <p className="font-medium">{user.username || 'Unknown User'}</p>
+                                <p className="text-xs text-muted-foreground">{user.email || 'No email'}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-gray-500">Category</Label>
@@ -978,6 +1342,32 @@ export default function AdminNotificationPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this notification?
+                {selectedNotification && (
+                  <span className="font-semibold"> {selectedNotification.Title}</span>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setSelectedNotification(null)}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => selectedNotification && handleDeleteNotification(selectedNotification.documentId)}
+                className="bg-red-500 hover:bg-red-600"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SidebarInset>
     </SidebarProvider>
   );

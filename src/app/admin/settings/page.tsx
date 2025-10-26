@@ -17,6 +17,16 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { GiFarmer } from 'react-icons/gi'
 import { TbTestPipe } from 'react-icons/tb'
 import { BiSolidFactory } from 'react-icons/bi'
@@ -73,6 +83,8 @@ function SettingSection({ title, icon, fields }: SettingSectionProps) {
 // Reusable component for individual setting fields
 function SettingField({ label, items, setItems, apiEndpoint, apiField }: SettingFieldProps) {
   const [inputValue, setInputValue] = useState('')
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [itemToDelete, setItemToDelete] = useState<{ index: number; value: string } | null>(null)
 
   const handleAdd = () => {
     const value = inputValue.trim()
@@ -126,9 +138,7 @@ function SettingField({ label, items, setItems, apiEndpoint, apiField }: Setting
         setItems(items.filter((_, i) => i !== index))
         return
       }
-      // make conditon to ensure user want to delete
-      const confirmDelete = window.confirm(`Are you sure you want to remove "${valueToRemove}"?`)
-      if (!confirmDelete) return
+
       try {
         const token = typeof window !== 'undefined'
           ? localStorage.getItem('token') ?? localStorage.getItem('jwt') ?? ''
@@ -168,6 +178,8 @@ function SettingField({ label, items, setItems, apiEndpoint, apiField }: Setting
         }
 
         setItems(items.filter((_, i) => i !== index))
+        setIsDeleteDialogOpen(false)
+        setItemToDelete(null)
         window.alert('Removed successfully')
       } catch (err) {
         console.error('Error removing item from API', err)
@@ -198,7 +210,10 @@ function SettingField({ label, items, setItems, apiEndpoint, apiField }: Setting
               >
                 {item}
                 <button
-                  onClick={() => handleRemove(index)}
+                  onClick={() => {
+                    setItemToDelete({ index, value: item })
+                    setIsDeleteDialogOpen(true)
+                  }}
                   className="text-gray-600 hover:text-gray-900 ml-1"
                 >
                   <X className="h-3 w-3" />
@@ -224,6 +239,32 @@ function SettingField({ label, items, setItems, apiEndpoint, apiField }: Setting
           Add
         </Button>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove
+              {itemToDelete && (
+                <span className="font-semibold"> "{itemToDelete.value}"</span>
+              )}?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setItemToDelete(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => itemToDelete && handleRemove(itemToDelete.index)}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

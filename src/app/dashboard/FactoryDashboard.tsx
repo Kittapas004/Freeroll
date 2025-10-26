@@ -74,6 +74,7 @@ interface FactoryNotification {
   date: string;
   read: boolean;
   notification_status: 'General' | 'Succeed' | 'Failed' | 'Warning';
+  createdAt?: string; // ✅ เพิ่ม createdAt สำหรับ sorting
 }
 
 interface ProcessingHistory {
@@ -255,7 +256,8 @@ export default function FactoryDashboard() {
           batchId,
           date: timeAgo,
           read: notification.Notification_status !== 'General', // Assume 'General' means unread
-          notification_status: notification.Notification_status || 'General'
+          notification_status: notification.Notification_status || 'General',
+          createdAt: notification.createdAt || notification.Date // ✅ เพิ่ม createdAt สำหรับ sorting
         };
       });
 
@@ -285,8 +287,11 @@ export default function FactoryDashboard() {
     try {
       console.log('🔔 Fetching Admin notifications...');
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api-freeroll-production.up.railway.app';
+      const userId = localStorage.getItem('userId'); // ✅ Get current user ID
+      
+      // ✅ ดึงทุก Active notifications พร้อม populate Target_Users
       const response = await fetch(
-        `${apiUrl}/api/admin-notifications?filters[$and][0][Status][$eq]=Active&filters[$and][1][$or][0][Target_Role][$eq]=All&filters[$and][1][$or][1][Target_Role][$eq]=Factory&sort=Priority:desc,createdAt:desc`,
+        `${apiUrl}/api/admin-notifications?populate=Target_Users&filters[$and][0][Status][$eq]=Active&sort=Priority:desc,createdAt:desc`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -302,11 +307,27 @@ export default function FactoryDashboard() {
       const result = await response.json();
       console.log('✅ Admin notifications:', result);
 
-      // Filter out expired notifications and map to factory notification format
+      // Get dismissed notifications from localStorage (แยก key ตาม role)
+      const dismissed = JSON.parse(localStorage.getItem('dismissedAdminNotifications_Factory') || '[]');
+
+      // ✅ Filter notifications ที่เกี่ยวข้องกับ Factory user นี้
       const activeNotifications = result.data
         .filter((item: any) => {
-          if (!item.Expire_Date) return true;
-          return new Date(item.Expire_Date) > new Date();
+          // Filter expired
+          if (item.Expire_Date && new Date(item.Expire_Date) <= new Date()) return false;
+          // Filter dismissed
+          if (dismissed.includes(`admin-${item.id}`)) return false;
+          
+          // Check if notification is for this user
+          const isForAll = item.Target_Role === 'All';
+          const isForRole = item.Target_Role === 'Factory'; // ✅ เช็ค Factory role
+          const isForSpecificUser = item.Target_Role === 'Specific Users' && 
+            item.Target_Users?.some((user: any) => 
+              String(user.id) === String(userId) || 
+              String(user.documentId) === String(userId)
+            );
+          
+          return isForAll || isForRole || isForSpecificUser;
         })
         .map((notification: any) => {
           console.log('📅 Admin notification date:', {
@@ -320,24 +341,18 @@ export default function FactoryDashboard() {
             title: notification.Title,
             message: notification.Message,
             batchId: 'Admin',
-            date: formatRelativeTime(notification.createdAt), // ✅ ใช้ formatRelativeTime แทน
+            date: formatRelativeTime(notification.createdAt),
             read: false,
             notification_status: notification.Priority,
             priority: notification.Priority,
             category: notification.Category,
             linkUrl: notification.Link_Url,
             isAdmin: true,
-            createdAt: notification.createdAt // ✅ เก็บ original date สำหรับ dismiss
+            createdAt: notification.createdAt
           };
         });
 
-      // ✅ กรอง dismissed notifications ออก (แยก key ตาม role)
-      const dismissed = JSON.parse(localStorage.getItem('dismissedAdminNotifications_Factory') || '[]');
-      const filteredNotifications = activeNotifications.filter(
-        (n: any) => !dismissed.includes(n.id)
-      );
-
-      setAdminNotifications(filteredNotifications);
+      setAdminNotifications(activeNotifications);
     } catch (error) {
       console.error('❌ Error fetching admin notifications:', error);
     }
@@ -1029,9 +1044,9 @@ export default function FactoryDashboard() {
   // ✅ รวม Factory Notifications และ Admin Notifications
   const allNotifications = [...adminNotifications, ...factoryNotifications].sort(
     (a: any, b: any) => {
-      // Sort by timestamp (newest first)
-      const dateA = new Date(a.date === 'Just now' ? Date.now() : a.date);
-      const dateB = new Date(b.date === 'Just now' ? Date.now() : b.date);
+      // Sort by createdAt timestamp (newest first)
+      const dateA = new Date(a.createdAt || a.date || 0);
+      const dateB = new Date(b.createdAt || b.date || 0);
       return dateB.getTime() - dateA.getTime();
     }
   );

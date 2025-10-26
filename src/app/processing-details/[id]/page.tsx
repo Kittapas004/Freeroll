@@ -13,6 +13,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
     Package,
     Calendar,
     Weight,
@@ -174,6 +184,13 @@ export default function ProcessingDetailsPage() {
 
     // Processing Status
     const [currentStatus, setCurrentStatus] = useState("Received");
+
+    // AlertDialog states
+    const [isCompleteDialogOpen, setIsCompleteDialogOpen] = useState(false);
+    const [isRemoveStepDialogOpen, setIsRemoveStepDialogOpen] = useState(false);
+    const [isRemoveOutputDialogOpen, setIsRemoveOutputDialogOpen] = useState(false);
+    const [isClearAllDialogOpen, setIsClearAllDialogOpen] = useState(false);
+    const [itemToRemove, setItemToRemove] = useState<string | null>(null);
 
     // Steps Configuration
     const steps = [
@@ -531,7 +548,8 @@ export default function ProcessingDetailsPage() {
             const updateData: any = {
                 workflow_step: currentStep,
                 is_processing_mode: isProcessingMode,
-                Processing_Status: currentStep === 4 ? "Completed" : "Processing"
+                // Don't auto-complete when saving draft - only when explicitly completing
+                Processing_Status: currentStatus === "Completed" ? "Completed" : "Processing"
             };
 
             // Quality Inspection Data
@@ -892,108 +910,6 @@ export default function ProcessingDetailsPage() {
     const handleSaveDraft = async () => {
         await saveCurrentStep();
         alert('Draft saved successfully!');
-    };
-
-    const handleCompleteProcessing = async () => {
-        try {
-            // Check if there's remaining material and ask for confirmation
-            if (batchInfo.remainingBalance > 0) {
-                const remainingWeight = batchInfo.remainingBalance.toFixed(2);
-                const totalProcessingWeight = processingWeightHistory.reduce((sum, h) => sum + h.weight, 0);
-
-                const confirmMessage = `⚠️ Warning: You still have ${remainingWeight} kg of material remaining!\n\n` +
-                    `Processed: ${totalProcessingWeight} kg\n` +
-                    `Remaining: ${remainingWeight} kg\n\n` +
-                    `Once you complete this processing, you will NOT be able to come back and process the remaining material.\n\n` +
-                    `Do you want to:\n` +
-                    `• Click "OK" to COMPLETE and leave ${remainingWeight} kg unprocessed\n` +
-                    `• Click "Cancel" to go back and process the remaining material`;
-
-                const userConfirmed = confirm(confirmMessage);
-
-                if (!userConfirmed) {
-                    // User wants to go back and process remaining material
-                    return;
-                }
-            }
-
-            // Save current step data first
-            await saveCurrentStep();
-
-            // Get existing sessions to calculate correct session number
-            const existingSessions = JSON.parse(localStorage.getItem(`processing_sessions_${params.id}`) || '[]');
-            const nextSessionNumber = existingSessions.length + 1;
-
-            // Calculate total processing weight from history
-            const totalProcessingWeight = processingWeightHistory.reduce((sum, h) => sum + h.weight, 0);
-
-            // Create Processing Session Record
-            const sessionRecord = {
-                sessionNumber: nextSessionNumber,
-                processingWeight: totalProcessingWeight,
-                completedDate: new Date().toISOString(),
-                operations: processingSteps,
-                outputRecords: outputRecords, // Multiple outputs
-                totalOutput: outputRecords.reduce((sum, r) => sum + r.quantity, 0),
-                totalWaste: outputRecords.reduce((sum, r) => sum + r.wasteQuantity, 0),
-                productGrade: productGrade,
-                targetMarket: targetMarket,
-                standardCriteria: standardCriteria,
-                certificationStatus: certificationStatus,
-                status: 'Completed'
-            };
-
-            // Save session to localStorage
-            existingSessions.push(sessionRecord);
-            localStorage.setItem(`processing_sessions_${params.id}`, JSON.stringify(existingSessions));
-
-            // Clear processing weight history for next session
-            localStorage.removeItem(`processing_history_${params.id}`);
-
-            // Reset all step data for next session
-            setQualityData({
-                moisture: "",
-                curcuminoidContent: "",
-                lead: "",
-                cadmium: "",
-                arsenic: "",
-                mercury: "",
-                totalPlateCount: "",
-                yeastMold: "",
-                eColi: "Not Detected",
-                salmonella: "Not Detected",
-                inspectionNotes: "",
-            });
-            setInspectorName("");
-            setPesticideResidues("");
-            setProcessingSteps([]);
-            setProcessingWeightHistory([]);
-            setOutputRecords([]); // Clear output records
-            setOutputQuantity("");
-            setWasteQuantity("");
-            setComplianceNotes("");
-            setProductGrade("");
-            setTargetMarket("");
-
-            // Update status - Always mark as Completed when this function is called
-            setCurrentStatus("Completed");
-            setIsReadOnly(true);
-
-            if (batchInfo.remainingBalance <= 0) {
-                // All material processed
-                alert('🎉 Processing completed successfully!\n\nAll material has been processed.');
-            } else {
-                // Material remaining but user confirmed to complete
-                alert(`✅ Processing completed successfully!\n\nProcessed: ${totalProcessingWeight} kg\nRemaining (unprocessed): ${batchInfo.remainingBalance.toFixed(2)} kg\n\nThe remaining material has been left unprocessed as confirmed.`);
-            }
-
-            // Reload data to reflect changes
-            await fetchBatchDetails();
-
-        } catch (error) {
-            console.error('Error completing processing:', error);
-            alert('Error completing processing. Please try again.');
-        }
     };
 
     // Print Report Function - รองรับหลาย output records
@@ -2522,7 +2438,7 @@ export default function ProcessingDetailsPage() {
                     <div className="flex gap-2">
                         {processingSteps.length > 0 && (
                             <Button
-                                onClick={clearAllProcessingSteps}
+                                onClick={() => setIsClearAllDialogOpen(true)}
                                 variant="outline"
                                 disabled={isReadOnly}
                                 className="flex items-center gap-2 text-red-600 hover:text-red-700"
@@ -2656,7 +2572,10 @@ export default function ProcessingDetailsPage() {
                                                                     <Button
                                                                         variant="ghost"
                                                                         size="sm"
-                                                                        onClick={() => removeProcessingStep(step.id)}
+                                                                        onClick={() => {
+                                                                            setItemToRemove(step.id);
+                                                                            setIsRemoveStepDialogOpen(true);
+                                                                        }}
                                                                         className="text-red-600 hover:text-red-700"
                                                                     >
                                                                         Remove
@@ -3108,7 +3027,10 @@ export default function ProcessingDetailsPage() {
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => removeOutputRecord(record.id)}
+                                            onClick={() => {
+                                                setItemToRemove(record.id);
+                                                setIsRemoveOutputDialogOpen(true);
+                                            }}
                                             className="text-red-600 hover:bg-red-50"
                                         >
                                             Remove
@@ -3397,7 +3319,7 @@ export default function ProcessingDetailsPage() {
                         </Button>
                     ) : (
                         <Button
-                            onClick={handleCompleteProcessing}
+                            onClick={() => setIsCompleteDialogOpen(true)}
                             className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
                             disabled={saving || isReadOnly}
                         >
@@ -3408,6 +3330,65 @@ export default function ProcessingDetailsPage() {
                 </div>
             </div>
         );
+    };
+
+    // ✅ Complete Processing Handler (confirmation via Dialog)
+    const handleCompleteProcessing = async () => {
+        try {
+            setIsCompleteDialogOpen(false); // Close dialog
+
+            // Save current step data first
+            await saveCurrentStep();
+
+            // Calculate processing summary
+            const totalProcessingWeight = processingWeightHistory.reduce((sum, h) => sum + h.weight, 0);
+
+            // Update status to Completed
+            setCurrentStatus("Completed");
+            setIsReadOnly(true);
+
+            if (batchInfo.remainingBalance <= 0) {
+                alert('🎉 Processing completed successfully!\n\nAll material has been processed.');
+            } else {
+                alert(`✅ Processing completed successfully!\n\nProcessed: ${totalProcessingWeight} kg\nRemaining (unprocessed): ${batchInfo.remainingBalance.toFixed(2)} kg\n\nThe remaining material has been left unprocessed as confirmed.`);
+            }
+
+            // Reload data to reflect changes
+            await fetchBatchDetails();
+
+        } catch (error) {
+            console.error('Error completing processing:', error);
+            alert('Error completing processing. Please try again.');
+        }
+    };
+
+    // ✅ Remove Processing Step Handler (confirmation via Dialog)
+    const handleRemoveStep = () => {
+        if (itemToRemove) {
+            const updatedSteps = processingSteps.filter(step => step.id !== itemToRemove);
+            setProcessingSteps(updatedSteps);
+            saveProcessingStepsToDatabase(updatedSteps);
+        }
+        setIsRemoveStepDialogOpen(false);
+        setItemToRemove(null);
+    };
+
+    // ✅ Remove Output Record Handler (confirmation via Dialog)
+    const handleRemoveOutput = () => {
+        if (itemToRemove) {
+            const updatedRecords = outputRecords.filter(r => r.id !== itemToRemove);
+            setOutputRecords(updatedRecords);
+            saveOutputRecordsToDatabase(updatedRecords);
+        }
+        setIsRemoveOutputDialogOpen(false);
+        setItemToRemove(null);
+    };
+
+    // ✅ Clear All Processing Steps Handler (confirmation via Dialog)
+    const handleClearAll = async () => {
+        setIsClearAllDialogOpen(false);
+        setProcessingSteps([]);
+        await saveProcessingStepsToDatabase([]);
     };
 
     return (
@@ -3444,6 +3425,110 @@ export default function ProcessingDetailsPage() {
                     )}
                 </div>
             </SidebarInset>
+
+            {/* ✅ Complete Processing Dialog */}
+            <AlertDialog open={isCompleteDialogOpen} onOpenChange={setIsCompleteDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Complete Processing?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {batchInfo.remainingBalance > 0 ? (
+                                <>
+                                    ⚠️ <strong>Warning:</strong> You still have <strong>{batchInfo.remainingBalance.toFixed(2)} kg</strong> of material remaining!
+                                    <br /><br />
+                                    Once you complete this processing, you will <strong>NOT</strong> be able to come back and process the remaining material.
+                                    <br /><br />
+                                    Do you want to complete and leave {batchInfo.remainingBalance.toFixed(2)} kg unprocessed?
+                                </>
+                            ) : (
+                                <>
+                                    Are you sure you want to complete this processing?
+                                    <br /><br />
+                                    This action will lock the processing record and mark the batch as completed.
+                                </>
+                            )}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleCompleteProcessing}
+                            className="bg-green-600 hover:bg-green-700"
+                        >
+                            Complete Processing
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* ✅ Remove Processing Step Dialog */}
+            <AlertDialog open={isRemoveStepDialogOpen} onOpenChange={setIsRemoveStepDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Remove Processing Step?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to remove this processing step?
+                            <br /><br />
+                            This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setItemToRemove(null)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleRemoveStep}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            Remove
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* ✅ Remove Output Record Dialog */}
+            <AlertDialog open={isRemoveOutputDialogOpen} onOpenChange={setIsRemoveOutputDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Remove Output Record?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to remove this output record?
+                            <br /><br />
+                            This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setItemToRemove(null)}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleRemoveOutput}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            Remove
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* ✅ Clear All Processing Steps Dialog */}
+            <AlertDialog open={isClearAllDialogOpen} onOpenChange={setIsClearAllDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Clear All Processing Steps?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to clear <strong>all {processingSteps.length} processing step(s)</strong>?
+                            <br /><br />
+                            This will remove all processing operations and <strong>cannot be undone</strong>.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleClearAll}
+                            className="bg-red-600 hover:bg-red-700"
+                        >
+                            Clear All
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </SidebarProvider>
     );
 }

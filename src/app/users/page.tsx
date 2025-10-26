@@ -40,7 +40,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, Edit, Trash2, UserPlus, Filter, Upload, Building2, Building } from 'lucide-react'
+import { Search, Plus, Edit, Trash2, UserPlus, Filter, Upload, Building2, Building, ChevronLeft, ChevronRight } from 'lucide-react'
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { Separator } from "@/components/ui/separator"
@@ -98,6 +98,10 @@ export default function UserManagementPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('All')
   const [statusFilter, setStatusFilter] = useState<string>('All')
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 10
   
   // Dialog states
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
@@ -234,6 +238,7 @@ export default function UserManagementPage() {
     }
 
     setFilteredUsers(filtered)
+    setCurrentPage(1) // Reset to page 1 when filters change
   }, [searchTerm, roleFilter, statusFilter, users])
 
   const fetchUsers = async () => {
@@ -771,7 +776,7 @@ export default function UserManagementPage() {
                 setIsAddDialogOpen(open)
               }}>
                 <DialogTrigger asChild>
-                  <Button className="bg-green-500 hover:bg-green-600">
+                  <Button className="bg-green-600 hover:bg-green-700">
                     <Plus className="mr-2 h-4 w-4" />
                     Add User
                   </Button>
@@ -1016,7 +1021,8 @@ export default function UserManagementPage() {
                   <p className="text-gray-500">Loading users...</p>
                 </div>
               ) : (
-                <Table>
+                <>
+                  <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
@@ -1037,7 +1043,9 @@ export default function UserManagementPage() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredUsers.map((user) => (
+                      filteredUsers
+                        .slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+                        .map((user) => (
                         <TableRow key={user.id}>
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-3">
@@ -1108,6 +1116,54 @@ export default function UserManagementPage() {
                     )}
                   </TableBody>
                 </Table>
+                
+                {/* Pagination Controls */}
+                {filteredUsers.length > ITEMS_PER_PAGE && (
+                  <div className="mt-4 px-6 pb-4 flex items-center justify-between border-t pt-4">
+                    <div className="text-sm text-gray-600">
+                      Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredUsers.length)} of {filteredUsers.length} users
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="flex items-center gap-1"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                        Previous
+                      </Button>
+                      
+                      <div className="flex items-center gap-1">
+                        {Array.from({ length: Math.ceil(filteredUsers.length / ITEMS_PER_PAGE) }, (_, i) => i + 1).map((page) => (
+                          <Button
+                            key={page}
+                            variant={currentPage === page ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(page)}
+                            className={currentPage === page ? "bg-green-600 hover:bg-green-700" : ""}
+                          >
+                            {page}
+                          </Button>
+                        ))}
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredUsers.length / ITEMS_PER_PAGE)))}
+                        disabled={currentPage === Math.ceil(filteredUsers.length / ITEMS_PER_PAGE)}
+                        className="flex items-center gap-1"
+                      >
+                        Next
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                </>
               )}
             </div>
           </div>

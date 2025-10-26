@@ -14,6 +14,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -39,7 +49,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
-import { Plus, Pencil, Trash2, Search } from "lucide-react"
+import { Plus, Pencil, Trash2, Search, ChevronLeft, ChevronRight } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Textarea } from "@/components/ui/textarea"
 
@@ -87,9 +97,14 @@ export default function FactoriesPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedFactory, setSelectedFactory] = useState<Factory | null>(null)
   const [formData, setFormData] = useState<FactoryFormData>(initialFormData)
   const { toast } = useToast()
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 10
 
   useEffect(() => {
     fetchFactories()
@@ -280,8 +295,6 @@ export default function FactoriesPage() {
   }
 
   const handleDeleteFactory = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this factory?")) return
-
     try {
       const response = await fetch(`https://api-freeroll-production.up.railway.app/api/factories/${id}`, {
         method: 'DELETE',
@@ -297,6 +310,8 @@ export default function FactoriesPage() {
         description: "Factory deleted successfully",
       })
       
+      setIsDeleteDialogOpen(false)
+      setSelectedFactory(null)
       fetchFactories()
     } catch (error) {
       console.error('Error deleting factory:', error)
@@ -327,6 +342,18 @@ export default function FactoriesPage() {
   const filteredFactories = factories.filter(factory =>
     factory.Factory_Name?.toLowerCase().includes(searchTerm.toLowerCase())
   )
+  
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredFactories.length / ITEMS_PER_PAGE)
+  const paginatedFactories = filteredFactories.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  )
+  
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm])
 
   return (
     <SidebarProvider>
@@ -368,7 +395,7 @@ export default function FactoriesPage() {
             <DialogHeader>
               <DialogTitle>Add New Factory</DialogTitle>
               <DialogDescription>
-                เพิ่มโรงงานแปรรูปใหม่ในระบบ
+                Add New Processing Plant
               </DialogDescription>
             </DialogHeader>
             
@@ -540,9 +567,9 @@ export default function FactoriesPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredFactories.map((factory, index) => (
+                  paginatedFactories.map((factory, index) => (
                     <TableRow key={factory.id}>
-                      <TableCell className="font-medium pl-6">{index + 1}</TableCell>
+                      <TableCell className="font-medium pl-6">{(currentPage - 1) * ITEMS_PER_PAGE + index + 1}</TableCell>
                       <TableCell>{factory.Factory_Name || 'N/A'}</TableCell>
                       <TableCell>
                         <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-xs">
@@ -578,7 +605,10 @@ export default function FactoriesPage() {
                       <Button
                         variant="destructive"
                         size="icon"
-                        onClick={() => handleDeleteFactory(factory.id)}
+                        onClick={() => {
+                          setSelectedFactory(factory)
+                          setIsDeleteDialogOpen(true)
+                        }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -588,6 +618,53 @@ export default function FactoriesPage() {
               )}
             </TableBody>
           </Table>
+          
+          {/* Pagination Controls */}
+          {filteredFactories.length > ITEMS_PER_PAGE && (
+            <div className="mt-4 px-6 pb-4 flex items-center justify-between border-t pt-4">
+              <div className="text-sm text-gray-600">
+                Showing {((currentPage - 1) * ITEMS_PER_PAGE) + 1} to {Math.min(currentPage * ITEMS_PER_PAGE, filteredFactories.length)} of {filteredFactories.length} factories
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="flex items-center gap-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <Button
+                      key={page}
+                      variant={currentPage === page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className={currentPage === page ? "bg-green-600 hover:bg-green-700" : ""}
+                    >
+                      {page}
+                    </Button>
+                  ))}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="flex items-center gap-1"
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
           </div>
 
           {/* Edit Dialog */}
@@ -734,6 +811,32 @@ export default function FactoriesPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+
+          {/* Delete Confirmation Dialog */}
+          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete this factory?
+                  {selectedFactory && (
+                    <span className="font-semibold"> {selectedFactory.Factory_Name}</span>
+                  )}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setSelectedFactory(null)}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => selectedFactory && handleDeleteFactory(selectedFactory.id)}
+                  className="bg-red-500 hover:bg-red-600"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </SidebarInset>
     </SidebarProvider>

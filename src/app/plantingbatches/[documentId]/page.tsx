@@ -200,6 +200,7 @@ export default function PlantingBatchDetail() {
                 id: lab.id,
                 documentId: lab.documentId,
                 Lab_name: lab.Lab_Name,
+                Status_Lab: lab.Status_Lab,
             })));
         }
         catch (error) {
@@ -5115,11 +5116,13 @@ export default function PlantingBatchDetail() {
                                     <SelectValue placeholder="Select Your Lab to Submission" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {labdata.map((lab) => (
-                                        <SelectItem key={lab.id} value={lab.documentId}>
-                                            {lab.Lab_name}
-                                        </SelectItem>
-                                    ))}
+                                    {labdata
+                                        .filter((lab) => lab.Status_Lab === "Active")
+                                        .map((lab) => (
+                                            <SelectItem key={lab.id} value={lab.documentId}>
+                                                {lab.Lab_name}
+                                            </SelectItem>
+                                        ))}
                                 </SelectContent>
                             </Select>
                         </div>

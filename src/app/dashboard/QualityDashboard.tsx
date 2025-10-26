@@ -468,8 +468,11 @@ export default function QualityDashboard() {
     try {
       console.log('🔔 Fetching Admin notifications...');
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api-freeroll-production.up.railway.app';
+      const userId = localStorage.getItem('userId'); // ✅ Get current user ID
+      
+      // ✅ ดึงทุก Active notifications พร้อม populate Target_Users
       const response = await fetch(
-        `${apiUrl}/api/admin-notifications?filters[$and][0][Status][$eq]=Active&filters[$and][1][$or][0][Target_Role][$eq]=All&filters[$and][1][$or][1][Target_Role][$eq]=Quality Inspection&sort=Priority:desc,createdAt:desc`,
+        `${apiUrl}/api/admin-notifications?populate=Target_Users&filters[$and][0][Status][$eq]=Active&sort=Priority:desc,createdAt:desc`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -488,14 +491,24 @@ export default function QualityDashboard() {
       // ✅ Get dismissed notifications from localStorage (แยก key ตาม role)
       const dismissedNotifications = JSON.parse(localStorage.getItem('dismissedAdminNotifications_Quality') || '[]');
 
-      // Filter out expired and dismissed notifications
+      // ✅ Filter notifications ที่เกี่ยวข้องกับ Quality Inspection user นี้
       const activeNotifications = result.data
         .filter((item: any) => {
           // Filter expired
           if (item.Expire_Date && new Date(item.Expire_Date) <= new Date()) return false;
           // Filter dismissed
           if (dismissedNotifications.includes(`admin-${item.id}`)) return false;
-          return true;
+          
+          // Check if notification is for this user
+          const isForAll = item.Target_Role === 'All';
+          const isForRole = item.Target_Role === 'Quality Inspection'; // ✅ เช็ค Quality Inspection role
+          const isForSpecificUser = item.Target_Role === 'Specific Users' && 
+            item.Target_Users?.some((user: any) => 
+              String(user.id) === String(userId) || 
+              String(user.documentId) === String(userId)
+            );
+          
+          return isForAll || isForRole || isForSpecificUser;
         })
         .map((notification: any) => {
           console.log('📅 Quality Admin notification date:', {

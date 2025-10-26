@@ -100,8 +100,11 @@ export default function NotificationPanel({ selectedBatchId, userRole }: Notific
     
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api-freeroll-production.up.railway.app';
+      const userId = localStorage.getItem('userId'); // Get current user ID
+      
+      // Fetch notifications ที่ส่งตาม Role หรือส่งเฉพาะ user นี้
       const response = await fetch(
-        `${apiUrl}/api/admin-notifications?filters[$and][0][Status][$eq]=Active&filters[$and][1][$or][0][Target_Role][$eq]=All&filters[$and][1][$or][1][Target_Role][$eq]=${userRole}&sort=Priority:desc,createdAt:desc`,
+        `${apiUrl}/api/admin-notifications?populate=Target_Users&filters[$and][0][Status][$eq]=Active&sort=Priority:desc,createdAt:desc`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('jwt')}`,
@@ -117,16 +120,23 @@ export default function NotificationPanel({ selectedBatchId, userRole }: Notific
       const result = await response.json();
       
       // Get dismissed notifications from localStorage (แยก key ตาม role)
-      const dismissedNotifications = JSON.parse(localStorage.getItem('dismissedAdminNotifications_Farmer') || '[]');
+      const dismissedNotifications = JSON.parse(localStorage.getItem(`dismissedAdminNotifications_${userRole}`) || '[]');
       
-      // Filter out expired and dismissed notifications
+      // Filter notifications ที่เกี่ยวข้องกับ user นี้
       const activeNotifications = result.data
         .filter((item: any) => {
           // Filter expired
           if (item.Expire_Date && new Date(item.Expire_Date) <= new Date()) return false;
           // Filter dismissed
           if (dismissedNotifications.includes(`admin-${item.id}`)) return false;
-          return true;
+          
+          // Check if notification is for this user
+          const isForAll = item.Target_Role === 'All';
+          const isForRole = item.Target_Role === userRole;
+          const isForSpecificUser = item.Target_Role === 'Specific Users' && 
+            item.Target_Users?.some((user: any) => String(user.id) === String(userId) || String(user.documentId) === String(userId));
+          
+          return isForAll || isForRole || isForSpecificUser;
         })
         .map((notification: any) => ({
           id: `admin-${notification.id}`,
@@ -154,9 +164,10 @@ export default function NotificationPanel({ selectedBatchId, userRole }: Notific
     setAdminNotifications(prev => prev.filter(n => n.id !== notificationId));
     
     // Save to localStorage (แยก key ตาม role)
-    const dismissedNotifications = JSON.parse(localStorage.getItem('dismissedAdminNotifications_Farmer') || '[]');
+    const storageKey = `dismissedAdminNotifications_${userRole || 'unknown'}`;
+    const dismissedNotifications = JSON.parse(localStorage.getItem(storageKey) || '[]');
     dismissedNotifications.push(notificationId);
-    localStorage.setItem('dismissedAdminNotifications_Farmer', JSON.stringify(dismissedNotifications));
+    localStorage.setItem(storageKey, JSON.stringify(dismissedNotifications));
   };
 
   const handleDeleteNotification = async (id: string) => {

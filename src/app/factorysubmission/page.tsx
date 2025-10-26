@@ -788,11 +788,13 @@ export default function FactorySubmissionPage() {
                                                             </SelectTrigger>
                                                             <SelectContent>
                                                                 {factories.length > 0 ? (
-                                                                    factories.map((factory) => (
-                                                                        <SelectItem key={factory.documentId} value={factory.documentId}>
-                                                                            {factory.name}
-                                                                        </SelectItem>
-                                                                    ))
+                                                                    factories
+                                                                        .filter((factory) => factory.status === "Active")
+                                                                        .map((factory) => (
+                                                                            <SelectItem key={factory.documentId} value={factory.documentId}>
+                                                                                {factory.name}
+                                                                            </SelectItem>
+                                                                        ))
                                                                 ) : (
                                                                     <SelectItem value="no-factories" disabled>
                                                                         No factories available
