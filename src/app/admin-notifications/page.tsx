@@ -98,6 +98,7 @@ export default function AdminNotificationPage() {
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [filteredNotifications, setFilteredNotifications] = useState<AdminNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<string>('All');
   const [filterStatus, setFilterStatus] = useState<string>('All');
@@ -158,6 +159,7 @@ export default function AdminNotificationPage() {
   // Fetch notifications
   const fetchNotifications = async () => {
     try {
+      setError(null); // Clear previous error
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api-freeroll-production.up.railway.app';
       const response = await fetch(
         `${apiUrl}/api/admin-notifications?populate=Target_Users&sort=createdAt:desc`,
@@ -187,7 +189,7 @@ export default function AdminNotificationPage() {
       setFilteredNotifications(notificationData);
     } catch (error) {
       console.error('Error fetching notifications:', error);
-      // Don't show alert, just set empty array
+      setError('Unable to connect to server. Please make sure Strapi backend is running.');
       setNotifications([]);
       setFilteredNotifications([]);
     } finally {
@@ -781,9 +783,9 @@ export default function AdminNotificationPage() {
               <div className="text-center py-8">
                 <p className="text-gray-500">Loading notifications...</p>
               </div>
-            ) : notifications.length === 0 && !loading ? (
+            ) : error ? (
               <div className="text-center py-8">
-                <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-2" />
+                <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-2" />
                 <p className="text-gray-700 font-medium mb-1">Unable to connect to server</p>
                 <p className="text-gray-500 text-sm mb-4">Please make sure Strapi backend is running on port 1337</p>
                 <Button 
@@ -796,10 +798,34 @@ export default function AdminNotificationPage() {
                   Retry Connection
                 </Button>
               </div>
+            ) : notifications.length === 0 ? (
+              <div className="text-center py-8">
+                <Bell className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                <p className="text-gray-700 font-medium mb-2">No notifications yet</p>
+                <p className="text-gray-500 text-sm mb-4">Create your first notification to get started</p>
+                <Button 
+                  onClick={() => setIsCreateDialogOpen(true)}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create Notification
+                </Button>
+              </div>
             ) : filteredNotifications.length === 0 ? (
               <div className="text-center py-8">
                 <Bell className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                <p className="text-gray-500">No notifications found</p>
+                <p className="text-gray-500">No notifications found matching your filters</p>
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setFilterRole('All');
+                    setFilterStatus('All');
+                  }}
+                  className="mt-4"
+                >
+                  Clear Filters
+                </Button>
               </div>
             ) : (
               <>
