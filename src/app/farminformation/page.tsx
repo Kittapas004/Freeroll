@@ -80,6 +80,16 @@ export default function FarmInformationPage() {
     const [cropType, setCropType] = useState('');
     const [cultivationMethod, setCultivationMethod] = useState('');
 
+    const clearForm = () => {
+        (document.getElementById("farm-name") as HTMLInputElement).value = '';
+        (document.getElementById("farm-location") as HTMLInputElement).value = '';
+        (document.getElementById("farm-size") as HTMLInputElement).value = '';
+        (document.getElementById("Latitude") as HTMLInputElement).value = '';
+        (document.getElementById("Longitude") as HTMLInputElement).value = '';
+        setFarmSizeUnit('Acres');
+        setCropType('');
+        setCultivationMethod('');
+    };
 
     return (
         <SidebarProvider open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
@@ -239,6 +249,7 @@ export default function FarmInformationPage() {
                                                     throw new Error('Failed to create farm');
                                                 }
                                                 alert('Farm created successfully');
+                                                clearForm();
                                                 fetchFarms();
                                             } catch (error) {
                                                 console.error('Error creating farm:', error);

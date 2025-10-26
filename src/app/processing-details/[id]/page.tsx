@@ -3336,16 +3336,39 @@ export default function ProcessingDetailsPage() {
     const handleCompleteProcessing = async () => {
         try {
             setIsCompleteDialogOpen(false); // Close dialog
-
-            // Save current step data first
-            await saveCurrentStep();
+            setSaving(true);
 
             // Calculate processing summary
             const totalProcessingWeight = processingWeightHistory.reduce((sum, h) => sum + h.weight, 0);
 
-            // Update status to Completed
+            // Update factory-processing status to Completed in database
+            const updateResponse = await fetch(`https://api-freeroll-production.up.railway.app/api/factory-processings/${params.id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${localStorage.getItem("jwt")}`,
+                },
+                body: JSON.stringify({
+                    data: {
+                        Processing_Status: 'Completed', // Use same field name as saveCurrentStep
+                        is_processing_mode: false,
+                        workflow_step: 4, // Mark as completed at step 4
+                    }
+                }),
+            });
+
+            if (!updateResponse.ok) {
+                const errorData = await updateResponse.json();
+                console.error('Error response:', errorData);
+                throw new Error('Failed to update processing status: ' + JSON.stringify(errorData));
+            }
+
+            console.log('✅ Processing completed successfully in database');
+
+            // Update local state
             setCurrentStatus("Completed");
             setIsReadOnly(true);
+            setIsProcessingMode(false);
 
             if (batchInfo.remainingBalance <= 0) {
                 alert('🎉 Processing completed successfully!\n\nAll material has been processed.');
@@ -3358,7 +3381,9 @@ export default function ProcessingDetailsPage() {
 
         } catch (error) {
             console.error('Error completing processing:', error);
-            alert('Error completing processing. Please try again.');
+            alert('❌ Error completing processing. Please try again.\n\n' + (error as Error).message);
+        } finally {
+            setSaving(false);
         }
     };
 
