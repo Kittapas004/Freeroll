@@ -167,6 +167,7 @@ export default function ProcessingDetailsPage() {
         productGrade: string;
         targetMarket: string;
         timestamp: string;
+        sessionNumber?: number; // เพิ่ม field สำหรับเก็บ session number
     }>>([]);
     const [finalProductType, setFinalProductType] = useState("");
     const [outputQuantity, setOutputQuantity] = useState("");
@@ -174,6 +175,7 @@ export default function ProcessingDetailsPage() {
     const [wasteQuantity, setWasteQuantity] = useState("");
     const [batchLotNumber, setBatchLotNumber] = useState("");
     const [processorName, setProcessorName] = useState("");
+    const [selectedSessionNumber, setSelectedSessionNumber] = useState<string>(""); // เก็บ session ที่เลือก
     const [standardCriteria, setStandardCriteria] = useState("");
     const [certificationStatus, setCertificationStatus] = useState("");
     const [complianceNotes, setComplianceNotes] = useState("");
@@ -1665,7 +1667,8 @@ export default function ProcessingDetailsPage() {
             wasteQuantity: Number(wasteQuantity || 0),
             productGrade: productGrade,
             targetMarket: targetMarket,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            sessionNumber: selectedSessionNumber ? Number(selectedSessionNumber) : undefined
         };
 
         const updatedRecords = [...outputRecords, newRecord];
@@ -1686,8 +1689,9 @@ export default function ProcessingDetailsPage() {
         setTargetMarket("");
         setBatchLotNumber(""); // Clear lot number for next generation
         setProcessorName(""); // Clear processor name
+        setSelectedSessionNumber(""); // Clear selected session
 
-        alert(`✅ Output record added: ${newRecord.quantity} ${newRecord.unit} of ${newRecord.productType} (${newRecord.productGrade})\nProcessor: ${newRecord.processor}\nLot Number: ${lotNumber}`);
+        alert(`✅ Output record added: ${newRecord.quantity} ${newRecord.unit} of ${newRecord.productType} (${newRecord.productGrade})\nProcessor: ${newRecord.processor}\nLot Number: ${lotNumber}${selectedSessionNumber ? `\nFrom Session: ${selectedSessionNumber}` : ''}`);
     };
 
     const removeOutputRecord = (id: string) => {
@@ -2864,6 +2868,40 @@ export default function ProcessingDetailsPage() {
                             </Select>
                         </div>
                         <div>
+                            <Label>Source Processing Session</Label>
+                            <Select
+                                value={selectedSessionNumber}
+                                onValueChange={(value) => {
+                                    setSelectedSessionNumber(value);
+                                }}
+                                disabled={isReadOnly || processingWeightHistory.length === 0}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select session..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {processingWeightHistory.length === 0 ? (
+                                        <SelectItem value="none" disabled>No processing sessions found</SelectItem>
+                                    ) : (
+                                        processingWeightHistory.map((session) => (
+                                            <SelectItem 
+                                                key={session.sessionNumber} 
+                                                value={session.sessionNumber.toString()}
+                                            >
+                                                Session {session.sessionNumber} - {session.weight} kg
+                                            </SelectItem>
+                                        ))
+                                    )}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Select which session this output came from
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
                             <Label>Output Quantity</Label>
                             <div className="flex gap-2">
                                 <Input
@@ -3011,6 +3049,11 @@ export default function ProcessingDetailsPage() {
                                                 <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-mono rounded">
                                                     {record.batchLotNumber}
                                                 </span>
+                                                {record.sessionNumber && (
+                                                    <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                                                        From Session {record.sessionNumber} - {processingWeightHistory.find(s => s.sessionNumber === record.sessionNumber)?.weight || 'N/A'} kg
+                                                    </span>
+                                                )}
                                             </div>
                                             <p className="text-sm text-gray-600">
                                                 Processor: {record.processor || 'N/A'}
