@@ -83,6 +83,8 @@ interface ProcessingStep {
     id: string;
     sessionNumber?: number;
     processingWeight?: string;
+    remainingProcess?: string;  // น้ำหนักคงเหลือหลังแปรรูป
+    wasteProcess?: string;       // น้ำหนักของเสีย
     method: string;
     date: string;
     duration: string;
@@ -168,6 +170,8 @@ export default function ProcessingDetailsPage() {
         targetMarket: string;
         timestamp: string;
         sessionNumber?: number; // เพิ่ม field สำหรับเก็บ session number
+        sessionMethodName?: string; // ชื่อ method จาก step สุดท้ายของ session
+        sessionRemainingWeight?: number; // น้ำหนัก remaining จาก step สุดท้าย
     }>>([]);
     const [finalProductType, setFinalProductType] = useState("");
     const [outputQuantity, setOutputQuantity] = useState("");
@@ -1657,6 +1661,19 @@ export default function ProcessingDetailsPage() {
         // Generate lot number if not already generated (await async function)
         const lotNumber = batchLotNumber || await generateBatchLotNumber();
 
+        // Get session details (method name and remaining weight from last step)
+        let sessionMethodName = '';
+        let sessionRemainingWeight = 0;
+        if (selectedSessionNumber) {
+            const sessionNum = Number(selectedSessionNumber);
+            const sessionSteps = processingSteps.filter(step => step.sessionNumber === sessionNum);
+            const lastStep = sessionSteps[sessionSteps.length - 1];
+            sessionMethodName = lastStep?.method || '';
+            sessionRemainingWeight = lastStep?.remainingProcess 
+                ? parseFloat(lastStep.remainingProcess)
+                : processingWeightHistory.find(s => s.sessionNumber === sessionNum)?.weight || 0;
+        }
+
         const newRecord = {
             id: Date.now().toString(),
             batchLotNumber: lotNumber,
@@ -1668,7 +1685,9 @@ export default function ProcessingDetailsPage() {
             productGrade: productGrade,
             targetMarket: targetMarket,
             timestamp: new Date().toISOString(),
-            sessionNumber: selectedSessionNumber ? Number(selectedSessionNumber) : undefined
+            sessionNumber: selectedSessionNumber ? Number(selectedSessionNumber) : undefined,
+            sessionMethodName: sessionMethodName || undefined, // เก็บชื่อ method จาก step สุดท้าย
+            sessionRemainingWeight: sessionRemainingWeight || undefined // เก็บ remaining weight
         };
 
         const updatedRecords = [...outputRecords, newRecord];
@@ -1691,7 +1710,11 @@ export default function ProcessingDetailsPage() {
         setProcessorName(""); // Clear processor name
         setSelectedSessionNumber(""); // Clear selected session
 
-        alert(`✅ Output record added: ${newRecord.quantity} ${newRecord.unit} of ${newRecord.productType} (${newRecord.productGrade})\nProcessor: ${newRecord.processor}\nLot Number: ${lotNumber}${selectedSessionNumber ? `\nFrom Session: ${selectedSessionNumber}` : ''}`);
+        const sessionInfo = sessionMethodName 
+            ? `From ${sessionMethodName} Session ${selectedSessionNumber} - ${sessionRemainingWeight.toFixed(2)} kg`
+            : selectedSessionNumber ? `From Session ${selectedSessionNumber}` : '';
+        
+        alert(`✅ Output record added: ${newRecord.quantity} ${newRecord.unit} of ${newRecord.productType} (${newRecord.productGrade})\nProcessor: ${newRecord.processor}\nLot Number: ${lotNumber}${sessionInfo ? `\n${sessionInfo}` : ''}`);
     };
 
     const removeOutputRecord = (id: string) => {
@@ -2705,6 +2728,34 @@ export default function ProcessingDetailsPage() {
                                                                         disabled={isReadOnly}
                                                                     />
                                                                 </div>
+                                                                 <div>
+                                                                    <Label className="flex items-center gap-1">
+                                                                        <Weight className="w-4 h-4" />
+                                                                        Remaining (kg)
+                                                                    </Label>
+                                                                    <Input
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={step.remainingProcess || ""}
+                                                                        onChange={(e) => updateProcessingStep(step.id, 'remainingProcess', e.target.value)}
+                                                                        placeholder="Remaining weight"
+                                                                        disabled={isReadOnly}
+                                                                    />
+                                                                </div>
+                                                                <div>
+                                                                    <Label className="flex items-center gap-1">
+                                                                        <Trash className="w-4 h-4" />
+                                                                        Waste (kg)
+                                                                    </Label>
+                                                                    <Input
+                                                                        type="number"
+                                                                        step="0.01"
+                                                                        value={step.wasteProcess || ""}
+                                                                        onChange={(e) => updateProcessingStep(step.id, 'wasteProcess', e.target.value)}
+                                                                        placeholder="Waste weight"
+                                                                        disabled={isReadOnly}
+                                                                    />
+                                                                </div>
                                                                 <div>
                                                                     <Label>Status</Label>
                                                                     <Select
@@ -2883,19 +2934,45 @@ export default function ProcessingDetailsPage() {
                                     {processingWeightHistory.length === 0 ? (
                                         <SelectItem value="none" disabled>No processing sessions found</SelectItem>
                                     ) : (
-                                        processingWeightHistory.map((session) => (
-                                            <SelectItem 
-                                                key={session.sessionNumber} 
-                                                value={session.sessionNumber.toString()}
-                                            >
-                                                Session {session.sessionNumber} - {session.weight} kg
-                                            </SelectItem>
-                                        ))
+                                        (() => {
+                                            // Group steps by session to find last step's remaining weight
+                                            const sessionGroups = processingSteps.reduce((groups, step) => {
+                                                const sessionNum = step.sessionNumber || 0;
+                                                if (!groups[sessionNum]) groups[sessionNum] = [];
+                                                groups[sessionNum].push(step);
+                                                return groups;
+                                            }, {} as Record<number, ProcessingStep[]>);
+
+                                            return processingWeightHistory.map((session) => {
+                                                // Get steps for this session
+                                                const stepsInSession = sessionGroups[session.sessionNumber] || [];
+                                                // Find last step (highest index) in this session
+                                                const lastStep = stepsInSession[stepsInSession.length - 1];
+                                                // Get remaining from last step, fallback to session weight
+                                                const remainingWeight = lastStep?.remainingProcess 
+                                                    ? parseFloat(lastStep.remainingProcess).toFixed(2)
+                                                    : session.weight.toFixed(2);
+                                                // Get method name from last step
+                                                const methodName = lastStep?.method || '';
+                                                const displayText = methodName 
+                                                    ? `${methodName} Session ${session.sessionNumber} - ${remainingWeight} kg`
+                                                    : `Session ${session.sessionNumber} - ${remainingWeight} kg`;
+
+                                                return (
+                                                    <SelectItem 
+                                                        key={session.sessionNumber} 
+                                                        value={session.sessionNumber.toString()}
+                                                    >
+                                                        {displayText}
+                                                    </SelectItem>
+                                                );
+                                            });
+                                        })()
                                     )}
                                 </SelectContent>
                             </Select>
                             <p className="text-xs text-gray-500 mt-1">
-                                Select which session this output came from
+                                Shows remaining weight from last step of each session
                             </p>
                         </div>
                     </div>
@@ -3037,50 +3114,73 @@ export default function ProcessingDetailsPage() {
                     {outputRecords.length > 0 && (
                         <div className="mt-6 pt-6 border-t space-y-3">
                             <h3 className="font-semibold text-gray-700 flex items-center gap-2"> <PackageCheck className="h-4 w-4 text-green-600" /> Recorded Outputs ({outputRecords.length})</h3>
-                            {outputRecords.map((record, index) => (
-                                <div key={record.id} className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                                            {index + 1}
-                                        </div>
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <p className="font-semibold text-gray-900">{record.productType}</p>
-                                                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-mono rounded">
-                                                    {record.batchLotNumber}
-                                                </span>
-                                                {record.sessionNumber && (
-                                                    <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded">
-                                                        From Session {record.sessionNumber} - {processingWeightHistory.find(s => s.sessionNumber === record.sessionNumber)?.weight || 'N/A'} kg
-                                                    </span>
-                                                )}
+                            {outputRecords.map((record, index) => {
+                                // ใช้ข้อมูลที่บันทึกไว้โดยตรงแทนการคำนวณใหม่
+                                let sessionDisplayText = 'N/A';
+                                if (record.sessionNumber) {
+                                    // ถ้ามีข้อมูล sessionMethodName และ sessionRemainingWeight ที่บันทึกไว้ ให้ใช้เลย
+                                    if (record.sessionMethodName && record.sessionRemainingWeight !== undefined) {
+                                        sessionDisplayText = `${record.sessionMethodName} Session ${record.sessionNumber} - ${record.sessionRemainingWeight.toFixed(2)} kg`;
+                                    } else {
+                                        // Fallback: คำนวณจาก processingSteps (สำหรับ output records เก่าที่ยังไม่มีข้อมูลนี้)
+                                        const sessionWeight = processingWeightHistory.find(s => s.sessionNumber === record.sessionNumber)?.weight || 0;
+                                        const sessionSteps = processingSteps.filter(step => step.sessionNumber === record.sessionNumber);
+                                        const lastStep = sessionSteps[sessionSteps.length - 1];
+                                        const remainingWeight = lastStep?.remainingProcess 
+                                            ? parseFloat(lastStep.remainingProcess).toFixed(2)
+                                            : sessionWeight.toFixed(2);
+                                        const methodName = lastStep?.method || '';
+                                        sessionDisplayText = methodName
+                                            ? `${methodName} Session ${record.sessionNumber} - ${remainingWeight} kg`
+                                            : `Session ${record.sessionNumber} - ${remainingWeight} kg`;
+                                    }
+                                }
+
+                                return (
+                                    <div key={record.id} className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                                                {index + 1}
                                             </div>
-                                            <p className="text-sm text-gray-600">
-                                                Processor: {record.processor || 'N/A'}
-                                            </p>
-                                            <p className="text-sm text-gray-600 items-center flex">
-                                                <Package className="inline-block w-4 h-4 text-gray-400 mr-1 text-green-600" /> {record.quantity} {record.unit} • <Trash className="inline-block w-4 h-4 text-gray-400 mr-1 text-green-600" /> Waste: {record.wasteQuantity} kg
-                                            </p>
-                                            <p className="text-sm text-green-700 font-medium mt-1">
-                                                {record.productGrade} • {record.targetMarket} Market
-                                            </p>
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <p className="font-semibold text-gray-900">{record.productType}</p>
+                                                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-mono rounded">
+                                                        {record.batchLotNumber}
+                                                    </span>
+                                                    {record.sessionNumber && (
+                                                        <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                                                            From {sessionDisplayText}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <p className="text-sm text-gray-600">
+                                                    Processor: {record.processor || 'N/A'}
+                                                </p>
+                                                <p className="text-sm text-gray-600 items-center flex">
+                                                    <Package className="inline-block w-4 h-4 text-gray-400 mr-1 text-green-600" /> {record.quantity} {record.unit} • <Trash className="inline-block w-4 h-4 text-gray-400 mr-1 text-green-600" /> Waste: {record.wasteQuantity} kg
+                                                </p>
+                                                <p className="text-sm text-green-700 font-medium mt-1">
+                                                    {record.productGrade} • {record.targetMarket} Market
+                                                </p>
+                                            </div>
                                         </div>
+                                        {!isReadOnly && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setItemToRemove(record.id);
+                                                    setIsRemoveOutputDialogOpen(true);
+                                                }}
+                                                className="text-red-600 hover:bg-red-50"
+                                            >
+                                                Remove
+                                            </Button>
+                                        )}
                                     </div>
-                                    {!isReadOnly && (
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => {
-                                                setItemToRemove(record.id);
-                                                setIsRemoveOutputDialogOpen(true);
-                                            }}
-                                            className="text-red-600 hover:bg-red-50"
-                                        >
-                                            Remove
-                                        </Button>
-                                    )}
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
